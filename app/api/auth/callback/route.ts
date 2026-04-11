@@ -36,9 +36,10 @@ export async function GET(request: NextRequest) {
         .single()
 
       const isFirstLogin = !existingProfile
+      const isGoogleUser = user.app_metadata?.provider === 'google'
 
-      if (isFirstLogin) {
-        // Create the row for this new Google user
+      if (isFirstLogin && isGoogleUser) {
+        // New Google user — create DB row and send to set-password
         await supabase.from('users').insert({
           id: user.id,
           email: user.email ?? '',
@@ -51,6 +52,17 @@ export async function GET(request: NextRequest) {
           has_set_password: false,
         })
         return NextResponse.redirect(`${baseUrl}/set-password`)
+      }
+
+      if (isFirstLogin && !isGoogleUser) {
+        // Email signup user — DB row may have failed to save during signup, create it now
+        await supabase.from('users').upsert({
+          id: user.id,
+          email: user.email ?? '',
+          name: user.user_metadata?.full_name ?? user.user_metadata?.name ?? user.email?.split('@')[0] ?? 'User',
+          role: 'user',
+          has_set_password: true,
+        }, { onConflict: 'id' })
       }
     }
 

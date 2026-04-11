@@ -19,19 +19,63 @@ interface FormErrors {
   confirm?: string
 }
 
-function validate(fields: {
-  name: string; phone: string; address_line1: string; city: string; pincode: string
+function validateProfile(fields: {
+  name: string
+  phone: string
+  address_line1: string
+  city: string
+  pincode: string
 }): FormErrors {
   const errs: FormErrors = {}
-  if (!fields.name.trim())           errs.name          = 'Name is required.'
-  if (!fields.phone.trim())          errs.phone         = 'Phone number is required.'
-  else if (!/^\+?\d{7,15}$/.test(fields.phone.replace(/\s/g, '')))
-                                     errs.phone         = 'Enter a valid phone number.'
-  if (!fields.address_line1.trim())  errs.address_line1 = 'Address is required.'
-  if (!fields.city.trim())           errs.city          = 'City is required.'
-  if (!fields.pincode.trim())        errs.pincode       = 'Pincode is required.'
+
+  // Name
+  if (!fields.name.trim())
+    errs.name = 'Full name is required.'
+  else if (fields.name.trim().length < 2)
+    errs.name = 'Name must be at least 2 characters.'
+  else if (fields.name.trim().length > 80)
+    errs.name = 'Name must be under 80 characters.'
+
+  // Phone
+  const rawPhone = fields.phone.replace(/[\s\-()]/g, '')
+  if (!rawPhone)
+    errs.phone = 'Phone number is required.'
+  else if (!/^\+?\d{7,15}$/.test(rawPhone))
+    errs.phone = 'Enter a valid phone number (7–15 digits).'
+
+  // Address line 1
+  if (!fields.address_line1.trim())
+    errs.address_line1 = 'Address line 1 is required.'
+  else if (fields.address_line1.trim().length < 5)
+    errs.address_line1 = 'Please enter a complete address.'
+
+  // City
+  if (!fields.city.trim())
+    errs.city = 'City is required.'
+  else if (fields.city.trim().length < 2)
+    errs.city = 'Enter a valid city name.'
+
+  // Pincode
+  if (!fields.pincode.trim())
+    errs.pincode = 'Pincode is required.'
   else if (!/^\d{4,10}$/.test(fields.pincode.trim()))
-                                     errs.pincode       = 'Enter a valid pincode.'
+    errs.pincode = 'Enter a valid pincode (digits only).'
+
+  return errs
+}
+
+function validatePassword(password: string, confirm: string): FormErrors {
+  const errs: FormErrors = {}
+  if (!password)
+    errs.password = 'Password is required.'
+  else if (password.length < 6)
+    errs.password = 'Password must be at least 6 characters.'
+  else if (password.length > 72)
+    errs.password = 'Password must be under 72 characters.'
+  if (password && confirm && password !== confirm)
+    errs.confirm = 'Passwords do not match.'
+  else if (password && !confirm)
+    errs.confirm = 'Please confirm your password.'
   return errs
 }
 
@@ -130,7 +174,7 @@ export default function AccountPage() {
 
   async function handleSaveProfile(e: React.BaseSyntheticEvent) {
     e.preventDefault()
-    const errs = validate({ name, phone, address_line1: addressLine1, city, pincode })
+    const errs = validateProfile({ name, phone, address_line1: addressLine1, city, pincode })
     if (Object.keys(errs).length) { setFormErrors(errs); return }
     setFormErrors({})
     setSaving(true)
@@ -157,9 +201,7 @@ export default function AccountPage() {
 
   async function handleChangePassword(e: React.BaseSyntheticEvent) {
     e.preventDefault()
-    const errs: FormErrors = {}
-    if (password.length < 6) errs.password = 'Password must be at least 6 characters.'
-    if (password !== confirm) errs.confirm  = 'Passwords do not match.'
+    const errs = validatePassword(password, confirm)
     if (Object.keys(errs).length) { setPwErrors(errs); return }
     setPwErrors({})
     setPwSaving(true)
@@ -213,7 +255,7 @@ export default function AccountPage() {
             id="name"
             type="text"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => { setName(e.target.value); setFormErrors((p) => ({ ...p, name: undefined })) }}
             placeholder="Your name"
             error={formErrors.name}
           />
@@ -231,7 +273,7 @@ export default function AccountPage() {
             id="phone"
             type="tel"
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            onChange={(e) => { setPhone(e.target.value); setFormErrors((p) => ({ ...p, phone: undefined })) }}
             placeholder="+91 98765 43210"
             error={formErrors.phone}
           />
@@ -245,7 +287,7 @@ export default function AccountPage() {
             id="address_line1"
             type="text"
             value={addressLine1}
-            onChange={(e) => setAddressLine1(e.target.value)}
+            onChange={(e) => { setAddressLine1(e.target.value); setFormErrors((p) => ({ ...p, address_line1: undefined })) }}
             placeholder="House / flat / building number"
             error={formErrors.address_line1}
           />
@@ -265,7 +307,7 @@ export default function AccountPage() {
               id="city"
               type="text"
               value={city}
-              onChange={(e) => setCity(e.target.value)}
+              onChange={(e) => { setCity(e.target.value); setFormErrors((p) => ({ ...p, city: undefined })) }}
               placeholder="New Delhi"
               error={formErrors.city}
             />
@@ -286,7 +328,7 @@ export default function AccountPage() {
               type="text"
               inputMode="numeric"
               value={pincode}
-              onChange={(e) => setPincode(e.target.value)}
+              onChange={(e) => { setPincode(e.target.value); setFormErrors((p) => ({ ...p, pincode: undefined })) }}
               placeholder="110001"
               error={formErrors.pincode}
             />
@@ -322,7 +364,7 @@ export default function AccountPage() {
             type="password"
             autoComplete="new-password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => { setPassword(e.target.value); setPwErrors((p) => ({ ...p, password: undefined })) }}
             placeholder="At least 6 characters"
             error={pwErrors.password}
           />
@@ -332,7 +374,7 @@ export default function AccountPage() {
             type="password"
             autoComplete="new-password"
             value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
+            onChange={(e) => { setConfirm(e.target.value); setPwErrors((p) => ({ ...p, confirm: undefined })) }}
             placeholder="Repeat your password"
             error={pwErrors.confirm}
           />
