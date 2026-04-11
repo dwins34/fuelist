@@ -62,53 +62,48 @@ export default function Navbar() {
   // ── Load session & profile ──────────────────────────────────────────────
   useEffect(() => {
     async function load() {
+      // Step 1 — get the authenticated user (fast, reads local session)
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+      if (authError || !user) {
+        setProfile(null)
+        setAvatarUrl(null)
+        setAuthLoading(false)
+        return
+      }
+
+      // Step 2 — build profile from auth metadata immediately
+      // Icon appears NOW without waiting for the DB
+      const metaProfile = {
+        id:    user.id,
+        name:  user.user_metadata?.full_name ?? user.user_metadata?.name ?? user.email?.split('@')[0] ?? 'User',
+        email: user.email ?? '',
+        role:  'user' as const,
+      }
+      setAvatarUrl(user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null)
+      setProfile(metaProfile)
+      setAuthLoading(false)   // ← unblock UI immediately, icon is visible now
+
+      // Step 3 — enhance with DB data (role etc.) in the background
+      // If this fails for any reason the icon stays visible with the meta profile
       try {
-        const { data: { user } } = await supabase.auth.getUser()
-
-        if (!user) {
-          setProfile(null)
-          setAvatarUrl(null)
-          return
-        }
-
-        setAvatarUrl(
-          user.user_metadata?.avatar_url ??
-          user.user_metadata?.picture ??
-          null
-        )
-
         const { data } = await supabase
           .from('users')
           .select('*')
           .eq('id', user.id)
           .single()
 
-        setProfile(
-          data ?? {
-            id:    user.id,
-            name:  user.user_metadata?.full_name ?? user.user_metadata?.name ?? user.email?.split('@')[0] ?? 'User',
-            email: user.email ?? '',
-            role:  'user',
-          }
-        )
+        if (data) setProfile(data)
       } catch {
-        // On any error, clear auth state so the Login/Signup buttons show
-        setProfile(null)
-        setAvatarUrl(null)
-      } finally {
-        // Always unblock the UI — no more infinite skeleton
-        setAuthLoading(false)
+        // DB error — keep the metadata profile that's already showing
       }
     }
 
-    // Call load() directly on mount — guaranteed to run regardless of
-    // whether onAuthStateChange fires in time (e.g. delayed by CartContext).
     load()
 
-    // onAuthStateChange handles subsequent auth events (login/logout after mount).
-    // Skip INITIAL_SESSION since load() above already covers it.
+    // Handle auth changes after mount (login / logout / token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'INITIAL_SESSION') return
+      if (event === 'INITIAL_SESSION') return   // covered by load() above
       if (!session?.user) {
         setProfile(null)
         setAvatarUrl(null)
