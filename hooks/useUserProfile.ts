@@ -75,18 +75,7 @@ export function useUserProfile() {
 
     load()
 
-    // Safety net — if load hangs for any reason, stop showing skeleton after 8s
-    const timeout = setTimeout(() => {
-      if (!cancelled) {
-        setError('Took too long to load. Please refresh.')
-        setLoading(false)
-      }
-    }, 8000)
-
-    return () => {
-      cancelled = true
-      clearTimeout(timeout)
-    }
+    return () => { cancelled = true }
   }, [supabase])
 
   async function saveProfile(fields: Omit<UserProfileData, 'id' | 'email' | 'role'>) {
