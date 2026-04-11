@@ -22,20 +22,16 @@ export function useUserProfile() {
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState<string | null>(null)
 
-  // Stable client — must not be recreated on every render
   const supabase = useMemo(() => createClient(), [])
 
   useEffect(() => {
-    let cancelled = false
-
     async function load() {
       try {
-        // getSession reads from local cookie — no network call, never hangs
         const { data: { session } } = await supabase.auth.getSession()
         const user = session?.user
 
         if (!user) {
-          if (!cancelled) setLoading(false)
+          setLoading(false)
           return
         }
 
@@ -45,10 +41,7 @@ export function useUserProfile() {
           .eq('id', user.id)
           .single()
 
-        if (cancelled) return
-
         if (dbErr && dbErr.code !== 'PGRST116') {
-          console.error('DB load error:', dbErr.message)
           setError('Failed to load profile.')
         }
 
@@ -56,7 +49,7 @@ export function useUserProfile() {
           id:            user.id,
           email:         user.email ?? '',
           role:          data?.role ?? 'user',
-          name:          data?.name ?? user.user_metadata?.full_name ?? user.user_metadata?.name ?? '',
+          name:          data?.name ?? user.user_metadata?.full_name ?? '',
           phone:         data?.phone ?? '',
           address_line1: data?.address_line1 ?? '',
           address_line2: data?.address_line2 ?? '',
@@ -66,17 +59,16 @@ export function useUserProfile() {
           landmark:      data?.landmark ?? '',
         })
       } catch (err) {
-        console.error('useUserProfile load threw:', err)
-        if (!cancelled) setError('Something went wrong. Please refresh.')
+        console.error('useUserProfile:', err)
+        setError('Something went wrong. Please refresh.')
       } finally {
-        if (!cancelled) setLoading(false)
+        setLoading(false)
       }
     }
 
     load()
-
-    return () => { cancelled = true }
-  }, [supabase])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function saveProfile(fields: Omit<UserProfileData, 'id' | 'email' | 'role'>) {
     if (!profile) return { error: 'No session.' }
@@ -93,7 +85,7 @@ export function useUserProfile() {
       setProfile((p) => p ? { ...p, ...fields } : p)
       return { error: null }
     } catch (err) {
-      console.error('saveProfile threw:', err)
+      console.error('saveProfile:', err)
       return { error: 'Network error. Please try again.' }
     }
   }
