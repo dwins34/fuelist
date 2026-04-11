@@ -4,56 +4,30 @@ import { createClient } from '@/lib/supabase/server'
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url)
-  const baseUrl =
-    process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
-  const code = searchParams.get('code')
-  const next = searchParams.get('next') ?? '/'
+  try {
+    const { searchParams } = new URL(request.url)
+    const code = searchParams.get('code')
+    const next = searchParams.get('next') ?? '/'
 
-  if (code) {
+    const baseUrl =
+      process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+
+    if (!code) {
+      return NextResponse.redirect(`${baseUrl}/login?error=no_code`)
+    }
+
     const supabase = await createClient()
+
     const { error } = await supabase.auth.exchangeCodeForSession(code)
 
-    if (!error) {
-      // Upsert the user profile — safety net in case the DB trigger didn't fire
-      // (ignoreDuplicates preserves the existing role for returning users)
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      if (user) {
-        await supabase.from('users').upsert(
-          {
-            id: user.id,
-            name:
-              user.user_metadata?.full_name ??
-              user.user_metadata?.name ??
-              user.email?.split('@')[0] ??
-              'User',
-            email: user.email ?? '',
-            role: 'user',
-          },
-          { onConflict: 'id', ignoreDuplicates: true }
-        )
-
-        // If the user has ONLY a Google identity (no email identity), they have
-        // never set a password — send them to set-password.
-        // Once they set a password, Supabase adds an 'email' identity so this
-        // check naturally stops triggering on future logins.
-        const { data: profile } = await supabase
-          .from("users")
-          .select("has_set_password")
-          .eq("id", user.id)
-          .single()
-
-        if (!profile?.has_set_password) {
-          return NextResponse.redirect(`${baseUrl}/set-password`)
-        }
-      }
-
-      return NextResponse.redirect(`${baseUrl}${next}`)
+    if (error) {
+      console.error('EXCHANGE ERROR:', error.message)
+      return NextResponse.redirect(`${baseUrl}/login?error=exchange_failed`)
     }
-  }
 
-  return NextResponse.redirect(`${baseUrl}/login?error=auth_callback_failed`)
+    return NextResponse.redirect(`${baseUrl}${next}`)
+  } catch (err) {
+    console.error('CALLBACK CRASH:', err)
+    return NextResponse.redirect(`/login?error=server_error`)
+  }
 }

@@ -61,7 +61,8 @@ export default function OAuthButtons({ extras }: OAuthButtonsProps) {
 
   async function signInWith(provider: Provider) {
     setLoadingProvider(provider)
-    const redirectTo = `${window.location.origin}/api/auth/callback`
+    // const redirectTo = `${window.location.origin}/api/auth/callback`
+    const redirectTo = `${window.location.origin}/api/auth/callback?next=/set-password`
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
