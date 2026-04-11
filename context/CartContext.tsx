@@ -96,27 +96,37 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
         try {
           const uid = session?.user?.id ?? null
           setUserId(uid)
 
-          if (uid) {
-            // User logged in — load cart from DB
-            const dbCart = await loadFromDB(uid)
-            if (dbCart.length > 0) {
-              setItems(dbCart)
-              saveLocal(dbCart)
-            } else {
-              // Nothing in DB — use localStorage cart if any
-              const local = loadLocal()
-              setItems(local)
-              if (local.length > 0) syncToDB(uid, local)
-            }
-          } else {
-            // User logged out — clear cart
+          if (event === 'SIGNED_OUT' || !uid) {
+            // Logout — clear local cart immediately (DB cart preserved for next login)
             setItems([])
             saveLocal([])
+            return
+          }
+
+          if (event === 'SIGNED_IN') {
+            // Fresh login — restore cart from DB
+            const dbCart = await loadFromDB(uid)
+            setItems(dbCart)
+            saveLocal(dbCart)
+            return
+          }
+
+          if (event === 'INITIAL_SESSION') {
+            // Page reload while logged in — use localStorage (fast, already in sync)
+            const local = loadLocal()
+            if (local.length > 0) {
+              setItems(local)
+            } else {
+              // localStorage empty (e.g. cleared by browser) — fall back to DB
+              const dbCart = await loadFromDB(uid)
+              setItems(dbCart)
+              saveLocal(dbCart)
+            }
           }
         } catch {
           // Cart errors must never affect the rest of the app
