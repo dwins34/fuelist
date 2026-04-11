@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
         .eq('id', userId)
         .single()
 
-      if (profile && !profile.has_set_password) {
+      if (!profile || !profile.has_set_password) {
         return NextResponse.redirect(`${baseUrl}/set-password`)
       }
     }
