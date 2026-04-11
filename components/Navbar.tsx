@@ -71,20 +71,14 @@ export default function Navbar() {
         return
       }
       setAvatarUrl(user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null)
-      setProfile({
-        id:    user.id,
-        name:  user.user_metadata?.full_name ?? user.user_metadata?.name ?? user.email?.split('@')[0] ?? 'User',
-        email: user.email ?? '',
-        role:  'user' as const,
-      })
-      setAuthLoading(false)
+      setAuthLoading(false) // stop spinner immediately while DB loads in background
 
       // Save email so the login page can offer "continue as" next time
       if (user.email) {
         try { localStorage.setItem('fuelist_last_email', user.email) } catch {}
       }
 
-      // Enhance with DB in background — gets real role
+      // Load profile from DB — this is the source of truth for name and role
       ;(async () => {
         try {
           const { data } = await supabase
@@ -92,8 +86,28 @@ export default function Navbar() {
             .select('*')
             .eq('id', user.id)
             .single()
-          if (mounted && data) setProfile(data)
-        } catch {}
+
+          if (!mounted) return
+
+          if (data) {
+            setProfile(data)
+          } else {
+            // Fallback to auth metadata if no DB row yet
+            setProfile({
+              id:    user.id,
+              name:  user.user_metadata?.full_name ?? user.user_metadata?.name ?? user.email?.split('@')[0] ?? 'User',
+              email: user.email ?? '',
+              role:  'user' as const,
+            })
+          }
+        } catch {
+          if (mounted) setProfile({
+            id:    user.id,
+            name:  user.user_metadata?.full_name ?? user.user_metadata?.name ?? user.email?.split('@')[0] ?? 'User',
+            email: user.email ?? '',
+            role:  'user' as const,
+          })
+        }
       })()
     }
 
@@ -231,6 +245,17 @@ export default function Navbar() {
                         <span>📊</span> Admin Dashboard
                       </Link>
                     )}
+                    <Link
+                      href="/account"
+                      onClick={() => setDropdownOpen(false)}
+                      className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                      Account settings
+                    </Link>
+                    <div className="my-1 border-t border-gray-100" />
                     <button
                       onClick={handleSignOut}
                       className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors"
@@ -297,15 +322,27 @@ export default function Navbar() {
                   <p className="font-semibold text-sm text-gray-900 truncate">{profile.name}</p>
                   <p className="text-xs text-gray-500 truncate">{profile.email}</p>
                 </div>
-                <button
-                  onClick={handleSignOut}
-                  className="shrink-0 rounded-lg p-2 text-red-400 hover:bg-red-50 transition-colors"
-                  aria-label="Sign out"
-                >
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                  </svg>
-                </button>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Link
+                    href="/account"
+                    onClick={() => setMenuOpen(false)}
+                    className="rounded-lg p-2 text-gray-500 hover:bg-white transition-colors"
+                    aria-label="Account settings"
+                  >
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  </Link>
+                  <button
+                    onClick={handleSignOut}
+                    className="rounded-lg p-2 text-red-400 hover:bg-red-50 transition-colors"
+                    aria-label="Sign out"
+                  >
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="flex flex-col gap-2">
