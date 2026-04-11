@@ -62,40 +62,40 @@ export default function Navbar() {
   // ── Load session & profile ──────────────────────────────────────────────
   useEffect(() => {
     async function load() {
-      // Step 1 — get the authenticated user (fast, reads local session)
-      const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-      if (authError || !user) {
-        setProfile(null)
-        setAvatarUrl(null)
-        setAuthLoading(false)
-        return
-      }
-
-      // Step 2 — build profile from auth metadata immediately
-      // Icon appears NOW without waiting for the DB
-      const metaProfile = {
-        id:    user.id,
-        name:  user.user_metadata?.full_name ?? user.user_metadata?.name ?? user.email?.split('@')[0] ?? 'User',
-        email: user.email ?? '',
-        role:  'user' as const,
-      }
-      setAvatarUrl(user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null)
-      setProfile(metaProfile)
-      setAuthLoading(false)   // ← unblock UI immediately, icon is visible now
-
-      // Step 3 — enhance with DB data (role etc.) in the background
-      // If this fails for any reason the icon stays visible with the meta profile
       try {
-        const { data } = await supabase
+        const { data } = await supabase.auth.getSession()
+        const user = data?.session?.user ?? null
+
+        if (!user) {
+          setProfile(null)
+          setAvatarUrl(null)
+          return
+        }
+
+        // Show icon immediately from local session — no network needed
+        setAvatarUrl(user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null)
+        setProfile({
+          id:    user.id,
+          name:  user.user_metadata?.full_name ?? user.user_metadata?.name ?? user.email?.split('@')[0] ?? 'User',
+          email: user.email ?? '',
+          role:  'user' as const,
+        })
+
+        // Enhance with DB row in the background (gets real role)
+        const { data: dbUser } = await supabase
           .from('users')
           .select('*')
           .eq('id', user.id)
           .single()
 
-        if (data) setProfile(data)
+        if (dbUser) setProfile(dbUser)
+
       } catch {
-        // DB error — keep the metadata profile that's already showing
+        setProfile(null)
+        setAvatarUrl(null)
+      } finally {
+        // ALWAYS runs — skeleton is never stuck
+        setAuthLoading(false)
       }
     }
 
