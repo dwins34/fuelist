@@ -25,11 +25,7 @@ export default function SignupPage() {
     setError('')
     setLoading(true)
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { name } },
-    })
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
 
     if (error) {
       setError(error.message)
@@ -37,25 +33,33 @@ export default function SignupPage() {
       return
     }
 
-    // Insert profile row
-    if (data.user) {
-      await supabase.from('users').insert({
-        id: data.user.id,
-        name,
-        email,
-        role: 'user',
-      })
+    try {
+      localStorage.setItem("LAST_EMAIL_KEY", email)
+    } catch { }
+
+    // ✅ Sync user to DB
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (user) {
+      await supabase.from('users').upsert(
+        {
+          id: user.id,
+          email: user.email ?? '',
+          name:
+            user.user_metadata?.full_name ??
+            user.user_metadata?.name ??
+            user.email?.split('@')[0] ??
+            'User',
+          role: 'user',
+        },
+        { onConflict: 'id' }
+      )
     }
 
-    // If email confirmation is disabled, redirect immediately
-    if (data.session) {
-      router.push('/')
-      router.refresh()
-    } else {
-      setSuccess(true)
-    }
-
-    setLoading(false)
+    router.push('/')
+    router.refresh()
   }
 
   if (success) {

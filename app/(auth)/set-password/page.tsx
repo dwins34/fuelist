@@ -19,16 +19,25 @@ export default function SetPasswordPage() {
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
 
-  // Verify an active session exists when page loads
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) {
-        setSessionMissing(true)
-      } else {
-        setUserEmail(user.email ?? null)
+    const { data: subscription } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        if (!session) {
+          setSessionMissing(true)
+        } else {
+          setUserEmail(session.user.email ?? null)
+        }
       }
-    })
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    )
+    if (sessionMissing) {
+      router.push('/login?error=session_expired')
+    }
+
+    return () => {
+      subscription.subscription.unsubscribe()
+    }
+  }, [])
+
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -45,7 +54,10 @@ export default function SetPasswordPage() {
 
     setLoading(true)
 
-    const { error: updateError } = await supabase.auth.updateUser({ password })
+    // 1. Update password in Supabase Auth
+    const { error: updateError } = await supabase.auth.updateUser({
+      password,
+    })
 
     if (updateError) {
       setError(`Failed to set password: ${updateError.message}`)
@@ -53,7 +65,31 @@ export default function SetPasswordPage() {
       return
     }
 
-    // Immediately verify the password works by signing in
+    // 2. Get current user (important for DB update)
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      setError('User not found after password update.')
+      setLoading(false)
+      return
+    }
+
+    // 3. Update has_set_password flag in DB
+    const { error: dbError } = await supabase
+      .from('users')
+      .update({ has_set_password: true })
+      .eq('id', user.id)
+
+    if (dbError) {
+      console.error('DB update error:', dbError.message)
+      setError('Password set but failed to update profile.')
+      setLoading(false)
+      return
+    }
+
+    // 4. Optional: Verify login works (your existing logic)
     if (userEmail) {
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: userEmail,
@@ -61,15 +97,15 @@ export default function SetPasswordPage() {
       })
 
       if (signInError) {
-        // Password was "saved" but login still fails — Email provider issue
         setError(
-          'Password saved but email login is not enabled yet. Go to your Supabase dashboard → Authentication → Providers → Email and make sure it is enabled.'
+          'Password saved but email login is not enabled. Enable Email provider in Supabase.'
         )
         setLoading(false)
         return
       }
     }
 
+    // 5. Success → redirect
     router.push('/')
     router.refresh()
   }

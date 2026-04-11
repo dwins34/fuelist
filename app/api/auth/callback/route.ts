@@ -4,9 +4,9 @@ import { createClient } from '@/lib/supabase/server'
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
-const { searchParams } = new URL(request.url)
-const baseUrl =
-  process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+  const { searchParams } = new URL(request.url)
+  const baseUrl =
+    process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
   const code = searchParams.get('code')
   const next = searchParams.get('next') ?? '/'
 
@@ -40,11 +40,13 @@ const baseUrl =
         // never set a password — send them to set-password.
         // Once they set a password, Supabase adds an 'email' identity so this
         // check naturally stops triggering on future logins.
-        const identities = user.identities ?? []
-        const hasEmailIdentity = identities.some((id) => id.provider === 'email')
-        const isGoogleOnly = identities.some((id) => id.provider === 'google') && !hasEmailIdentity
+        const { data: profile } = await supabase
+          .from("users")
+          .select("has_set_password")
+          .eq("id", user.id)
+          .single()
 
-        if (isGoogleOnly) {
+        if (!profile?.has_set_password) {
           return NextResponse.redirect(`${baseUrl}/set-password`)
         }
       }
