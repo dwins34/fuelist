@@ -1,6 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+export const dynamic = 'force-dynamic'
+
+import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -15,7 +17,7 @@ export default function SetPasswordPage() {
   const [userEmail, setUserEmail] = useState<string | null>(null)
   const [sessionMissing, setSessionMissing] = useState(false)
   const router = useRouter()
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   // Verify an active session exists when page loads
   useEffect(() => {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { MenuItem, Category } from '@/types'
 import MenuCard from '@/components/MenuCard'
@@ -16,7 +16,7 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: 'protein_desc', label: 'Highest Protein' },
 ]
 
-export default function MenuPage() {
+function MenuContent() {
   const searchParams = useSearchParams()
   const initialCat = (searchParams.get('category') as Category) || 'all'
 
@@ -159,5 +159,21 @@ export default function MenuPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function MenuPage() {
+  return (
+    <Suspense fallback={
+      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-24">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="rounded-2xl bg-gray-100 animate-pulse h-80" />
+          ))}
+        </div>
+      </div>
+    }>
+      <MenuContent />
+    </Suspense>
   )
 }
