@@ -4,7 +4,9 @@ import { createClient } from '@/lib/supabase/server'
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
-  const { searchParams, origin } = new URL(request.url)
+const { searchParams } = new URL(request.url)
+const baseUrl =
+  process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
   const code = searchParams.get('code')
   const next = searchParams.get('next') ?? '/'
 
@@ -43,13 +45,13 @@ export async function GET(request: NextRequest) {
         const isGoogleOnly = identities.some((id) => id.provider === 'google') && !hasEmailIdentity
 
         if (isGoogleOnly) {
-          return NextResponse.redirect(`${origin}/set-password`)
+          return NextResponse.redirect(`${baseUrl}/set-password`)
         }
       }
 
-      return NextResponse.redirect(`${origin}${next}`)
+      return NextResponse.redirect(`${baseUrl}${next}`)
     }
   }
 
-  return NextResponse.redirect(`${origin}/login?error=auth_callback_failed`)
+  return NextResponse.redirect(`${baseUrl}/login?error=auth_callback_failed`)
 }
