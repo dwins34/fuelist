@@ -25,13 +25,29 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${baseUrl}/login?error=exchange_failed`)
     }
 
-    // Check if the Google user has already set a password
-    const userId = sessionData.user?.id
-    if (userId) {
+    // Sync Google user to DB and check if password has been set
+    const user = sessionData.user
+    if (user) {
+      // Upsert ensures a row exists for Google users (insert on first login, no-op on subsequent)
+      await supabase.from('users').upsert(
+        {
+          id: user.id,
+          email: user.email ?? '',
+          name:
+            user.user_metadata?.full_name ??
+            user.user_metadata?.name ??
+            user.email?.split('@')[0] ??
+            'User',
+          role: 'user',
+          has_set_password: false,
+        },
+        { onConflict: 'id', ignoreDuplicates: true }
+      )
+
       const { data: profile } = await supabase
         .from('users')
         .select('has_set_password')
-        .eq('id', userId)
+        .eq('id', user.id)
         .single()
 
       if (!profile || !profile.has_set_password) {
