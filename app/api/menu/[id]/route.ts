@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
+export const dynamic = 'force-dynamic'
+
 // Next.js 16: params is a Promise
 type RouteParams = { params: Promise<{ id: string }> }
 

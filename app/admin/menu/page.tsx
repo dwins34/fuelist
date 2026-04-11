@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { MenuItem } from '@/types'
 import AdminTable from '@/components/AdminTable'
+import { fetchMenuItems } from '@/services/menuService'
 
 export default function AdminMenuPage() {
   const [items, setItems] = useState<MenuItem[]>([])
@@ -11,9 +12,10 @@ export default function AdminMenuPage() {
   const loadItems = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/menu')
-      const data = await res.json()
-      setItems(Array.isArray(data) ? data : [])
+      const data = await fetchMenuItems()
+      setItems(data)
+    } catch {
+      setItems([])
     } finally {
       setLoading(false)
     }
