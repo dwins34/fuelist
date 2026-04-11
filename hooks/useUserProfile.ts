@@ -30,9 +30,11 @@ export function useUserProfile() {
 
     async function load() {
       try {
-        const { data: { user }, error: authErr } = await supabase.auth.getUser()
+        // getSession reads from local cookie — no network call, never hangs
+        const { data: { session } } = await supabase.auth.getSession()
+        const user = session?.user
 
-        if (authErr || !user) {
+        if (!user) {
           if (!cancelled) setLoading(false)
           return
         }
@@ -73,7 +75,18 @@ export function useUserProfile() {
 
     load()
 
-    return () => { cancelled = true }
+    // Safety net — if load hangs for any reason, stop showing skeleton after 8s
+    const timeout = setTimeout(() => {
+      if (!cancelled) {
+        setError('Took too long to load. Please refresh.')
+        setLoading(false)
+      }
+    }, 8000)
+
+    return () => {
+      cancelled = true
+      clearTimeout(timeout)
+    }
   }, [supabase])
 
   async function saveProfile(fields: Omit<UserProfileData, 'id' | 'email' | 'role'>) {
