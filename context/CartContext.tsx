@@ -20,23 +20,24 @@ interface CartContextValue {
 const CartContext = createContext<CartContextValue | null>(null)
 const STORAGE_KEY = 'fuelist_cart'
 
+// ── Local storage helpers ──────────────────────────────────────────────────
+
+function saveLocal(cartItems: CartItem[]) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cartItems)) } catch {}
+}
+
+function loadLocal(): CartItem[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    return raw ? JSON.parse(raw) : []
+  } catch { return [] }
+}
+
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>([])
+  // ── Initialize items from localStorage immediately — no flash of empty cart ──
+  const [items, setItems] = useState<CartItem[]>(() => loadLocal())
   const [userId, setUserId] = useState<string | null>(null)
   const supabase = useMemo(() => createClient(), [])
-
-  // ── Helpers ────────────────────────────────────────────────────────────────
-
-  function saveLocal(cartItems: CartItem[]) {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cartItems)) } catch {}
-  }
-
-  function loadLocal(): CartItem[] {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      return raw ? JSON.parse(raw) : []
-    } catch { return [] }
-  }
 
   // ── DB sync ────────────────────────────────────────────────────────────────
 
@@ -56,10 +57,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }))
   }
 
-  // Full replace: upsert current items + delete removed ones
   async function syncToDB(uid: string, cartItems: CartItem[]) {
     if (cartItems.length === 0) {
-      // Delete entire cart
       await supabase.from('carts').delete().eq('user_id', uid)
       return
     }
@@ -71,10 +70,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       updated_at: new Date().toISOString(),
     }))
 
-    // Upsert all current items
     await supabase.from('carts').upsert(rows, { onConflict: 'user_id,item_id' })
 
-    // Delete rows no longer in cart
     const currentIds = cartItems.map((ci) => ci.item.id)
     await supabase
       .from('carts')
@@ -83,7 +80,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       .not('item_id', 'in', `(${currentIds.join(',')})`)
   }
 
-  // ── Debounced sync ref ─────────────────────────────────────────────────────
+  // ── Debounced DB sync ──────────────────────────────────────────────────────
 
   const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -92,44 +89,54 @@ export function CartProvider({ children }: { children: ReactNode }) {
     syncTimer.current = setTimeout(() => syncToDB(uid, cartItems), 800)
   }
 
-  // ── Auth state — load/clear cart on login/logout ───────────────────────────
+  // ── Auth state ─────────────────────────────────────────────────────────────
+  // authReady: true once we've processed the initial session, so the sync
+  // effect below knows it's safe to write back to DB/localStorage.
+  const authReady = useRef(false)
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         try {
           const uid = session?.user?.id ?? null
-          setUserId(uid)
 
           if (event === 'SIGNED_OUT' || !uid) {
-            // Logout — clear local cart immediately (DB cart preserved for next login)
+            authReady.current = true
+            setUserId(null)
             setItems([])
             saveLocal([])
             return
           }
 
           if (event === 'SIGNED_IN') {
-            // Fresh login — restore cart from DB
+            // Fresh login — load cart from DB (source of truth after login)
             const dbCart = await loadFromDB(uid)
+            authReady.current = true
+            setUserId(uid)
             setItems(dbCart)
             saveLocal(dbCart)
             return
           }
 
           if (event === 'INITIAL_SESSION') {
-            // Page reload while logged in — use localStorage (fast, already in sync)
+            // Page reload — items are already loaded from localStorage by useState.
+            // If localStorage was empty, fall back to DB.
+            setUserId(uid)
             const local = loadLocal()
-            if (local.length > 0) {
-              setItems(local)
-            } else {
-              // localStorage empty (e.g. cleared by browser) — fall back to DB
+            if (local.length === 0) {
               const dbCart = await loadFromDB(uid)
               setItems(dbCart)
               saveLocal(dbCart)
             }
+            // Mark ready AFTER loading so the sync effect doesn't fire early
+            authReady.current = true
+            return
           }
+
+          // TOKEN_REFRESHED or other events — just update userId
+          setUserId(uid)
         } catch {
-          // Cart errors must never affect the rest of the app
+          authReady.current = true
         }
       }
     )
@@ -137,14 +144,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [supabase]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Sync to localStorage + DB whenever items change ────────────────────────
-
-  const isFirstRender = useRef(true)
+  // authReady guards against writing during initial load (would wipe the cart)
 
   useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false
-      return
-    }
+    if (!authReady.current) return
     saveLocal(items)
     if (userId) scheduleSyncToDB(userId, items)
   }, [items, userId]) // eslint-disable-line react-hooks/exhaustive-deps

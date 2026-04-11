@@ -61,58 +61,57 @@ export default function Navbar() {
 
   // ── Load session & profile ──────────────────────────────────────────────
   useEffect(() => {
-    async function load() {
-      try {
-        const { data } = await supabase.auth.getSession()
-        const user = data?.session?.user ?? null
+    let mounted = true
 
-        if (!user) {
-          setProfile(null)
-          setAvatarUrl(null)
-          return
-        }
-
-        // Show icon immediately from local session — no network needed
-        setAvatarUrl(user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null)
-        setProfile({
-          id:    user.id,
-          name:  user.user_metadata?.full_name ?? user.user_metadata?.name ?? user.email?.split('@')[0] ?? 'User',
-          email: user.email ?? '',
-          role:  'user' as const,
-        })
-
-        // Enhance with DB row in the background (gets real role)
-        const { data: dbUser } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', user.id)
-          .single()
-
-        if (dbUser) setProfile(dbUser)
-
-      } catch {
-        setProfile(null)
-        setAvatarUrl(null)
-      } finally {
-        // ALWAYS runs — skeleton is never stuck
-        setAuthLoading(false)
-      }
-    }
-
-    load()
-
-    // Handle auth changes after mount (login / logout / token refresh)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'INITIAL_SESSION') return   // covered by load() above
-      if (!session?.user) {
+    function applyUser(user: { id: string; email?: string; user_metadata?: Record<string, string> } | null) {
+      if (!user) {
         setProfile(null)
         setAvatarUrl(null)
         setAuthLoading(false)
         return
       }
-      load()
+      setAvatarUrl(user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null)
+      setProfile({
+        id:    user.id,
+        name:  user.user_metadata?.full_name ?? user.user_metadata?.name ?? user.email?.split('@')[0] ?? 'User',
+        email: user.email ?? '',
+        role:  'user' as const,
+      })
+      setAuthLoading(false)
+
+      // Save email so the login page can offer "continue as" next time
+      if (user.email) {
+        try { localStorage.setItem('fuelist_last_email', user.email) } catch {}
+      }
+
+      // Enhance with DB in background — gets real role
+      ;(async () => {
+        try {
+          const { data } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', user.id)
+            .single()
+          if (mounted && data) setProfile(data)
+        } catch {}
+      })()
+    }
+
+    // ── Initial load: getSession() reads local cookie — fast, never hangs ──
+    supabase.auth.getSession()
+      .then(({ data }) => { if (mounted) applyUser(data.session?.user ?? null) })
+      .catch(() => { if (mounted) setAuthLoading(false) })
+
+    // ── Reactive: handle login / logout / token refresh after initial load ──
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!mounted) return
+      applyUser(session?.user ?? null)
     })
-    return () => subscription.unsubscribe()
+
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+    }
   }, [supabase])
 
   // ── Close dropdown on outside click ────────────────────────────────────
@@ -133,14 +132,12 @@ export default function Navbar() {
     setAvatarUrl(null)
     setDropdownOpen(false)
     setMenuOpen(false)
-    // clearCart is NOT called here — onAuthStateChange in CartContext clears
-    // local state automatically, while the DB cart is preserved for next login
 
+    // POST to server-side route — this clears HTTP-only session cookies
+    // that the client cannot touch, preventing re-login on hard refresh
     try {
-      await supabase.auth.signOut()
-    } catch {
-      // Ignore sign-out errors — we still want to redirect
-    }
+      await fetch('/api/auth/signout', { method: 'POST', redirect: 'manual' })
+    } catch {}
 
     window.location.href = '/'
   }
