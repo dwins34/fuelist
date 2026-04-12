@@ -11,14 +11,32 @@ const geistSans = Geist({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Fuelist — Healthy Bowls',
-    template: '%s | Fuelist',
+    default: "Fuelist — Healthy Bowls",
+    template: "%s | Fuelist",
   },
   description:
-    'Handcrafted fruit bowls, breakfast bowls, and power bowls made with real ingredients.',
-  keywords: ['healthy food', 'fruit bowl', 'power bowl', 'breakfast bowl', 'clean eating'],
-  manifest: '/manifest.json',
-}
+    "Handcrafted fruit bowls, breakfast bowls, and power bowls made with real ingredients.",
+  keywords: [
+    "healthy food",
+    "fruit bowl",
+    "power bowl",
+    "breakfast bowl",
+    "clean eating",
+  ],
+
+  manifest: "/site.webmanifest",
+
+  icons: {
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+    ],
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180" },
+    ],
+  },
+};
 
 export default function RootLayout({
   children,
