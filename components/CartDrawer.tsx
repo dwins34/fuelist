@@ -71,19 +71,19 @@ const EMPTY_ADDRESS: DeliveryAddress = {
 // ── Load Razorpay checkout.js once ───────────────────────────────────────────
 // TODO: Uncomment when enabling Razorpay live keys
 //
-// function loadRazorpayScript(): Promise<boolean> {
-//   return new Promise((resolve) => {
-//     if (typeof window !== 'undefined' && window.Razorpay) {
-//       resolve(true)
-//       return
-//     }
-//     const script = document.createElement('script')
-//     script.src = 'https://checkout.razorpay.com/v1/checkout.js'
-//     script.onload  = () => resolve(true)
-//     script.onerror = () => resolve(false)
-//     document.body.appendChild(script)
-//   })
-// }
+function loadRazorpayScript(): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (typeof window !== 'undefined' && window.Razorpay) {
+      resolve(true)
+      return
+    }
+    const script = document.createElement('script')
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+    script.onload  = () => resolve(true)
+    script.onerror = () => resolve(false)
+    document.body.appendChild(script)
+  })
+}
 
 // ── Field component ───────────────────────────────────────────────────────────
 
@@ -242,135 +242,135 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
     // TODO: Uncomment this entire block and remove the "Direct confirm" block
     //       below once you have live Razorpay API keys.
     //
-    // const loaded = await loadRazorpayScript()
-    // if (!loaded) {
-    //   setPayError('Could not load payment gateway. Please check your internet connection.')
-    //   setStep('address')
-    //   return
-    // }
-    //
-    // let orderData: { order_id: string; amount: number; currency: string }
-    // try {
-    //   const res = await fetch('/api/payment/create-order', {
-    //     method:  'POST',
-    //     headers: { 'Content-Type': 'application/json' },
-    //     body:    JSON.stringify({ amount: total }),
-    //   })
-    //   if (!res.ok) throw new Error(await res.text())
-    //   orderData = await res.json()
-    // } catch (err) {
-    //   console.error('create-order failed:', err)
-    //   setPayError('Failed to initiate payment. Please try again.')
-    //   setStep('address')
-    //   return
-    // }
-    //
-    // const options: Record<string, unknown> = {
-    //   key:         process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-    //   amount:      orderData.amount,
-    //   currency:    orderData.currency,
-    //   name:        'Fuelist',
-    //   description: 'Healthy Food Order',
-    //   order_id:    orderData.order_id,
-    //   prefill: {
-    //     name:    address.name,
-    //     contact: address.phone,
-    //     email:   profile?.email ?? '',
-    //   },
-    //   theme: { color: '#16a34a' },
-    //   handler: async (response: {
-    //     razorpay_order_id:   string
-    //     razorpay_payment_id: string
-    //     razorpay_signature:  string
-    //   }) => {
-    //     try {
-    //       const verifyRes = await fetch('/api/payment/verify', {
-    //         method:  'POST',
-    //         headers: { 'Content-Type': 'application/json' },
-    //         body:    JSON.stringify({
-    //           razorpay_order_id:   response.razorpay_order_id,
-    //           razorpay_payment_id: response.razorpay_payment_id,
-    //           razorpay_signature:  response.razorpay_signature,
-    //           items,
-    //           total_amount: total,
-    //           address,
-    //         }),
-    //       })
-    //       if (!verifyRes.ok) throw new Error('Verification failed')
-    //       const verifyData = await verifyRes.json()
-    //       try {
-    //         sessionStorage.setItem('fuelist_last_order', JSON.stringify({
-    //           order_id: verifyData.order_id, items, total, address,
-    //         }))
-    //       } catch {}
-    //       clearCart()
-    //       onClose()
-    //       router.push(`/payment/success?order_id=${verifyData.order_id}`)
-    //     } catch (err) {
-    //       console.error('verify failed:', err)
-    //       clearCart()
-    //       onClose()
-    //       router.push('/payment/failure')
-    //     }
-    //   },
-    //   modal: {
-    //     ondismiss: () => {
-    //       setStep('address')
-    //       setPayError('Payment cancelled. You can try again.')
-    //     },
-    //   },
-    // }
-    // const rzp = new window.Razorpay(options)
-    // rzp.on?.('payment.failed', () => {
-    //   setStep('address')
-    //   setPayError('Payment failed. Please try again with a different method.')
-    // })
-    // rzp.open()
+    const loaded = await loadRazorpayScript()
+    if (!loaded) {
+      setPayError('Could not load payment gateway. Please check your internet connection.')
+      setStep('address')
+      return
+    }
+    
+    let orderData: { order_id: string; amount: number; currency: string }
+    try {
+      const res = await fetch('/api/payment/create-order', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ amount: total }),
+      })
+      if (!res.ok) throw new Error(await res.text())
+      orderData = await res.json()
+    } catch (err) {
+      console.error('create-order failed:', err)
+      setPayError('Failed to initiate payment. Please try again.')
+      setStep('address')
+      return
+    }
+    
+    const options: Record<string, unknown> = {
+      key:         process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+      amount:      orderData.amount,
+      currency:    orderData.currency,
+      name:        'Fuelist',
+      description: 'Healthy Food Order',
+      order_id:    orderData.order_id,
+      prefill: {
+        name:    address.name,
+        contact: address.phone,
+        email:   profile?.email ?? '',
+      },
+      theme: { color: '#16a34a' },
+      handler: async (response: {
+        razorpay_order_id:   string
+        razorpay_payment_id: string
+        razorpay_signature:  string
+      }) => {
+        try {
+          const verifyRes = await fetch('/api/payment/verify', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({
+              razorpay_order_id:   response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature:  response.razorpay_signature,
+              items,
+              total_amount: total,
+              address,
+            }),
+          })
+          if (!verifyRes.ok) throw new Error('Verification failed')
+          const verifyData = await verifyRes.json()
+          try {
+            sessionStorage.setItem('fuelist_last_order', JSON.stringify({
+              order_id: verifyData.order_id, items, total, address,
+            }))
+          } catch {}
+          clearCart()
+          onClose()
+          router.push(`/payment/success?order_id=${verifyData.order_id}`)
+        } catch (err) {
+          console.error('verify failed:', err)
+          clearCart()
+          onClose()
+          router.push('/payment/failure')
+        }
+      },
+      modal: {
+        ondismiss: () => {
+          setStep('address')
+          setPayError('Payment cancelled. You can try again.')
+        },
+      },
+    }
+    const rzp = new window.Razorpay(options)
+    rzp.on?.('payment.failed', () => {
+      setStep('address')
+      setPayError('Payment failed. Please try again with a different method.')
+    })
+    rzp.open()
     // ── END Razorpay block ─────────────────────────────────────────────────
 
     // ── TEMPORARY: Direct confirm (bypasses payment, remove when going live) ─
-    try {
-      const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-      const sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-      if (!sbUrl || !sbKey) throw new Error('Supabase not configured')
+    // try {
+    //   const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    //   const sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    //   if (!sbUrl || !sbKey) throw new Error('Supabase not configured')
 
-      const body: Record<string, unknown> = {
-        items,
-        total_amount:   total,
-        payment_status: 'paid',
-        order_status:   'new',
-        address,
-      }
-      if (profile?.id) body.user_id = profile.id
+    //   const body: Record<string, unknown> = {
+    //     items,
+    //     total_amount:   total,
+    //     payment_status: 'paid',
+    //     order_status:   'new',
+    //     address,
+    //   }
+    //   if (profile?.id) body.user_id = profile.id
 
-      const res = await fetch(`${sbUrl}/rest/v1/orders`, {
-        method:  'POST',
-        headers: {
-          apikey:         sbKey,
-          Authorization:  `Bearer ${accessToken ?? sbKey}`,
-          'Content-Type': 'application/json',
-          Prefer:         'return=representation',
-        },
-        body: JSON.stringify(body),
-      })
+    //   const res = await fetch(`${sbUrl}/rest/v1/orders`, {
+    //     method:  'POST',
+    //     headers: {
+    //       apikey:         sbKey,
+    //       Authorization:  `Bearer ${accessToken ?? sbKey}`,
+    //       'Content-Type': 'application/json',
+    //       Prefer:         'return=representation',
+    //     },
+    //     body: JSON.stringify(body),
+    //   })
 
-      if (!res.ok) throw new Error(await res.text())
-      const [order] = await res.json()
+    //   if (!res.ok) throw new Error(await res.text())
+    //   const [order] = await res.json()
 
-      try {
-        sessionStorage.setItem('fuelist_last_order', JSON.stringify({
-          order_id: order.id, items, total, address,
-        }))
-      } catch {}
+    //   try {
+    //     sessionStorage.setItem('fuelist_last_order', JSON.stringify({
+    //       order_id: order.id, items, total, address,
+    //     }))
+    //   } catch {}
 
-      clearCart()
-      onClose()
-      router.push(`/payment/success?order_id=${order.id}`)
-    } catch (err) {
-      console.error('direct confirm failed:', err)
-      setPayError('Could not place order. Please try again.')
-      setStep('address')
-    }
+    //   clearCart()
+    //   onClose()
+    //   router.push(`/payment/success?order_id=${order.id}`)
+    // } catch (err) {
+    //   console.error('direct confirm failed:', err)
+    //   setPayError('Could not place order. Please try again.')
+    //   setStep('address')
+    // }
     // ── END temporary block ────────────────────────────────────────────────
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
