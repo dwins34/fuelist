@@ -35,8 +35,6 @@ export interface CartItem {
   quantity: number
 }
 
-export type OrderStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled'
-
 export interface Order {
   id: string
   user_id: string | null
