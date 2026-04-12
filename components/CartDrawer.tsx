@@ -7,6 +7,7 @@ import { useCart } from '@/context/CartContext'
 import { formatPrice } from '@/lib/utils'
 import { DeliveryAddress } from '@/lib/whatsapp'
 import { useAuthContext } from '@/context/AuthContext'
+import { isInServiceArea, SERVICE_AREA_DESCRIPTION, SERVED_AREAS } from '@/lib/serviceArea'
 
 // Extend Window to hold the Razorpay constructor
 declare global {
@@ -129,6 +130,7 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
   const [saveAddr, setSaveAddr]       = useState(false)
   const [addrLoading, setAddrLoading] = useState(false)
   const [payError, setPayError]       = useState<string | null>(null)
+  const [outOfArea, setOutOfArea]     = useState(false)
 
   const { profile, accessToken, reloadProfile } = useAuthContext()
   const drawerRef = useRef<HTMLDivElement>(null)
@@ -136,7 +138,7 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
   // ── Reset to cart step when drawer closes ─────────────────────────────────
   useEffect(() => {
     if (!open) {
-      setTimeout(() => { setStep('cart'); setErrors({}); setPayError(null) }, 300)
+      setTimeout(() => { setStep('cart'); setErrors({}); setPayError(null); setOutOfArea(false) }, 300)
     }
   }, [open])
 
@@ -223,6 +225,12 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
   const handlePayment = useCallback(async () => {
     const errs = validateAddress(address)
     if (Object.keys(errs).length) { setErrors(errs); return }
+
+    // ── Service area check ─────────────────────────────────────────────────
+    if (!isInServiceArea(address.pincode)) {
+      setOutOfArea(true)
+      return
+    }
 
     setPayError(null)
     setStep('paying')
@@ -533,7 +541,52 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
         )}
 
         {/* ── STEP 2: Address ── */}
-        {step === 'address' && (
+        {step === 'address' && outOfArea && (
+          <>
+            <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
+              <div className="text-5xl">🚫</div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900 mb-1">Outside Delivery Area</h3>
+                <p className="text-sm text-gray-500 leading-relaxed">
+                  Sorry! We currently only deliver within{' '}
+                  <span className="font-semibold text-gray-700">{SERVICE_AREA_DESCRIPTION}</span>.
+                </p>
+              </div>
+
+              <div className="w-full rounded-2xl bg-green-50 border border-green-100 px-4 py-4 text-left">
+                <p className="text-xs font-semibold text-green-700 mb-2">Areas we serve:</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {SERVED_AREAS.map((area) => (
+                    <span key={area} className="rounded-full bg-white border border-green-200 px-2.5 py-0.5 text-xs text-green-700">
+                      {area}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <p className="text-xs text-gray-400">
+                We&apos;re expanding soon — hope to serve your area shortly! 🙏
+              </p>
+            </div>
+
+            <div className="border-t border-gray-100 px-5 py-4 space-y-2 bg-white">
+              <button
+                onClick={() => setOutOfArea(false)}
+                className="flex w-full items-center justify-center gap-2 rounded-full bg-green-600 px-6 py-3.5 text-white font-bold text-base hover:bg-green-700 active:scale-95 transition-all"
+              >
+                Change address
+              </button>
+              <button
+                onClick={onClose}
+                className="w-full text-center text-sm text-gray-400 hover:text-gray-600 py-1 transition-colors"
+              >
+                Continue browsing
+              </button>
+            </div>
+          </>
+        )}
+
+        {step === 'address' && !outOfArea && (
           <>
             <div className="flex-1 overflow-y-auto px-5 py-4">
               {addrLoading ? (
