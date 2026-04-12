@@ -1,0 +1,9 @@
+# *
+User-agent: *
+Allow: /
+
+# Host
+Host: https://fuelist.in
+
+# Sitemaps
+Sitemap: https://fuelist.in/sitemap.xml
