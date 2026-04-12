@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { useAuthContext } from '@/context/AuthContext'
 import Input from '@/components/ui/Input'
@@ -209,31 +208,45 @@ export default function AccountPage() {
     setPwSaving(true)
 
     try {
-      const supabase = createClient()
-      const { error } = await supabase.auth.updateUser({ password })
+      if (!accessToken) { showToast('Not authenticated.', 'error'); return }
 
-      if (!error && profile && accessToken) {
-        const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-        const sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-        if (sbUrl && sbKey) {
-          await fetch(`${sbUrl}/rest/v1/users?id=eq.${profile.id}`, {
-            method: 'PATCH',
-            headers: {
-              apikey:         sbKey,
-              Authorization:  `Bearer ${accessToken}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ has_set_password: true }),
-          })
-        }
+      const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+      const sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      if (!sbUrl || !sbKey) { showToast('Supabase not configured.', 'error'); return }
+
+      // Use direct REST call — avoids JS client session deadlock on localhost
+      const authRes = await fetch(`${sbUrl}/auth/v1/user`, {
+        method: 'PUT',
+        headers: {
+          apikey:         sbKey,
+          Authorization:  `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ password }),
+      })
+
+      if (!authRes.ok) {
+        const body = await authRes.json().catch(() => ({}))
+        showToast(body?.message ?? `Failed to update password (${authRes.status})`, 'error')
+        return
       }
 
-      if (error) showToast(error.message, 'error')
-      else {
-        setPassword('')
-        setConfirm('')
-        showToast('Password updated successfully.', 'success')
+      // Mark has_set_password in the users table
+      if (profile) {
+        await fetch(`${sbUrl}/rest/v1/users?id=eq.${profile.id}`, {
+          method: 'PATCH',
+          headers: {
+            apikey:         sbKey,
+            Authorization:  `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ has_set_password: true }),
+        })
       }
+
+      setPassword('')
+      setConfirm('')
+      showToast('Password updated successfully.', 'success')
     } finally {
       setPwSaving(false)
     }
