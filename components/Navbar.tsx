@@ -98,12 +98,19 @@ export default function Navbar() {
                 <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-white shadow-xl border border-gray-100 overflow-hidden z-50">
                   <div className="flex items-center gap-3 px-4 py-4 bg-green-50">
                     <UserAvatar avatarUrl={avatarUrl} name={profile.name} large />
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="font-semibold text-gray-900 truncate">{profile.name}</p>
                       <p className="text-xs text-gray-500 truncate">{profile.email}</p>
-                      {profile.role === 'admin' && (
-                        <span className="inline-block mt-1 rounded-full bg-green-500 px-2 py-0.5 text-[10px] font-bold text-white uppercase tracking-wide">Admin</span>
-                      )}
+                      <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                        {profile.role === 'admin' && (
+                          <span className="rounded-full bg-green-500 px-2 py-0.5 text-[10px] font-bold text-white uppercase tracking-wide">Admin</span>
+                        )}
+                        {(profile.reward_points ?? 0) >= 0 && (
+                          <span className="rounded-full bg-amber-100 border border-amber-300 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+                            ⭐ {profile.reward_points ?? 0} pts
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <div className="p-2">

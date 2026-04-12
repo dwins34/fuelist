@@ -8,6 +8,9 @@ import { formatPrice, getImageUrl } from '@/lib/utils'
 import { DeliveryAddress } from '@/lib/whatsapp'
 import { useAuthContext } from '@/context/AuthContext'
 import { isInServiceArea, SERVICE_AREA_DESCRIPTION, SERVED_AREAS } from '@/lib/serviceArea'
+import CouponInput from '@/components/CouponInput'
+import RewardPointsToggle from '@/components/RewardPointsToggle'
+import { ApplyCouponResult } from '@/types'
 
 // Extend Window to hold the Razorpay constructor
 declare global {
@@ -132,13 +135,26 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
   const [payError, setPayError]       = useState<string | null>(null)
   const [outOfArea, setOutOfArea]     = useState(false)
 
+  // ── Coupon + reward points state ──────────────────────────────────────────
+  const [appliedCoupon, setAppliedCoupon] = useState<ApplyCouponResult | null>(null)
+  const [pointsToUse, setPointsToUse]     = useState(0)
+  const [isFirstOrder, setIsFirstOrder]   = useState(false)
+
   const { profile, accessToken, reloadProfile } = useAuthContext()
+
+  // Computed totals
+  const discountAmount  = appliedCoupon?.discount_amount ?? 0
+  const pointsValue     = pointsToUse                       // 1 point = ₹1
+  const finalTotal      = Math.max(0, total - discountAmount - pointsValue)
   const drawerRef = useRef<HTMLDivElement>(null)
 
   // ── Reset to cart step when drawer closes ─────────────────────────────────
   useEffect(() => {
     if (!open) {
-      setTimeout(() => { setStep('cart'); setErrors({}); setPayError(null); setOutOfArea(false) }, 300)
+      setTimeout(() => {
+        setStep('cart'); setErrors({}); setPayError(null); setOutOfArea(false)
+        setAppliedCoupon(null); setPointsToUse(0)
+      }, 300)
     }
   }, [open])
 
@@ -184,6 +200,21 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
       setAddrLoading(false)
     }
   }
+
+  // ── Check first-order status for coupon badge ──────────────────────────────
+  useEffect(() => {
+    if (!profile || !accessToken) return
+    const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    if (!sbUrl || !sbKey) return
+
+    fetch(`${sbUrl}/rest/v1/orders?user_id=eq.${profile.id}&payment_status=eq.paid&select=id&limit=1`, {
+      headers: { apikey: sbKey, Authorization: `Bearer ${accessToken}` },
+    })
+      .then((r) => r.json())
+      .then((rows: unknown[]) => setIsFirstOrder(rows.length === 0))
+      .catch(() => {})
+  }, [profile, accessToken])
 
   function setField(key: keyof DeliveryAddress) {
     return (val: string) => {
@@ -254,7 +285,7 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
       const res = await fetch('/api/payment/create-order', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ amount: total }),
+        body:    JSON.stringify({ amount: finalTotal }),
       })
       if (!res.ok) throw new Error(await res.text())
       orderData = await res.json()
@@ -288,12 +319,14 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({
-              razorpay_order_id:   response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature:  response.razorpay_signature,
+              razorpay_order_id:    response.razorpay_order_id,
+              razorpay_payment_id:  response.razorpay_payment_id,
+              razorpay_signature:   response.razorpay_signature,
               items,
-              total_amount: total,
+              total_amount:         total,
               address,
+              coupon_code:          appliedCoupon?.coupon?.code ?? null,
+              reward_points_to_use: pointsToUse,
             }),
           })
           if (!verifyRes.ok) throw new Error('Verification failed')
@@ -374,7 +407,7 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
     // ── END temporary block ────────────────────────────────────────────────
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [address, items, total, profile, accessToken, clearCart, onClose, router])
+  }, [address, items, total, finalTotal, appliedCoupon, pointsToUse, profile, accessToken, clearCart, onClose, router])
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -519,10 +552,48 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
 
             {items.length > 0 && (
               <div className="border-t border-gray-100 px-5 py-4 space-y-3 bg-white">
-                <div className="flex items-center justify-between text-sm text-gray-500">
-                  <span>{count} item{count !== 1 ? 's' : ''}</span>
-                  <span className="font-bold text-gray-900 text-base">{formatPrice(total)}</span>
+
+                {/* Coupon input */}
+                <CouponInput
+                  orderAmount={total}
+                  applied={appliedCoupon}
+                  isFirstOrder={isFirstOrder}
+                  onApply={(result) => setAppliedCoupon(result)}
+                  onRemove={() => { setAppliedCoupon(null); setPointsToUse(0) }}
+                />
+
+                {/* Reward points toggle */}
+                <RewardPointsToggle
+                  availablePoints={profile?.reward_points ?? 0}
+                  orderAmount={total - discountAmount}
+                  pointsToUse={pointsToUse}
+                  onChange={setPointsToUse}
+                />
+
+                {/* Order total breakdown */}
+                <div className="space-y-1 pt-1">
+                  <div className="flex items-center justify-between text-sm text-gray-500">
+                    <span>{count} item{count !== 1 ? 's' : ''}</span>
+                    <span>{formatPrice(total)}</span>
+                  </div>
+                  {discountAmount > 0 && (
+                    <div className="flex items-center justify-between text-sm text-green-600">
+                      <span>Coupon ({appliedCoupon?.coupon?.code})</span>
+                      <span>−{formatPrice(discountAmount)}</span>
+                    </div>
+                  )}
+                  {pointsValue > 0 && (
+                    <div className="flex items-center justify-between text-sm text-amber-600">
+                      <span>Reward points ({pointsToUse} pts)</span>
+                      <span>−{formatPrice(pointsValue)}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between text-sm font-bold text-gray-900 border-t border-gray-100 pt-1">
+                    <span>Total</span>
+                    <span className="text-base">{formatPrice(finalTotal)}</span>
+                  </div>
                 </div>
+
                 <button
                   onClick={goToAddressStep}
                   className="flex w-full items-center justify-center gap-2 rounded-full bg-green-600 px-6 py-3.5 text-white font-bold text-base hover:bg-green-700 active:scale-95 transition-all shadow-md shadow-green-100"

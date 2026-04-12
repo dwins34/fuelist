@@ -6,6 +6,40 @@ import { useUserProfile } from '@/hooks/useUserProfile'
 import { useAuthContext } from '@/context/AuthContext'
 import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
+import Image from 'next/image'
+import { formatPrice, getImageUrl } from '@/lib/utils'
+import { UserRewardLog } from '@/types'
+
+// ── Subscription type (local, not in global types to keep it scoped) ──────────
+interface SubscriptionRow {
+  id: string
+  delivery_slot: 'morning' | 'afternoon' | 'evening'
+  frequency: 'daily' | 'weekdays' | 'weekends'
+  duration_days: number
+  start_date: string
+  end_date: string
+  status: 'active' | 'paused' | 'cancelled'
+  price_per_delivery: number
+  total_price: number
+  menu_items: {
+    id: string
+    name: string
+    image_url: string
+    price: number
+    category: string
+  }
+}
+
+const SLOT_LABEL: Record<string, string> = {
+  morning:   '🌅 Morning (8–10 AM)',
+  afternoon: '☀️ Afternoon (12–2 PM)',
+  evening:   '🌆 Evening (6–8 PM)',
+}
+const FREQ_LABEL: Record<string, string> = {
+  daily:    'Every day',
+  weekdays: 'Mon–Fri',
+  weekends: 'Sat & Sun',
+}
 
 // ── Validation ───────────────────────────────────────────────────────────────
 
@@ -155,6 +189,15 @@ export default function AccountPage() {
   // Toast
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
+  // Rewards state
+  const [rewardsLog, setRewardsLog]       = useState<UserRewardLog[]>([])
+  const [rewardsLoading, setRewardsLoading] = useState(false)
+
+  // Subscriptions state
+  const [subscriptions, setSubscriptions]         = useState<SubscriptionRow[]>([])
+  const [subsLoading, setSubsLoading]             = useState(false)
+  const [subActionId, setSubActionId]             = useState<string | null>(null)
+
   // Detect if user is a Google user
   const isGoogleUser =
     user?.app_metadata?.provider === 'google' ||
@@ -177,6 +220,61 @@ export default function AccountPage() {
     setPincode(profile.pincode)
     setLandmark(profile.landmark)
   }, [profile])
+
+  // Fetch reward log
+  useEffect(() => {
+    if (!profile?.id || !accessToken) return
+    const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    if (!sbUrl || !sbKey) return
+    setRewardsLoading(true)
+    fetch(
+      `${sbUrl}/rest/v1/user_rewards_log?user_id=eq.${profile.id}&order=created_at.desc&limit=10`,
+      { headers: { apikey: sbKey, Authorization: `Bearer ${accessToken}` } },
+    )
+      .then((r) => r.json())
+      .then((rows) => setRewardsLog(Array.isArray(rows) ? rows : []))
+      .catch(() => {})
+      .finally(() => setRewardsLoading(false))
+  }, [profile?.id, accessToken])
+
+  // Fetch subscriptions
+  useEffect(() => {
+    if (!profile?.id || !accessToken) return
+    setSubsLoading(true)
+    fetch('/api/subscriptions')
+      .then((r) => r.json())
+      .then((d) => setSubscriptions(d.subscriptions ?? []))
+      .catch(() => {})
+      .finally(() => setSubsLoading(false))
+  }, [profile?.id, accessToken])
+
+  async function handleSubAction(id: string, status: 'active' | 'paused' | 'cancelled') {
+    setSubActionId(id)
+    try {
+      const res = await fetch(`/api/subscriptions/${id}`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ status }),
+      })
+      if (res.ok) {
+        setSubscriptions((prev) =>
+          prev.map((s) => (s.id === id ? { ...s, status } : s)),
+        )
+        showToast(
+          status === 'cancelled' ? 'Subscription cancelled.' :
+          status === 'paused'    ? 'Subscription paused.'    : 'Subscription resumed.',
+          'success',
+        )
+      } else {
+        showToast('Failed to update subscription.', 'error')
+      }
+    } catch {
+      showToast('Network error.', 'error')
+    } finally {
+      setSubActionId(null)
+    }
+  }
 
   // Check if user already has a password set
   useEffect(() => {
@@ -298,6 +396,172 @@ export default function AccountPage() {
         <h1 className="text-2xl font-bold text-gray-900">Account settings</h1>
         <p className="text-sm text-gray-500 mt-1">Your details are saved for faster checkout.</p>
       </div>
+
+      {/* ── Reward Points ── */}
+      <section className="rounded-2xl bg-gradient-to-br from-amber-50 to-yellow-50 border border-amber-200 shadow-sm p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-base font-semibold text-gray-800 flex items-center gap-2">
+              ⭐ Reward Points
+            </h2>
+            <p className="text-xs text-gray-500 mt-0.5">Earn 1 pt for every ₹100 spent · 1 pt = ₹1 off</p>
+          </div>
+          <div className="text-right">
+            <p className="text-3xl font-extrabold text-amber-600">{profile?.reward_points ?? 0}</p>
+            <p className="text-xs text-amber-500 font-medium">
+              ≈ {formatPrice(profile?.reward_points ?? 0)} value
+            </p>
+          </div>
+        </div>
+
+        {rewardsLoading ? (
+          <div className="space-y-2 animate-pulse">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="h-8 bg-amber-100 rounded-lg" />
+            ))}
+          </div>
+        ) : rewardsLog.length === 0 ? (
+          <p className="text-xs text-gray-400 text-center py-3">
+            No reward activity yet. Start ordering to earn points!
+          </p>
+        ) : (
+          <div className="space-y-1">
+            {rewardsLog.map((log) => (
+              <div key={log.id} className="flex items-center justify-between rounded-lg bg-white/70 px-3 py-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">
+                    {log.type === 'order_earn'   ? '🛍️' :
+                     log.type === 'order_redeem' ? '💳' :
+                     log.type === 'review'       ? '⭐' : '🎁'}
+                  </span>
+                  <span className="text-xs text-gray-600 truncate max-w-[200px]">
+                    {log.description ?? log.type}
+                  </span>
+                </div>
+                <span className={`text-xs font-bold shrink-0 ${log.points_change > 0 ? 'text-green-600' : 'text-red-500'}`}>
+                  {log.points_change > 0 ? '+' : ''}{log.points_change} pts
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* ── Subscriptions ── */}
+      <section className="rounded-2xl bg-white border border-gray-100 shadow-sm p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-gray-800">🔄 My Subscriptions</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Daily meal plans you&apos;ve set up</p>
+          </div>
+          <a
+            href="/menu"
+            className="text-xs font-semibold text-green-600 hover:text-green-800 transition-colors"
+          >
+            + New
+          </a>
+        </div>
+
+        {subsLoading ? (
+          <div className="space-y-3 animate-pulse">
+            {[...Array(2)].map((_, i) => (
+              <div key={i} className="h-20 bg-gray-100 rounded-xl" />
+            ))}
+          </div>
+        ) : subscriptions.length === 0 ? (
+          <div className="rounded-xl bg-gray-50 border border-dashed border-gray-200 px-4 py-6 text-center space-y-2">
+            <p className="text-2xl">🥗</p>
+            <p className="text-sm text-gray-500 font-medium">No active subscriptions</p>
+            <p className="text-xs text-gray-400">
+              Click <span className="font-semibold">🔄 Subscribe Daily</span> on any menu item to start.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {subscriptions.map((sub) => (
+              <div
+                key={sub.id}
+                className={`rounded-xl border p-4 flex gap-3 ${
+                  sub.status === 'cancelled' ? 'bg-gray-50 border-gray-200 opacity-60' :
+                  sub.status === 'paused'    ? 'bg-amber-50 border-amber-200'          :
+                                               'bg-green-50 border-green-200'
+                }`}
+              >
+                {/* Thumbnail */}
+                <div className="relative h-14 w-14 shrink-0 rounded-xl overflow-hidden bg-white">
+                  {sub.menu_items?.image_url ? (
+                    <Image
+                      src={getImageUrl(sub.menu_items.image_url)}
+                      alt={sub.menu_items.name}
+                      fill
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-2xl">🥗</div>
+                  )}
+                </div>
+
+                {/* Details */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm font-semibold text-gray-900 truncate">
+                      {sub.menu_items?.name}
+                    </p>
+                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                      sub.status === 'active'    ? 'bg-green-500 text-white'  :
+                      sub.status === 'paused'    ? 'bg-amber-400 text-white'  :
+                                                   'bg-gray-400 text-white'
+                    }`}>
+                      {sub.status.toUpperCase()}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {SLOT_LABEL[sub.delivery_slot]} · {FREQ_LABEL[sub.frequency]}
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    {sub.start_date} → {sub.end_date} · {formatPrice(sub.price_per_delivery)}/delivery
+                  </p>
+
+                  {/* Action buttons */}
+                  {sub.status !== 'cancelled' && (
+                    <div className="flex gap-2 mt-2">
+                      {sub.status === 'active' ? (
+                        <button
+                          onClick={() => handleSubAction(sub.id, 'paused')}
+                          disabled={subActionId === sub.id}
+                          className="text-xs font-medium text-amber-600 hover:text-amber-800 disabled:opacity-50"
+                        >
+                          {subActionId === sub.id ? 'Pausing…' : 'Pause'}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleSubAction(sub.id, 'active')}
+                          disabled={subActionId === sub.id}
+                          className="text-xs font-medium text-green-600 hover:text-green-800 disabled:opacity-50"
+                        >
+                          {subActionId === sub.id ? 'Resuming…' : 'Resume'}
+                        </button>
+                      )}
+                      <span className="text-gray-300">·</span>
+                      <button
+                        onClick={() => {
+                          if (window.confirm('Cancel this subscription? This cannot be undone.')) {
+                            handleSubAction(sub.id, 'cancelled')
+                          }
+                        }}
+                        disabled={subActionId === sub.id}
+                        className="text-xs font-medium text-red-400 hover:text-red-600 disabled:opacity-50"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       {/* ── Personal info + Address ── */}
       <form onSubmit={handleSaveProfile} noValidate>

@@ -1,10 +1,12 @@
 'use client'
 
+import { useState } from 'react'
 import Image from 'next/image'
 import { MenuItem } from '@/types'
 import { formatPrice, categoryLabel, getImageUrl } from '@/lib/utils'
 import { whatsAppSingleItemUrl } from '@/lib/whatsapp'
 import { useCart } from '@/context/CartContext'
+import SubscriptionModal from '@/components/SubscriptionModal'
 
 interface MenuCardProps {
   item: MenuItem
@@ -22,9 +24,16 @@ export default function MenuCard({ item }: MenuCardProps) {
   const { items: cartItems, addItem, updateQuantity } = useCart()
   const cartEntry = cartItems.find((ci) => ci.item.id === item.id)
   const qty = cartEntry?.quantity ?? 0
-  
+  const [showSubscribe, setShowSubscribe] = useState(false)
 
   return (
+    <>
+    {showSubscribe && (
+      <SubscriptionModal
+        initialItem={item}
+        onClose={() => setShowSubscribe(false)}
+      />
+    )}
     <div className="group flex flex-col rounded-2xl bg-white border border-gray-100 shadow-sm hover:shadow-lg transition-shadow overflow-hidden">
       {/* Image */}
       <div className="relative h-48 w-full bg-green-50 overflow-hidden">
@@ -92,50 +101,61 @@ export default function MenuCard({ item }: MenuCardProps) {
 
         {/* Actions */}
         {item.is_available && (
-          <div className="mt-auto pt-2 flex items-center gap-2">
-            {qty === 0 ? (
-              <>
-                <button
-                  onClick={() => addItem(item)}
-                  className="flex-1 rounded-full bg-green-500 text-white text-sm font-semibold py-2 hover:bg-green-600 active:scale-95 transition-all"
-                >
-                  Add to Cart
-                </button>
-                <a
-                  href={whatsAppSingleItemUrl(item.name, item.price)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-1.5 rounded-full border border-green-500 text-green-600 px-3 py-2 text-xs font-semibold hover:bg-green-50 transition-colors shrink-0"
-                >
-                  <WhatsAppIcon />
-                  Order
-                </a>
-              </>
-            ) : (
-              <>
-                <div className="flex items-center gap-2 rounded-full bg-green-50 border border-green-200 px-1">
-                  <button
-                    onClick={() => updateQuantity(item.id, qty - 1)}
-                    className="h-7 w-7 rounded-full text-green-600 font-bold hover:bg-green-100 flex items-center justify-center transition-colors"
-                  >
-                    −
-                  </button>
-                  <span className="w-5 text-center text-sm font-bold text-green-700">{qty}</span>
+          <div className="mt-auto pt-2 space-y-2">
+            <div className="flex items-center gap-2">
+              {qty === 0 ? (
+                <>
                   <button
                     onClick={() => addItem(item)}
-                    className="h-7 w-7 rounded-full text-green-600 font-bold hover:bg-green-100 flex items-center justify-center transition-colors"
+                    className="flex-1 rounded-full bg-green-500 text-white text-sm font-semibold py-2 hover:bg-green-600 active:scale-95 transition-all"
                   >
-                    +
+                    Add to Cart
                   </button>
-                </div>
-                <span className="flex-1 text-right text-sm font-bold text-green-600">
-                  {formatPrice(item.price * qty)}
-                </span>
-              </>
-            )}
+                  <a
+                    href={whatsAppSingleItemUrl(item.name, item.price)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-1.5 rounded-full border border-green-500 text-green-600 px-3 py-2 text-xs font-semibold hover:bg-green-50 transition-colors shrink-0"
+                  >
+                    <WhatsAppIcon />
+                    Order
+                  </a>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2 rounded-full bg-green-50 border border-green-200 px-1">
+                    <button
+                      onClick={() => updateQuantity(item.id, qty - 1)}
+                      className="h-7 w-7 rounded-full text-green-600 font-bold hover:bg-green-100 flex items-center justify-center transition-colors"
+                    >
+                      −
+                    </button>
+                    <span className="w-5 text-center text-sm font-bold text-green-700">{qty}</span>
+                    <button
+                      onClick={() => addItem(item)}
+                      className="h-7 w-7 rounded-full text-green-600 font-bold hover:bg-green-100 flex items-center justify-center transition-colors"
+                    >
+                      +
+                    </button>
+                  </div>
+                  <span className="flex-1 text-right text-sm font-bold text-green-600">
+                    {formatPrice(item.price * qty)}
+                  </span>
+                </>
+              )}
+            </div>
+
+            {/* Subscribe daily button */}
+            <button
+              onClick={() => setShowSubscribe(true)}
+              className="w-full rounded-full border border-dashed border-green-400 text-green-700 text-xs font-semibold py-1.5 hover:bg-green-50 transition-colors"
+            >
+              🔄 Subscribe Daily
+            </button>
           </div>
         )}
       </div>
     </div>
+    </>
   )
 }

@@ -14,6 +14,7 @@ export interface UserProfileData {
   pincode: string
   landmark: string
   role: string
+  reward_points?: number
 }
 
 export function useUserProfile() {
