@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuthContext } from '@/context/AuthContext'
 import Button from './ui/Button'
+import Logo from "@/components/Logo"
 
 // ── Avatar ───────────────────────────────────────────────────────────────────
 function UserAvatar({ avatarUrl, name, large = false }: { avatarUrl: string | null; name: string; large?: boolean }) {
@@ -59,7 +60,7 @@ export default function Navbar() {
 
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 font-bold text-xl text-green-600">
-          <span className="text-2xl">🥗</span><span>Fuelist</span>
+          <span className="text-2xl"><Logo size={20} /></span><span>Fuelist</span>
         </Link>
 
         {/* Desktop nav links */}

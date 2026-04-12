@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/client'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import OAuthButtons from '@/components/ui/OAuthButtons'
+import Logo from "@/components/Logo"
 
 const LAST_EMAIL_KEY = 'fuelist_last_email'
 
@@ -64,7 +65,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="rounded-2xl bg-white p-8 shadow-lg border border-gray-100">
           <div className="text-center mb-8">
-            <Link href="/" className="text-2xl font-bold text-green-600">🥗 Fuelist</Link>
+            <Link href="/" className="text-2xl font-bold text-green-600"><Logo size={20} /> Fuelist</Link>
             <h1 className="mt-4 text-2xl font-bold text-gray-900">Welcome back</h1>
             <p className="mt-1 text-gray-500 text-sm">Sign in to your account</p>
           </div>
