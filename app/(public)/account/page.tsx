@@ -28,7 +28,6 @@ function validateProfile(fields: {
 }): FormErrors {
   const errs: FormErrors = {}
 
-  // Name
   if (!fields.name.trim())
     errs.name = 'Full name is required.'
   else if (fields.name.trim().length < 2)
@@ -36,26 +35,22 @@ function validateProfile(fields: {
   else if (fields.name.trim().length > 80)
     errs.name = 'Name must be under 80 characters.'
 
-  // Phone
   const rawPhone = fields.phone.replace(/[\s\-()]/g, '')
   if (!rawPhone)
     errs.phone = 'Phone number is required.'
   else if (!/^\+?\d{7,15}$/.test(rawPhone))
     errs.phone = 'Enter a valid phone number (7–15 digits).'
 
-  // Address line 1
   if (!fields.address_line1.trim())
     errs.address_line1 = 'Address line 1 is required.'
   else if (fields.address_line1.trim().length < 5)
     errs.address_line1 = 'Please enter a complete address.'
 
-  // City
   if (!fields.city.trim())
     errs.city = 'City is required.'
   else if (fields.city.trim().length < 2)
     errs.city = 'Enter a valid city name.'
 
-  // Pincode
   if (!fields.pincode.trim())
     errs.pincode = 'Pincode is required.'
   else if (!/^\d{4,10}$/.test(fields.pincode.trim()))
@@ -94,11 +89,8 @@ function Skeleton() {
         ))}
       </div>
       <div className="rounded-2xl bg-white border border-gray-100 shadow-sm p-6 space-y-4">
-        {[...Array(4)].map((_, i) => (
-          <div key={i} className="space-y-1.5">
-            <div className="h-3.5 w-28 bg-gray-200 rounded" />
-            <div className="h-10 bg-gray-100 rounded-lg" />
-          </div>
+        {[...Array(2)].map((_, i) => (
+          <div key={i} className="h-16 bg-gray-100 rounded-xl" />
         ))}
       </div>
     </div>
@@ -120,12 +112,25 @@ function Toast({ message, type }: { message: string; type: 'success' | 'error' }
   )
 }
 
+// ── Google icon ───────────────────────────────────────────────────────────────
+
+function GoogleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" aria-hidden="true">
+      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+    </svg>
+  )
+}
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AccountPage() {
   const router = useRouter()
   const { profile, loading, error: loadError, saveProfile } = useUserProfile()
-  const { accessToken } = useAuthContext()
+  const { accessToken, user } = useAuthContext()
 
   // Profile form state
   const [name,          setName]          = useState('')
@@ -140,13 +145,20 @@ export default function AccountPage() {
   const [saving,        setSaving]        = useState(false)
 
   // Password form state
+  const [showPwForm,    setShowPwForm]    = useState(false)
   const [password,      setPassword]      = useState('')
   const [confirm,       setConfirm]       = useState('')
   const [pwErrors,      setPwErrors]      = useState<FormErrors>({})
   const [pwSaving,      setPwSaving]      = useState(false)
+  const [hasPassword,   setHasPassword]   = useState(false)
 
   // Toast
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+
+  // Detect if user is a Google user
+  const isGoogleUser =
+    user?.app_metadata?.provider === 'google' ||
+    user?.identities?.some((i: { provider: string }) => i.provider === 'google')
 
   // Redirect if not logged in
   useEffect(() => {
@@ -165,6 +177,21 @@ export default function AccountPage() {
     setPincode(profile.pincode)
     setLandmark(profile.landmark)
   }, [profile])
+
+  // Check if user already has a password set
+  useEffect(() => {
+    if (!profile?.id || !accessToken) return
+    const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    if (!sbUrl || !sbKey) return
+
+    fetch(`${sbUrl}/rest/v1/users?id=eq.${profile.id}&select=has_set_password&limit=1`, {
+      headers: { apikey: sbKey, Authorization: `Bearer ${accessToken}` },
+    })
+      .then((r) => r.json())
+      .then((rows) => { if (rows[0]?.has_set_password) setHasPassword(true) })
+      .catch(() => {})
+  }, [profile?.id, accessToken])
 
   function showToast(message: string, type: 'success' | 'error') {
     setToast({ message, type })
@@ -198,9 +225,9 @@ export default function AccountPage() {
     }
   }
 
-  // ── Change password ───────────────────────────────────────────────────────
+  // ── Set / update password ─────────────────────────────────────────────────
 
-  async function handleChangePassword(e: React.BaseSyntheticEvent) {
+  async function handleSetPassword(e: React.BaseSyntheticEvent) {
     e.preventDefault()
     const errs = validatePassword(password, confirm)
     if (Object.keys(errs).length) { setPwErrors(errs); return }
@@ -214,7 +241,6 @@ export default function AccountPage() {
       const sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
       if (!sbUrl || !sbKey) { showToast('Supabase not configured.', 'error'); return }
 
-      // Use direct REST call — avoids JS client session deadlock on localhost
       const authRes = await fetch(`${sbUrl}/auth/v1/user`, {
         method: 'PUT',
         headers: {
@@ -231,7 +257,6 @@ export default function AccountPage() {
         return
       }
 
-      // Mark has_set_password in the users table
       if (profile) {
         await fetch(`${sbUrl}/rest/v1/users?id=eq.${profile.id}`, {
           method: 'PATCH',
@@ -246,7 +271,9 @@ export default function AccountPage() {
 
       setPassword('')
       setConfirm('')
-      showToast('Password updated successfully.', 'success')
+      setHasPassword(true)
+      setShowPwForm(false)
+      showToast(hasPassword ? 'Password updated.' : 'Password set — you can now sign in with email too.', 'success')
     } finally {
       setPwSaving(false)
     }
@@ -375,42 +402,100 @@ export default function AccountPage() {
         </Button>
       </form>
 
-      {/* ── Password ── */}
-      <form onSubmit={handleChangePassword} noValidate>
-        <section className="rounded-2xl bg-white border border-gray-100 shadow-sm p-6 space-y-4">
-          <div>
-            <h2 className="text-base font-semibold text-gray-800">Password</h2>
-            <p className="text-xs text-gray-400 mt-0.5">
-              Google sign-in users can set a password to also log in with email.
-            </p>
+      {/* ── Login & Security ── */}
+      <section className="rounded-2xl bg-white border border-gray-100 shadow-sm p-6 space-y-5">
+        <div>
+          <h2 className="text-base font-semibold text-gray-800">Login &amp; security</h2>
+          <p className="text-xs text-gray-400 mt-0.5">
+            Manage how you sign in to your account.
+          </p>
+        </div>
+
+        {/* Login options */}
+        <div>
+          <p className="text-sm font-medium text-gray-700 mb-3">Login options</p>
+          <div className="space-y-2">
+
+            {/* Google row */}
+            {isGoogleUser && (
+              <div className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <GoogleIcon />
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">Google account</p>
+                    <p className="text-xs text-gray-400">{profile?.email}</p>
+                  </div>
+                </div>
+                <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700">
+                  Connected
+                </span>
+              </div>
+            )}
+
+            {/* Email + password row */}
+            <div className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-5 w-5 items-center justify-center rounded-full bg-gray-200 shrink-0">
+                  <svg className="h-3 w-3 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-800">Email &amp; password</p>
+                  <p className="text-xs text-gray-400">
+                    {hasPassword ? 'Password is set — you can sign in with email' : 'Not set up yet'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setShowPwForm((v) => !v); setPwErrors({}) }}
+                className="text-xs font-medium text-green-600 hover:text-green-800 transition-colors"
+              >
+                {showPwForm ? 'Cancel' : hasPassword ? 'Change' : 'Set up'}
+              </button>
+            </div>
           </div>
+        </div>
 
-          <Input
-            label="New password"
-            id="password"
-            type="password"
-            autoComplete="new-password"
-            value={password}
-            onChange={(e) => { setPassword(e.target.value); setPwErrors((p) => ({ ...p, password: undefined })) }}
-            placeholder="At least 6 characters"
-            error={pwErrors.password}
-          />
-          <Input
-            label="Confirm password"
-            id="confirm"
-            type="password"
-            autoComplete="new-password"
-            value={confirm}
-            onChange={(e) => { setConfirm(e.target.value); setPwErrors((p) => ({ ...p, confirm: undefined })) }}
-            placeholder="Repeat your password"
-            error={pwErrors.confirm}
-          />
-
-          <Button type="submit" loading={pwSaving} className="w-full">
-            Update password
-          </Button>
-        </section>
-      </form>
+        {/* Inline password form */}
+        {showPwForm && (
+          <form onSubmit={handleSetPassword} noValidate className="space-y-3 pt-1 border-t border-gray-100">
+            <p className="text-sm font-medium text-gray-700 pt-1">
+              {hasPassword ? 'Change your password' : 'Add a password to your account'}
+            </p>
+            <p className="text-xs text-gray-400 -mt-1">
+              {hasPassword
+                ? 'Enter a new password below.'
+                : 'Once set, you can sign in with your email and password — no need for Google every time.'}
+            </p>
+            <Input
+              label="New password"
+              id="password"
+              type="password"
+              autoComplete="new-password"
+              value={password}
+              onChange={(e) => { setPassword(e.target.value); setPwErrors((p) => ({ ...p, password: undefined })) }}
+              placeholder="At least 6 characters"
+              error={pwErrors.password}
+            />
+            <Input
+              label="Confirm password"
+              id="confirm"
+              type="password"
+              autoComplete="new-password"
+              value={confirm}
+              onChange={(e) => { setConfirm(e.target.value); setPwErrors((p) => ({ ...p, confirm: undefined })) }}
+              placeholder="Repeat your password"
+              error={pwErrors.confirm}
+            />
+            <Button type="submit" loading={pwSaving} className="w-full">
+              {hasPassword ? 'Update password' : 'Save password'}
+            </Button>
+          </form>
+        )}
+      </section>
 
       {toast && <Toast message={toast.message} type={toast.type} />}
     </div>

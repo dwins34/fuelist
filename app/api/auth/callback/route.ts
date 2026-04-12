@@ -36,13 +36,12 @@ export async function GET(request: NextRequest) {
         .single()
 
       const isFirstLogin = !existingProfile
-      // Check all linked identities — more reliable than app_metadata.provider alone
       const isGoogleUser =
         user.app_metadata?.provider === 'google' ||
         user.identities?.some((i) => i.provider === 'google')
 
       if (isFirstLogin && isGoogleUser) {
-        // New Google user — create DB row and send to set-password
+        // New Google user — create DB row, then go straight home
         await supabase.from('users').insert({
           id: user.id,
           email: user.email ?? '',
@@ -54,12 +53,6 @@ export async function GET(request: NextRequest) {
           role: 'user',
           has_set_password: false,
         })
-        return NextResponse.redirect(`${baseUrl}/set-password`)
-      }
-
-      // Returning Google user who skipped set-password previously
-      if (!isFirstLogin && isGoogleUser && existingProfile?.has_set_password === false) {
-        return NextResponse.redirect(`${baseUrl}/set-password`)
       }
 
       if (isFirstLogin && !isGoogleUser) {
