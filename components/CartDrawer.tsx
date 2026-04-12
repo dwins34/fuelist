@@ -6,6 +6,7 @@ import { useCart } from '@/context/CartContext'
 import { formatPrice } from '@/lib/utils'
 import { whatsAppOrderUrl, DeliveryAddress } from '@/lib/whatsapp'
 import { createClient } from '@/lib/supabase/client'
+import { useAuthContext } from '@/context/AuthContext'
 
 interface CartDrawerProps {
   open: boolean
@@ -103,6 +104,7 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
   const [addrLoading, setAddrLoading] = useState(false)
   const [saving, setSaving]       = useState(false)
 
+  const { profile } = useAuthContext()
   const drawerRef = useRef<HTMLDivElement>(null)
   const supabase  = useMemo(() => createClient(), [])
 
@@ -137,31 +139,21 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
     setStep('address')
     setAddrLoading(true)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { setAddrLoading(false); return }
+      if (!profile) { setAddrLoading(false); return }
 
-      const { data } = await supabase
-        .from('users')
-        .select('name, phone, address_line1, address_line2, city, state, pincode, landmark')
-        .eq('id', user.id)
-        .single()
-
-      if (data) {
-        setAddress({
-          name:          data.name          ?? '',
-          phone:         data.phone         ?? '',
-          address_line1: data.address_line1 ?? '',
-          address_line2: data.address_line2 ?? '',
-          city:          data.city          ?? '',
-          state:         data.state         ?? '',
-          pincode:       data.pincode       ?? '',
-          landmark:      data.landmark      ?? '',
-        })
-        // Suggest saving if address is incomplete
-        setSaveAddr(!data.address_line1)
-      }
+      setAddress({
+        name:          profile.name          ?? '',
+        phone:         profile.phone         ?? '',
+        address_line1: profile.address_line1 ?? '',
+        address_line2: profile.address_line2 ?? '',
+        city:          profile.city          ?? '',
+        state:         profile.state         ?? '',
+        pincode:       profile.pincode       ?? '',
+        landmark:      profile.landmark      ?? '',
+      })
+      setSaveAddr(!profile.address_line1)
     } catch {
-      // Guest or network error — show empty form
+      // Guest — show empty form
     } finally {
       setAddrLoading(false)
     }
@@ -183,12 +175,10 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
     setSaving(true)
     try {
       // Optionally save address back to profile
-      if (saveAddr) {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user) {
+      if (saveAddr && profile) {
           await supabase.from('users').upsert(
             {
-              id: user.id,
+              id: profile.id,
               name:          address.name,
               phone:         address.phone,
               address_line1: address.address_line1,
@@ -201,7 +191,6 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
             { onConflict: 'id' }
           )
         }
-      }
 
       const url = whatsAppOrderUrl(items, total, address)
       window.open(url, '_blank', 'noopener,noreferrer')

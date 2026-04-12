@@ -65,16 +65,18 @@ export default function SetPasswordPage() {
       return
     }
 
-    // 2. Get current user (important for DB update)
+    // 2. Get current user from local session (no network call needed)
     const {
-      data: { user },
-    } = await supabase.auth.getUser()
+      data: { session },
+    } = await supabase.auth.getSession()
 
-    if (!user) {
+    if (!session?.user) {
       setError('User not found after password update.')
       setLoading(false)
       return
     }
+
+    const user = session.user
 
     // 3. Update has_set_password flag in DB
     const { error: dbError } = await supabase

@@ -17,6 +17,20 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
+const EMPTY_PROFILE = (uid: string, email: string, name: string): UserProfileData => ({
+  id:            uid,
+  email,
+  role:          'user',
+  name,
+  phone:         '',
+  address_line1: '',
+  address_line2: '',
+  city:          '',
+  state:         '',
+  pincode:       '',
+  landmark:      '',
+})
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user,      setUser]      = useState<AuthContextValue['user']>(null)
   const [profile,   setProfile]   = useState<UserProfileData | null>(null)
@@ -27,55 +41,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // One stable client for the entire app
   const supabase = useMemo(() => createClient(), [])
 
-  const loadProfile = useCallback(async (uid: string, email: string, metadata: Record<string, string>) => {
-    setAvatarUrl(metadata?.avatar_url ?? metadata?.picture ?? null)
+  // Fetch profile using the session's access_token directly so RLS auth header
+  // is always correct regardless of cookie state on localhost / SSR.
+  const loadProfile = useCallback(async (
+    uid: string,
+    _email: string,
+    _metadata: Record<string, string>,
+    accessToken: string,
+  ) => {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const key  = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    if (!url || !key) return
 
     try {
-      const { data } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', uid)
-        .single()
+      const res = await fetch(
+        `${url}/rest/v1/users?id=eq.${uid}&select=*&limit=1`,
+        {
+          headers: {
+            apikey:          key,
+            Authorization:   `Bearer ${accessToken}`,
+            'Content-Type':  'application/json',
+          },
+        }
+      )
 
-      setProfile(data ?? {
-        id:            uid,
-        email,
-        role:          'user',
-        name:          metadata?.full_name ?? metadata?.name ?? email.split('@')[0] ?? 'User',
-        phone:         '',
-        address_line1: '',
-        address_line2: '',
-        city:          '',
-        state:         '',
-        pincode:       '',
-        landmark:      '',
-      })
+      if (!res.ok) {
+        console.error('AuthContext loadProfile HTTP error:', res.status, await res.text())
+        return
+      }
+
+      const rows: UserProfileData[] = await res.json()
+      const data = rows[0] ?? null
+
+      if (data) {
+        setProfile(data)
+      }
+      // If no row yet, leave the metadata-derived profile in place
     } catch (err) {
-      console.error('AuthContext loadProfile:', err)
+      console.error('AuthContext loadProfile fetch error:', err)
       setError('Failed to load profile.')
-      // Fallback to auth metadata if DB fails
-      setProfile({
-        id:            uid,
-        email,
-        role:          'user',
-        name:          metadata?.full_name ?? metadata?.name ?? email.split('@')[0] ?? 'User',
-        phone:         '',
-        address_line1: '',
-        address_line2: '',
-        city:          '',
-        state:         '',
-        pincode:       '',
-        landmark:      '',
-      })
     }
-  }, [supabase])
+  }, [])
 
   // Expose this so account page can force a fresh load after saving
   const reloadProfile = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession()
-    if (!session?.user) return
+    if (!session?.user || !session.access_token) return
     const u = session.user
-    await loadProfile(u.id, u.email ?? '', u.user_metadata ?? {})
+    await loadProfile(u.id, u.email ?? '', u.user_metadata ?? {}, session.access_token)
   }, [supabase, loadProfile])
 
   useEffect(() => {
@@ -93,11 +106,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const u = session.user
         setUser(u)
 
-        if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          await loadProfile(u.id, u.email ?? '', u.user_metadata ?? {})
-        }
+        // Set a fast initial profile from auth metadata so UI renders immediately
+        const meta = u.user_metadata ?? {}
+        const displayName = meta?.full_name ?? meta?.name ?? u.email?.split('@')[0] ?? 'User'
+        setAvatarUrl(meta?.avatar_url ?? meta?.picture ?? null)
+        setProfile((prev) => prev ?? EMPTY_PROFILE(u.id, u.email ?? '', displayName))
+        setLoading(false) // stop skeleton immediately — DB enriches in background
 
-        setLoading(false)
+        if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          // Pass access_token so the fetch is always authenticated
+          loadProfile(u.id, u.email ?? '', meta, session.access_token)
+        }
       }
     )
 
