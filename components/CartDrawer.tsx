@@ -592,6 +592,12 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
                     <span>Total</span>
                     <span className="text-base">{formatPrice(finalTotal)}</span>
                   </div>
+                  {Math.floor(finalTotal / 100) > 0 && (
+                    <div className="flex items-center justify-between text-xs text-amber-600 bg-amber-50 rounded-lg px-2.5 py-1.5 mt-1">
+                      <span>⭐ Points you&apos;ll earn</span>
+                      <span className="font-semibold">+{Math.floor(finalTotal / 100)} pts</span>
+                    </div>
+                  )}
                 </div>
 
                 <button
