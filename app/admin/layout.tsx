@@ -42,6 +42,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           >
             <span><Logo size={20} /></span> Menu Items
           </Link>
+          <Link
+            href="/kitchen"
+            className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-green-50 hover:text-green-700 transition-colors"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <span>🍽</span> Live Orders ↗
+          </Link>
         </nav>
         <div className="px-4 py-4 border-t border-gray-100">
           <p className="text-xs text-gray-400">Signed in as</p>

@@ -60,7 +60,7 @@ export default function Navbar() {
 
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 font-bold text-xl text-green-600">
-          <span className="text-2xl"><Logo size={20} /></span><span>Fuelist</span>
+          <Logo size={40} /><span>Fuelist</span>
         </Link>
 
         {/* Desktop nav links */}
@@ -113,6 +113,13 @@ export default function Navbar() {
                         <span>📊</span> Admin Dashboard
                       </Link>
                     )}
+                    <Link href="/orders" onClick={() => setDropdownOpen(false)}
+                      className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                      </svg>
+                      My orders
+                    </Link>
                     <Link href="/account" onClick={() => setDropdownOpen(false)}
                       className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -173,6 +180,12 @@ export default function Navbar() {
                   <p className="text-xs text-gray-500 truncate">{profile.email}</p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
+                  <Link href="/orders" onClick={() => setMenuOpen(false)}
+                    className="rounded-lg p-2 text-gray-500 hover:bg-white transition-colors" aria-label="My orders">
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                  </Link>
                   <Link href="/account" onClick={() => setMenuOpen(false)}
                     className="rounded-lg p-2 text-gray-500 hover:bg-white transition-colors" aria-label="Account settings">
                     <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

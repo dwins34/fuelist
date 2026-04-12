@@ -1,4 +1,6 @@
-export type Role = 'admin' | 'user'
+export type Role = 'admin' | 'kitchen' | 'delivery' | 'user'
+
+export type OrderStatus = 'new' | 'preparing' | 'ready' | 'out_for_delivery' | 'delivered' | 'cancelled'
 export type Category = 'fruit' | 'breakfast' | 'power'
 
 export interface UserProfile {
