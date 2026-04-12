@@ -1,18 +1,18 @@
 'use client'
 
 import {
-  createContext, useContext, useEffect, useMemo, useState, useCallback, ReactNode
+  createContext, useContext, useEffect, useRef, useMemo, useState, useCallback, ReactNode
 } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { UserProfileData } from '@/hooks/useUserProfile'
 
 interface AuthContextValue {
-  user:        ReturnType<typeof Object.create> | null   // raw Supabase user
-  profile:     UserProfileData | null
-  avatarUrl:   string | null
-  loading:     boolean
-  error:       string | null
-  accessToken: string | null
+  user:          ReturnType<typeof Object.create> | null  // raw Supabase user
+  profile:       UserProfileData | null
+  avatarUrl:     string | null
+  loading:       boolean
+  error:         string | null
+  accessToken:   string | null
   reloadProfile: () => Promise<void>
 }
 
@@ -40,86 +40,92 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [error,       setError]       = useState<string | null>(null)
   const [accessToken, setAccessToken] = useState<string | null>(null)
 
+  // Keep a ref to the latest accessToken so reloadProfile doesn't need it as a dep
+  const accessTokenRef = useRef<string | null>(null)
+
   // One stable client for the entire app
   const supabase = useMemo(() => createClient(), [])
 
-  // Fetch profile using the session's access_token directly so RLS auth header
-  // is always correct regardless of cookie state on localhost / SSR.
-  const loadProfile = useCallback(async (
-    uid: string,
-    _email: string,
-    _metadata: Record<string, string>,
-    accessToken: string,
-  ) => {
+  // Fetch profile via direct REST fetch with explicit Authorization header.
+  // This avoids relying on cookie state and works reliably on localhost and prod.
+  const loadProfile = useCallback(async (uid: string, token: string) => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const key  = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
     if (!url || !key) return
 
     try {
-      const res = await fetch(
-        `${url}/rest/v1/users?id=eq.${uid}&select=*&limit=1`,
-        {
-          headers: {
-            apikey:          key,
-            Authorization:   `Bearer ${accessToken}`,
-            'Content-Type':  'application/json',
-          },
-        }
-      )
+      const res = await fetch(`${url}/rest/v1/users?id=eq.${uid}&select=*&limit=1`, {
+        headers: {
+          apikey:         key,
+          Authorization:  `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      })
 
       if (!res.ok) {
-        console.error('AuthContext loadProfile HTTP error:', res.status, await res.text())
+        console.error('AuthContext loadProfile error:', res.status, await res.text())
         return
       }
 
       const rows: UserProfileData[] = await res.json()
-      const data = rows[0] ?? null
-
-      if (data) {
-        setProfile(data)
-      }
-      // If no row yet, leave the metadata-derived profile in place
+      if (rows[0]) setProfile(rows[0])
+      // If no DB row yet, the metadata-derived profile stays in place
     } catch (err) {
       console.error('AuthContext loadProfile fetch error:', err)
       setError('Failed to load profile.')
     }
   }, [])
 
-  // Expose this so account page can force a fresh load after saving
+  // Exposed so other pages (account settings) can force a fresh profile load.
+  // Uses the stored token ref — no getSession() call needed.
   const reloadProfile = useCallback(async () => {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session?.user || !session.access_token) return
-    const u = session.user
-    await loadProfile(u.id, u.email ?? '', u.user_metadata ?? {}, session.access_token)
-  }, [supabase, loadProfile])
+    if (!user?.id || !accessTokenRef.current) return
+    await loadProfile(user.id, accessTokenRef.current)
+  }, [user, loadProfile])
 
   useEffect(() => {
-    // onAuthStateChange fires for INITIAL_SESSION, SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
+        // ⚠️ Keep this callback synchronous.
+        // Per Supabase docs: do NOT await other Supabase calls here — it causes deadlocks.
+        // All async work is deferred via setTimeout so it runs after this callback returns.
+
         if (event === 'SIGNED_OUT' || !session?.user) {
           setUser(null)
           setProfile(null)
           setAvatarUrl(null)
           setAccessToken(null)
+          accessTokenRef.current = null
           setLoading(false)
           return
         }
 
-        const u = session.user
-        setUser(u)
-        setAccessToken(session.access_token)
-
-        // Set a fast initial profile from auth metadata so UI renders immediately
+        const u   = session.user
         const meta = u.user_metadata ?? {}
-        const displayName = meta?.full_name ?? meta?.name ?? u.email?.split('@')[0] ?? 'User'
-        setAvatarUrl(meta?.avatar_url ?? meta?.picture ?? null)
-        setProfile((prev) => prev ?? EMPTY_PROFILE(u.id, u.email ?? '', displayName))
-        setLoading(false) // stop skeleton immediately — DB enriches in background
+        const token = session.access_token
 
-        if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          // Pass access_token so the fetch is always authenticated
-          loadProfile(u.id, u.email ?? '', meta, session.access_token)
+        // Always keep the stored token up to date (TOKEN_REFRESHED updates it too)
+        setAccessToken(token)
+        accessTokenRef.current = token
+
+        if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+          setUser(u)
+          setAvatarUrl(meta?.avatar_url ?? meta?.picture ?? null)
+          // Immediately render with metadata — DB enriches in background
+          const displayName = meta?.full_name ?? meta?.name ?? u.email?.split('@')[0] ?? 'User'
+          setProfile((prev) => prev ?? EMPTY_PROFILE(u.id, u.email ?? '', displayName))
+          setLoading(false)
+          // Defer DB fetch outside the callback
+          setTimeout(() => { loadProfile(u.id, token) }, 0)
+
+        } else if (event === 'TOKEN_REFRESHED') {
+          // Token silently refreshed — update token only, no UI change needed
+          // Docs recommend storing the new token and avoiding getSession() calls
+          setTimeout(() => { loadProfile(u.id, token) }, 0)
+
+        } else if (event === 'USER_UPDATED') {
+          // supabase.auth.updateUser() completed — refresh profile from DB
+          setTimeout(() => { loadProfile(u.id, token) }, 0)
         }
       }
     )
