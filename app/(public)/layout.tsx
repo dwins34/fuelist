@@ -5,11 +5,13 @@ import Navbar from '@/components/Navbar'
 import CartDrawer from '@/components/CartDrawer'
 import CartButton from '@/components/CartButton'
 import { CartProvider } from '@/context/CartContext'
+import { AuthProvider } from '@/context/AuthContext'
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   const [cartOpen, setCartOpen] = useState(false)
 
   return (
+    <AuthProvider>
     <CartProvider>
       <div className="flex flex-col min-h-screen">
         <Navbar />
@@ -26,5 +28,6 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
 
       <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
     </CartProvider>
+    </AuthProvider>
   )
 }
