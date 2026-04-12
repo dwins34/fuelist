@@ -1,7 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, useMemo } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import { useCart } from '@/context/CartContext'
 import { formatPrice } from '@/lib/utils'
@@ -104,8 +103,7 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
   const [addrLoading, setAddrLoading] = useState(false)
   const [saving, setSaving]       = useState(false)
 
-  const supabase = useMemo(() => createClient(), [])
-  const { profile } = useAuthContext()
+  const { profile, accessToken } = useAuthContext()
   const drawerRef = useRef<HTMLDivElement>(null)
 
   // ── Reset to cart step when drawer closes ─────────────────────────────────
@@ -175,22 +173,31 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
     setSaving(true)
     try {
       // Optionally save address back to profile
-      if (saveAddr && profile) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase.from('users') as any).upsert(
-          {
-            id:            profile.id,
-            name:          address.name,
-            phone:         address.phone,
-            address_line1: address.address_line1,
-            address_line2: address.address_line2 ?? '',
-            city:          address.city,
-            state:         address.state ?? '',
-            pincode:       address.pincode,
-            landmark:      address.landmark ?? '',
-          },
-          { onConflict: 'id' }
-        )
+      if (saveAddr && profile && accessToken) {
+        const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+        const sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+        if (sbUrl && sbKey) {
+          await fetch(`${sbUrl}/rest/v1/users`, {
+            method: 'POST',
+            headers: {
+              apikey:         sbKey,
+              Authorization:  `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+              Prefer:         'resolution=merge-duplicates',
+            },
+            body: JSON.stringify({
+              id:            profile.id,
+              name:          address.name,
+              phone:         address.phone,
+              address_line1: address.address_line1,
+              address_line2: address.address_line2 ?? '',
+              city:          address.city,
+              state:         address.state ?? '',
+              pincode:       address.pincode,
+              landmark:      address.landmark ?? '',
+            }),
+          })
+        }
       }
 
       const url = whatsAppOrderUrl(items, total, address)
