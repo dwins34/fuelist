@@ -1,11 +1,11 @@
 'use client'
 
 import { useEffect, useRef, useState, useMemo } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import Image from 'next/image'
 import { useCart } from '@/context/CartContext'
 import { formatPrice } from '@/lib/utils'
 import { whatsAppOrderUrl, DeliveryAddress } from '@/lib/whatsapp'
-import { createClient } from '@/lib/supabase/client'
 import { useAuthContext } from '@/context/AuthContext'
 
 interface CartDrawerProps {
@@ -104,9 +104,9 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
   const [addrLoading, setAddrLoading] = useState(false)
   const [saving, setSaving]       = useState(false)
 
+  const supabase = useMemo(() => createClient(), [])
   const { profile } = useAuthContext()
   const drawerRef = useRef<HTMLDivElement>(null)
-  const supabase  = useMemo(() => createClient(), [])
 
   // ── Reset to cart step when drawer closes ─────────────────────────────────
   useEffect(() => {
@@ -176,21 +176,22 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
     try {
       // Optionally save address back to profile
       if (saveAddr && profile) {
-          await supabase.from('users').upsert(
-            {
-              id: profile.id,
-              name:          address.name,
-              phone:         address.phone,
-              address_line1: address.address_line1,
-              address_line2: address.address_line2 ?? '',
-              city:          address.city,
-              state:         address.state ?? '',
-              pincode:       address.pincode,
-              landmark:      address.landmark ?? '',
-            },
-            { onConflict: 'id' }
-          )
-        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase.from('users') as any).upsert(
+          {
+            id:            profile.id,
+            name:          address.name,
+            phone:         address.phone,
+            address_line1: address.address_line1,
+            address_line2: address.address_line2 ?? '',
+            city:          address.city,
+            state:         address.state ?? '',
+            pincode:       address.pincode,
+            landmark:      address.landmark ?? '',
+          },
+          { onConflict: 'id' }
+        )
+      }
 
       const url = whatsAppOrderUrl(items, total, address)
       window.open(url, '_blank', 'noopener,noreferrer')

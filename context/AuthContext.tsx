@@ -12,6 +12,7 @@ interface AuthContextValue {
   avatarUrl:   string | null
   loading:     boolean
   error:       string | null
+  accessToken: string | null
   reloadProfile: () => Promise<void>
 }
 
@@ -32,11 +33,12 @@ const EMPTY_PROFILE = (uid: string, email: string, name: string): UserProfileDat
 })
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user,      setUser]      = useState<AuthContextValue['user']>(null)
-  const [profile,   setProfile]   = useState<UserProfileData | null>(null)
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
-  const [loading,   setLoading]   = useState(true)
-  const [error,     setError]     = useState<string | null>(null)
+  const [user,        setUser]        = useState<AuthContextValue['user']>(null)
+  const [profile,     setProfile]     = useState<UserProfileData | null>(null)
+  const [avatarUrl,   setAvatarUrl]   = useState<string | null>(null)
+  const [loading,     setLoading]     = useState(true)
+  const [error,       setError]       = useState<string | null>(null)
+  const [accessToken, setAccessToken] = useState<string | null>(null)
 
   // One stable client for the entire app
   const supabase = useMemo(() => createClient(), [])
@@ -99,12 +101,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(null)
           setProfile(null)
           setAvatarUrl(null)
+          setAccessToken(null)
           setLoading(false)
           return
         }
 
         const u = session.user
         setUser(u)
+        setAccessToken(session.access_token)
 
         // Set a fast initial profile from auth metadata so UI renders immediately
         const meta = u.user_metadata ?? {}
@@ -124,7 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [supabase, loadProfile])
 
   return (
-    <AuthContext.Provider value={{ user, profile, avatarUrl, loading, error, reloadProfile }}>
+    <AuthContext.Provider value={{ user, profile, avatarUrl, loading, error, accessToken, reloadProfile }}>
       {children}
     </AuthContext.Provider>
   )
