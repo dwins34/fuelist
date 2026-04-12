@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import { MenuItem } from '@/types'
-import { formatPrice, categoryLabel } from '@/lib/utils'
+import { formatPrice, categoryLabel, getImageUrl } from '@/lib/utils'
 import { whatsAppSingleItemUrl } from '@/lib/whatsapp'
 import { useCart } from '@/context/CartContext'
 
@@ -22,6 +22,7 @@ export default function MenuCard({ item }: MenuCardProps) {
   const { items: cartItems, addItem, updateQuantity } = useCart()
   const cartEntry = cartItems.find((ci) => ci.item.id === item.id)
   const qty = cartEntry?.quantity ?? 0
+  
 
   return (
     <div className="group flex flex-col rounded-2xl bg-white border border-gray-100 shadow-sm hover:shadow-lg transition-shadow overflow-hidden">
@@ -29,7 +30,7 @@ export default function MenuCard({ item }: MenuCardProps) {
       <div className="relative h-48 w-full bg-green-50 overflow-hidden">
         {item.image_url ? (
           <Image
-            src={item.image_url}
+            src={getImageUrl(item.image_url)}
             alt={item.name}
             fill
             className="object-cover group-hover:scale-105 transition-transform duration-300"

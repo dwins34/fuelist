@@ -7,7 +7,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useAuthContext } from '@/context/AuthContext'
 import { useCart } from '@/context/CartContext'
-import { formatPrice } from '@/lib/utils'
+import { formatPrice, getImageUrl } from '@/lib/utils'
 import { CartItem, MenuItem, OrderStatus } from '@/types'
 import { DeliveryAddress } from '@/lib/whatsapp'
 
@@ -252,7 +252,7 @@ export default function OrderTrackingPage() {
             <div key={item.id} className="flex items-center gap-3">
               <div className="relative h-11 w-11 shrink-0 rounded-lg overflow-hidden bg-green-50">
                 {item.image_url
-                  ? <Image src={item.image_url} alt={item.name} fill className="object-cover" />
+                  ? <Image src={getImageUrl(item.image_url)} alt={item.name} fill className="object-cover" />
                   : <div className="flex h-full items-center justify-center text-lg">🥗</div>
                 }
               </div>

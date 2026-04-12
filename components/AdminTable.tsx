@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react'
 import Image from 'next/image'
 import { MenuItem, CreateMenuItemInput, Category } from '@/types'
-import { formatPrice, categoryLabel } from '@/lib/utils'
+import { formatPrice, categoryLabel, getImageUrl } from '@/lib/utils'
 import Button from './ui/Button'
 import Modal from './ui/Modal'
 import Input from './ui/Input'
@@ -333,7 +333,7 @@ export default function AdminTable({ items, onRefresh }: AdminTableProps) {
                   <div className="flex items-center gap-3">
                     <div className="relative h-10 w-10 rounded-lg overflow-hidden bg-green-50 shrink-0">
                       {item.image_url ? (
-                        <Image src={item.image_url} alt={item.name} fill className="object-cover" />
+                        <Image src={getImageUrl(item.image_url)} alt={item.name} fill className="object-cover" />
                       ) : (
                         <span className="flex h-full w-full items-center justify-center text-lg">🥗</span>
                       )}

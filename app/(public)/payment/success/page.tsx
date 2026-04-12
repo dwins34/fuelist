@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Suspense } from 'react'
-import { formatPrice } from '@/lib/utils'
+import { formatPrice, getImageUrl } from '@/lib/utils'
 import { buildWhatsAppMessage } from '@/lib/whatsapp'
 import { CartItem } from '@/types'
 import { DeliveryAddress } from '@/lib/whatsapp'
@@ -230,7 +230,7 @@ function SuccessContent() {
               <div key={item.id} className="flex items-center gap-3">
                 <div className="relative h-12 w-12 shrink-0 rounded-lg overflow-hidden bg-green-50">
                   {item.image_url ? (
-                    <Image src={item.image_url} alt={item.name} fill className="object-cover" />
+                    <Image src={getImageUrl(item.image_url)} alt={item.name} fill className="object-cover" />
                   ) : (
                     <div className="flex h-full items-center justify-center text-xl">🥗</div>
                   )}
