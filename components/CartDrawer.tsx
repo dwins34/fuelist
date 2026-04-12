@@ -103,7 +103,7 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
   const [addrLoading, setAddrLoading] = useState(false)
   const [saving, setSaving]       = useState(false)
 
-  const { profile, accessToken } = useAuthContext()
+  const { profile, accessToken, reloadProfile } = useAuthContext()
   const drawerRef = useRef<HTMLDivElement>(null)
 
   // ── Reset to cart step when drawer closes ─────────────────────────────────
@@ -197,6 +197,7 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
               landmark:      address.landmark ?? '',
             }),
           })
+          await reloadProfile()
         }
       }
 
