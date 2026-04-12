@@ -25,6 +25,11 @@ export const metadata: Metadata = {
   ],
 
   manifest: "/site.webmanifest",
+  openGraph: {
+    title: "Fuelist — Healthy Bowls",
+    description: "Fresh, healthy bowls delivered to you",
+    images: ["/android-chrome-512x512.png"],
+  },
 
   icons: {
     icon: [
