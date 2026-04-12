@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useUserProfile } from '@/hooks/useUserProfile'
+import { useAuthContext } from '@/context/AuthContext'
 import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
 
@@ -125,6 +126,7 @@ function Toast({ message, type }: { message: string; type: 'success' | 'error' }
 export default function AccountPage() {
   const router = useRouter()
   const { profile, loading, error: loadError, saveProfile } = useUserProfile()
+  const { accessToken } = useAuthContext()
 
   // Profile form state
   const [name,          setName]          = useState('')
@@ -210,8 +212,20 @@ export default function AccountPage() {
       const supabase = createClient()
       const { error } = await supabase.auth.updateUser({ password })
 
-      if (!error && profile) {
-        await supabase.from('users').update({ has_set_password: true }).eq('id', profile.id)
+      if (!error && profile && accessToken) {
+        const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+        const sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+        if (sbUrl && sbKey) {
+          await fetch(`${sbUrl}/rest/v1/users?id=eq.${profile.id}`, {
+            method: 'PATCH',
+            headers: {
+              apikey:         sbKey,
+              Authorization:  `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ has_set_password: true }),
+          })
+        }
       }
 
       if (error) showToast(error.message, 'error')
