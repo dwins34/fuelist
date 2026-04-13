@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Navbar from '@/components/Navbar'
+import Footer from '@/components/layout/Footer'
 import CartDrawer from '@/components/CartDrawer'
 import CartButton from '@/components/CartButton'
 // import ThemeSwitcher from '@/components/ui/ThemeSwitcher'  // re-enable when themes are active
@@ -20,12 +21,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
 
           <main className="flex-1">{children}</main>
 
-          <footer className="border-t border-gray-100 py-8 text-center text-sm text-gray-500">
-            <div className="flex flex-col items-center gap-3">
-              <p>© {new Date().getFullYear()} Fuelist — Fuel your body, love your food.</p>
-              {/* <ThemeSwitcher /> */}  {/* re-enable when themes are active */}
-            </div>
-          </footer>
+          <Footer />
         </div>
 
         {/* Floating cart button */}

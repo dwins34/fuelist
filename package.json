@@ -10,6 +10,7 @@
     "postbuild": "next-sitemap"
   },
   "dependencies": {
+    "@emailjs/browser": "^4.4.1",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
     "@supabase/ssr": "^0.10.2",
@@ -17,11 +18,13 @@
     "@types/three": "^0.183.1",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
+    "lucide-react": "^1.8.0",
     "next": "16.2.3",
     "next-sitemap": "^4.2.3",
     "razorpay": "^2.9.6",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "resend": "^6.10.0",
     "three": "^0.183.2",
     "xlsx": "^0.18.5"
   },

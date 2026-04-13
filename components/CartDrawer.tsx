@@ -511,7 +511,7 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
                   <div key={item.id} className="flex gap-3 rounded-xl border border-gray-100 p-3">
                     <div className="relative h-16 w-16 shrink-0 rounded-lg overflow-hidden bg-green-50">
                       {item.image_url ? (
-                        <Image src={getImageUrl(item.image_url)} alt={item.name} fill className="object-cover" />
+                        <Image src={getImageUrl(item.image_url)} alt={item.name} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover" />
                       ) : (
                         <div className="flex h-full items-center justify-center text-2xl">🥗</div>
                       )}

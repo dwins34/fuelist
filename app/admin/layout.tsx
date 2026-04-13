@@ -37,6 +37,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <span>📊</span> Dashboard
           </Link>
           <Link
+            href="/admin/inquiries"
+            className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-green-50 hover:text-green-700 transition-colors"
+          >
+            <span>📧</span> Inquiries
+          </Link>
+          <Link
             href="/admin/menu"
             className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-green-50 hover:text-green-700 transition-colors"
           >
