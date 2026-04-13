@@ -7,6 +7,7 @@ import { useCart } from '@/context/CartContext'
 import { formatPrice, getImageUrl } from '@/lib/utils'
 import { DeliveryAddress } from '@/lib/whatsapp'
 import { useAuthContext } from '@/context/AuthContext'
+import { useServiceStatus } from '@/context/ServiceStatusContext'
 import { isInServiceArea, SERVICE_AREA_DESCRIPTION, SERVED_AREAS } from '@/lib/serviceArea'
 import CouponInput from '@/components/CouponInput'
 import RewardPointsToggle from '@/components/RewardPointsToggle'
@@ -141,6 +142,7 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
   const [isFirstOrder, setIsFirstOrder]   = useState(false)
 
   const { profile, accessToken, reloadProfile } = useAuthContext()
+  const { isEnabled, message: serviceMessage } = useServiceStatus()
 
   // Computed totals
   const discountAmount  = appliedCoupon?.discount_amount ?? 0
@@ -602,15 +604,22 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
 
                 <button
                   onClick={goToAddressStep}
-                  className="flex w-full items-center justify-center gap-2 rounded-full bg-green-600 px-6 py-3.5 text-white font-bold text-base hover:bg-green-700 active:scale-95 transition-all shadow-md shadow-green-100"
+                  disabled={!isEnabled}
+                  className="flex w-full items-center justify-center gap-2 rounded-full bg-green-600 px-6 py-3.5 text-white font-bold text-base hover:bg-green-700 active:scale-95 transition-all shadow-md shadow-green-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-400"
                 >
-                  Continue to delivery
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
+                  {isEnabled ? (
+                    <>
+                      Continue to delivery
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </>
+                  ) : (
+                    'Service Paused'
+                  )}
                 </button>
                 <p className="text-center text-xs text-gray-400">
-                  Next: confirm your delivery address
+                  {isEnabled ? 'Next: confirm your delivery address' : serviceMessage}
                 </p>
               </div>
             )}

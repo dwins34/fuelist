@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Razorpay from 'razorpay'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
+
+const supabaseAdmin = createAdminClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 const razorpay = new Razorpay({
   key_id:     process.env.RAZORPAY_KEY_ID!,
@@ -8,6 +14,19 @@ const razorpay = new Razorpay({
 
 export async function POST(req: NextRequest) {
   try {
+    // Check service status
+    const { data: config } = await supabaseAdmin
+      .from('app_config')
+      .select('value')
+      .eq('key', 'service_status')
+      .single()
+
+    if (config?.value && !config.value.enabled) {
+      return NextResponse.json({ 
+        error: config.value.message || 'Service is currently unavailable' 
+      }, { status: 403 })
+    }
+
     const { amount } = await req.json()
 
     if (!amount || typeof amount !== 'number' || amount <= 0) {

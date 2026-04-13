@@ -18,7 +18,11 @@ interface SubscriptionRow {
   duration_days: number
   start_date: string
   end_date: string
-  status: 'active' | 'paused' | 'cancelled'
+  status: 'active' | 'cancelled' | 'pending_payment'
+  payment_status: 'pending_payment' | 'paid' | 'refunded'
+  payment_id?: string
+  razorpay_order_id?: string
+  refund_amount: number
   price_per_delivery: number
   total_price: number
   menu_items: {
@@ -250,7 +254,7 @@ export default function AccountPage() {
       .finally(() => setSubsLoading(false))
   }, [profile?.id, accessToken])
 
-  async function handleSubAction(id: string, status: 'active' | 'paused' | 'cancelled') {
+  async function handleSubAction(id: string, status: 'cancelled') {
     setSubActionId(id)
     try {
       const res = await fetch(`/api/subscriptions/${id}`, {
@@ -258,17 +262,14 @@ export default function AccountPage() {
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ status }),
       })
+      const data = await res.json()
       if (res.ok) {
         setSubscriptions((prev) =>
-          prev.map((s) => (s.id === id ? { ...s, status } : s)),
+          prev.map((s) => (s.id === id ? { ...s, status, refund_amount: data.subscription.refund_amount } : s)),
         )
-        showToast(
-          status === 'cancelled' ? 'Subscription cancelled.' :
-          status === 'paused'    ? 'Subscription paused.'    : 'Subscription resumed.',
-          'success',
-        )
+        showToast('Subscription cancelled.', 'success')
       } else {
-        showToast('Failed to update subscription.', 'error')
+        showToast(data.error ?? 'Failed to update subscription.', 'error')
       }
     } catch {
       showToast('Network error.', 'error')
@@ -595,8 +596,7 @@ export default function AccountPage() {
               <div
                 key={sub.id}
                 className={`rounded-xl border p-4 flex gap-3 ${
-                  sub.status === 'cancelled' ? 'bg-gray-50 border-gray-200 opacity-60' :
-                  sub.status === 'paused'    ? 'bg-amber-50 border-amber-200'          :
+                  sub.status === 'cancelled' ? 'bg-gray-50 border-gray-200 opacity-70' :
                                                'bg-green-50 border-green-200'
                 }`}
               >
@@ -621,9 +621,8 @@ export default function AccountPage() {
                       {sub.menu_items?.name}
                     </p>
                     <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                      sub.status === 'active'    ? 'bg-green-500 text-white'  :
-                      sub.status === 'paused'    ? 'bg-amber-400 text-white'  :
-                                                   'bg-gray-400 text-white'
+                      sub.status === 'active' ? 'bg-green-500 text-white' :
+                                                'bg-gray-400 text-white'
                     }`}>
                       {sub.status.toUpperCase()}
                     </span>
@@ -636,26 +635,8 @@ export default function AccountPage() {
                   </p>
 
                   {/* Action buttons */}
-                  {sub.status !== 'cancelled' && (
+                  {sub.status === 'active' && (
                     <div className="flex gap-2 mt-2">
-                      {sub.status === 'active' ? (
-                        <button
-                          onClick={() => handleSubAction(sub.id, 'paused')}
-                          disabled={subActionId === sub.id}
-                          className="text-xs font-medium text-amber-600 hover:text-amber-800 disabled:opacity-50"
-                        >
-                          {subActionId === sub.id ? 'Pausing…' : 'Pause'}
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleSubAction(sub.id, 'active')}
-                          disabled={subActionId === sub.id}
-                          className="text-xs font-medium text-green-600 hover:text-green-800 disabled:opacity-50"
-                        >
-                          {subActionId === sub.id ? 'Resuming…' : 'Resume'}
-                        </button>
-                      )}
-                      <span className="text-gray-300">·</span>
                       <button
                         onClick={() => {
                           if (window.confirm('Cancel this subscription? This cannot be undone.')) {
@@ -665,8 +646,22 @@ export default function AccountPage() {
                         disabled={subActionId === sub.id}
                         className="text-xs font-medium text-red-400 hover:text-red-600 disabled:opacity-50"
                       >
-                        Cancel
+                        {subActionId === sub.id ? 'Cancelling…' : 'Cancel Subscription'}
                       </button>
+                    </div>
+                  )}
+
+                  {sub.status === 'cancelled' && sub.refund_amount > 0 && (
+                    <div className="mt-2 space-y-1">
+                      <p className={`text-[10px] font-medium rounded px-2 py-1 inline-block border ${
+                        sub.payment_status === 'refunded' 
+                          ? 'text-blue-600 bg-blue-50 border-blue-100' 
+                          : 'text-green-600 bg-green-50 border-green-100'
+                      }`}>
+                        {sub.payment_status === 'refunded' 
+                          ? `✓ Refund of ${formatPrice(sub.refund_amount)} processed`
+                          : `Refund of ${formatPrice(sub.refund_amount)} initiated`}
+                      </p>
                     </div>
                   )}
                 </div>

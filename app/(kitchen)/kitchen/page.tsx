@@ -9,13 +9,16 @@ import { DeliveryAddress } from '@/lib/whatsapp'
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface LiveOrder {
-  id:             string
-  items:          CartItem[]
-  total_amount:   number
-  payment_status: string
-  order_status:   OrderStatus
-  address:        DeliveryAddress | null
-  created_at:     string
+  id:              string
+  delivery_date:   string
+  delivery_slot:   'morning' | 'afternoon' | 'evening'
+  status:          OrderStatus
+  items:           CartItem[]
+  total_amount:    number
+  address:         DeliveryAddress | null
+  subscription_id: string | null
+  order_id:        string | null
+  created_at:      string
 }
 
 // ─── Status config ────────────────────────────────────────────────────────────
@@ -68,10 +71,10 @@ function OrderCard({
   onAction: (id: string, next: OrderStatus) => void
   loading:  string | null
 }) {
-  const cfg    = STATUS_CONFIG[order.order_status] ?? STATUS_CONFIG.new
-  const action = (NEXT_ACTION[role] ?? {})[order.order_status]
-  const shortId = `#${order.id.slice(-6).toUpperCase()}`
-  const isNew  = order.order_status === 'new'
+  const cfg    = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.preparing
+  const action = (NEXT_ACTION[role] ?? {})[order.status]
+  const shortId = order.subscription_id ? `SUB-${order.id.slice(-4).toUpperCase()}` : `#${order.id.slice(-6).toUpperCase()}`
+  const isNew  = order.status === 'preparing' // In the new system, 'new' from orders maps to 'preparing' in logs
 
   return (
     <div className={`relative rounded-2xl border p-4 space-y-3 transition-shadow
@@ -201,6 +204,7 @@ export default function KitchenPage() {
   const [orders,  setOrders]  = useState<LiveOrder[]>([])
   const [role,    setRole]    = useState<Role>('kitchen')
   const [loading, setLoading] = useState<string | null>(null)
+  const [syncing, setSyncing] = useState(false)
   const [toast,   setToast]   = useState<{ msg: string; ok: boolean } | null>(null)
   const [newAlert, setNewAlert] = useState(false)
   const prevOrderIds = useRef<Set<string>>(new Set())
@@ -215,13 +219,13 @@ export default function KitchenPage() {
     })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Fetch initial orders
+  // Fetch initial deliveries for today
   const fetchOrders = useCallback(async () => {
+    const today = new Date().toISOString().split('T')[0]
     const { data } = await supabase
-      .from('orders')
+      .from('delivery_log')
       .select('*')
-      .eq('payment_status', 'paid')
-      .not('order_status', 'eq', 'cancelled')
+      .eq('delivery_date', today)
       .order('created_at', { ascending: false })
       .limit(100)
 
@@ -236,17 +240,15 @@ export default function KitchenPage() {
   // Supabase Realtime subscription
   useEffect(() => {
     const channel = supabase
-      .channel('live-orders')
+      .channel('live-deliveries')
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'orders' },
+        { event: 'INSERT', schema: 'public', table: 'delivery_log' },
         (payload) => {
-          const newOrder = payload.new as LiveOrder
-          if (newOrder.payment_status !== 'paid') return
-          setOrders((prev) => [newOrder, ...prev])
-          // Alert for new orders
-          if (!prevOrderIds.current.has(newOrder.id)) {
-            prevOrderIds.current.add(newOrder.id)
+          const newDelivery = payload.new as LiveOrder
+          setOrders((prev) => [newDelivery, ...prev])
+          if (!prevOrderIds.current.has(newDelivery.id)) {
+            prevOrderIds.current.add(newDelivery.id)
             setNewAlert(true)
             setTimeout(() => setNewAlert(false), 4000)
             audioRef.current?.play().catch(() => {})
@@ -255,7 +257,7 @@ export default function KitchenPage() {
       )
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'orders' },
+        { event: 'UPDATE', schema: 'public', table: 'delivery_log' },
         (payload) => {
           const updated = payload.new as LiveOrder
           setOrders((prev) =>
@@ -268,22 +270,38 @@ export default function KitchenPage() {
     return () => { supabase.removeChannel(channel) }
   }, [supabase])
 
-  // Update order status
-  async function handleAction(orderId: string, nextStatus: OrderStatus) {
-    setLoading(orderId)
+  // Update delivery status
+  async function handleAction(deliveryId: string, nextStatus: OrderStatus) {
+    setLoading(deliveryId)
     try {
-      const res = await fetch(`/api/orders/${orderId}/status`, {
+      const res = await fetch(`/api/admin/deliveries/${deliveryId}/status`, {
         method:  'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ status: nextStatus }),
       })
       if (!res.ok) throw new Error(await res.text())
       await fetchOrders()
-      showToast('Order updated!', true)
+      showToast('Status updated!', true)
     } catch {
-      showToast('Failed to update order. Try again.', false)
+      showToast('Failed to update status. Try again.', false)
     } finally {
       setLoading(null)
+    }
+  }
+
+  async function handleSync() {
+    setSyncing(true)
+    try {
+      const res = await fetch('/api/admin/deliveries/generate', { method: 'POST' })
+      const data = await res.json()
+      if (res.ok) {
+        showToast(`Synced! Generated ${data.generated} new items.`, true)
+        fetchOrders()
+      } else throw new Error(data.error)
+    } catch (err: any) {
+      showToast(err.message || 'Sync failed', false)
+    } finally {
+      setSyncing(false)
     }
   }
 
@@ -294,12 +312,12 @@ export default function KitchenPage() {
 
   const columns = COLUMNS_FOR_ROLE[role] ?? []
 
-  // Group orders by status
+  // Group deliveries by status (map status to existing column logic)
   const byStatus: Record<OrderStatus, LiveOrder[]> = {
     new: [], preparing: [], ready: [], out_for_delivery: [], delivered: [], cancelled: [],
   }
   orders.forEach((o) => {
-    if (byStatus[o.order_status]) byStatus[o.order_status].push(o)
+    if (byStatus[o.status]) byStatus[o.status].push(o)
   })
 
   const totalActive = (byStatus.new?.length ?? 0) + (byStatus.preparing?.length ?? 0)
@@ -326,6 +344,15 @@ export default function KitchenPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          {role === 'admin' && (
+            <button
+              onClick={handleSync}
+              disabled={syncing}
+              className="flex items-center gap-2 rounded-full bg-blue-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50 transition-all"
+            >
+              {syncing ? 'Syncing...' : 'Sync Deliveries'}
+            </button>
+          )}
           {/* Live indicator */}
           <div className="flex items-center gap-1.5 rounded-full bg-gray-800 px-3 py-1.5">
             <span className="relative flex h-2 w-2">

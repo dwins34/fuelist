@@ -1,12 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { MenuItem } from '@/types'
 import { formatPrice, categoryLabel, getImageUrl } from '@/lib/utils'
 // import { whatsAppSingleItemUrl } from '@/lib/whatsapp'
 import { useCart } from '@/context/CartContext'
-import SubscriptionModal from '@/components/SubscriptionModal'
+import SubscriptionModal, {
+  loadPendingSubscription,
+  clearPendingSubscription,
+  type PendingSubscriptionConfig,
+} from '@/components/SubscriptionModal'
 
 interface MenuCardProps {
   item: MenuItem
@@ -26,13 +30,25 @@ export default function MenuCard({ item }: MenuCardProps) {
   const cartEntry = cartItems.find((ci) => ci.item.id === item.id)
   const qty = cartEntry?.quantity ?? 0
   const [showSubscribe, setShowSubscribe] = useState(false)
+  const [restoredConfig, setRestoredConfig] = useState<PendingSubscriptionConfig | null>(null)
+
+  // Check for pending subscription from localStorage (after login redirect)
+  useEffect(() => {
+    const pending = loadPendingSubscription()
+    if (pending && pending.selectedItemIds.includes(item.id)) {
+      setRestoredConfig(pending)
+      setShowSubscribe(true)
+      clearPendingSubscription()
+    }
+  }, [item.id])
 
   return (
     <>
     {showSubscribe && (
       <SubscriptionModal
         initialItem={item}
-        onClose={() => setShowSubscribe(false)}
+        restoredConfig={restoredConfig}
+        onClose={() => { setShowSubscribe(false); setRestoredConfig(null) }}
       />
     )}
     <div className="group flex flex-col rounded-2xl bg-white border border-gray-100 shadow-sm hover:shadow-lg transition-shadow overflow-hidden">

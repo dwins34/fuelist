@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
@@ -21,6 +21,8 @@ export default function LoginPage() {
   const [lastEmail, setLastEmail] = useState<string | null>(null)
   const [usingSavedEmail, setUsingSavedEmail] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirectTo = searchParams.get('redirect') || '/'
   const supabase = useMemo(() => createClient(), [])
 
   useEffect(() => {
@@ -49,7 +51,7 @@ export default function LoginPage() {
 
     try { localStorage.setItem(LAST_EMAIL_KEY, email) } catch {}
 
-    router.push('/')
+    router.push(redirectTo)
     router.refresh()
   }
 

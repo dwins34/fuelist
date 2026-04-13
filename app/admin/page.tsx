@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import ServiceSettings from '@/components/admin/ServiceSettings'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,13 +40,19 @@ export default async function AdminDashboard() {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-500 text-sm mt-1">Overview of your Fuelist store.</p>
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-gray-500 text-sm mt-1">Overview of your Fuelist store.</p>
+        </div>
+      </div>
+
+      <div className="mb-10">
+        <ServiceSettings />
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
         {STATS.map((stat) => (
           <div key={stat.label} className={`${stat.bg} rounded-2xl p-5`}>
             <div className="text-3xl mb-2">{stat.icon}</div>

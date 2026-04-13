@@ -5,7 +5,9 @@ import { SpeedInsights } from '@vercel/speed-insights/next'
 import './globals.css'
 
 import { ThemeProvider }   from '@/context/ThemeContext'
+import { ServiceStatusProvider } from '@/context/ServiceStatusContext'
 import FruitBackground     from '@/components/background/FruitBackground'
+import ServiceBanner       from '@/components/ServiceBanner'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -71,7 +73,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} h-full`}>
+    <html lang="en" className={`${geistSans.variable} h-full`} data-scroll-behavior="smooth">
       <head>
         <script
           type="application/ld+json"
@@ -83,12 +85,15 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           ThemeProvider must wrap everything so useTheme() works anywhere.
           FruitBackground is inside ThemeProvider so it can read the active theme.
         */}
-        <ThemeProvider>
-          {/* 3D canvas (fixed, behind all content, only mounts for fruit-3d theme) */}
-          <FruitBackground />
+        <ServiceStatusProvider>
+          <ThemeProvider>
+            {/* 3D canvas (fixed, behind all content, only mounts for fruit-3d theme) */}
+            <FruitBackground />
 
-          {children}
-        </ThemeProvider>
+            <ServiceBanner />
+            {children}
+          </ThemeProvider>
+        </ServiceStatusProvider>
 
         <Analytics />
         <SpeedInsights />

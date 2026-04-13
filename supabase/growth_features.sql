@@ -122,7 +122,11 @@ create table if not exists public.subscriptions (
   start_date         date         not null default current_date,
   end_date           date,
   status             text         not null default 'active'
-                                    check (status in ('active', 'paused', 'cancelled')),
+                                    check (status in ('active', 'cancelled', 'pending_payment')),
+  payment_status     text         not null default 'pending_payment',
+  payment_id         text,
+  razorpay_order_id  text,
+  refund_amount      numeric(8,2) not null default 0,
   price_per_delivery numeric(8,2) not null,
   total_price        numeric(8,2) not null,
   address            jsonb,

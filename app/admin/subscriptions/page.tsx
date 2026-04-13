@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import Image from 'next/image'
 import { formatPrice, getImageUrl } from '@/lib/utils'
+import RefundManager from '@/components/admin/RefundManager'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,6 +15,9 @@ interface SubRow {
   start_date: string
   end_date: string
   status: 'active' | 'paused' | 'cancelled'
+  payment_status: 'pending_payment' | 'paid' | 'refunded'
+  payment_id: string
+  refund_amount: number
   price_per_delivery: number
   total_price: number
   created_at: string
@@ -93,6 +97,17 @@ export default async function AdminSubscriptionsPage() {
   const todayBySlot: Record<string, SubRow[]> = { morning: [], afternoon: [], evening: [] }
   for (const sub of todayDeliveries) todayBySlot[sub.delivery_slot].push(sub)
 
+  // ── Pending Refunds ──────────────────────────────────────────────────────
+  const pendingRefunds = rows
+    .filter((s) => s.status === 'cancelled' && s.refund_amount > 0 && s.payment_status !== 'refunded')
+    .map((s) => ({
+      id: s.id,
+      user_name: s.users?.name || 'Unknown',
+      refund_amount: s.refund_amount,
+      payment_id: s.payment_id,
+      payment_status: s.payment_status,
+    }))
+
   return (
     <div className="space-y-8">
       {/* ── Header ── */}
@@ -102,7 +117,7 @@ export default async function AdminSubscriptionsPage() {
       </div>
 
       {/* ── Stats ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Active',          value: totalActive,           icon: '✅', bg: 'bg-green-50',  text: 'text-green-600'  },
           { label: 'Paused',          value: totalPaused,           icon: '⏸',  bg: 'bg-amber-50',  text: 'text-amber-600'  },
@@ -118,7 +133,7 @@ export default async function AdminSubscriptionsPage() {
       </div>
 
       {/* ── Active subscriptions by slot ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {(['morning', 'afternoon', 'evening'] as const).map((slot) => {
           const meta  = SLOT_META[slot]
           const items = bySlot[slot]
@@ -154,6 +169,24 @@ export default async function AdminSubscriptionsPage() {
         })}
       </div>
 
+      {/* ── Refund Management ── */}
+      {pendingRefunds.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+              💸 Pending Refunds
+              <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-bold text-red-600">
+                {pendingRefunds.length}
+              </span>
+            </h2>
+            <p className="text-sm text-gray-500">Process refunds for cancelled subscriptions.</p>
+          </div>
+          <div className="rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden">
+            <RefundManager initialSubs={pendingRefunds} />
+          </div>
+        </div>
+      )}
+
       {/* ── Today's delivery list ── */}
       {todayDeliveries.length > 0 && (
         <div className="rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden">
@@ -176,32 +209,34 @@ export default async function AdminSubscriptionsPage() {
                 <div className={`px-6 py-2 ${meta.bg} border-b border-gray-100`}>
                   <p className={`text-xs font-bold ${meta.text}`}>{meta.icon} {meta.label} · {meta.time}</p>
                 </div>
-                <div className="divide-y divide-gray-50">
-                  {subs.map((sub) => (
-                    <div key={sub.id} className="px-6 py-3 flex items-center gap-4">
-                      <div className="relative h-10 w-10 shrink-0 rounded-lg overflow-hidden bg-green-50">
-                        {sub.menu_items?.image_url ? (
-                          <Image
-                            src={getImageUrl(sub.menu_items.image_url)}
-                            alt={sub.menu_items.name}
-                            fill
-                            className="object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-full items-center justify-center text-lg">🥗</div>
-                        )}
+                <div className="overflow-x-auto">
+                  <div className="divide-y divide-gray-50 min-w-[600px] lg:min-w-full">
+                    {subs.map((sub) => (
+                      <div key={sub.id} className="px-6 py-3 flex items-center gap-4">
+                        <div className="relative h-10 w-10 shrink-0 rounded-lg overflow-hidden bg-green-50">
+                          {sub.menu_items?.image_url ? (
+                            <Image
+                              src={getImageUrl(sub.menu_items.image_url)}
+                              alt={sub.menu_items.name}
+                              fill
+                              className="object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-full items-center justify-center text-lg">🥗</div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-900 truncate">{sub.menu_items?.name}</p>
+                          <p className="text-xs text-gray-500">
+                            {sub.users?.name} · {sub.users?.phone || sub.users?.email}
+                          </p>
+                        </div>
+                        <span className={`shrink-0 text-xs font-bold rounded-full px-2.5 py-1 ${STATUS_STYLE[sub.status]}`}>
+                          {sub.status}
+                        </span>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 truncate">{sub.menu_items?.name}</p>
-                        <p className="text-xs text-gray-500">
-                          {sub.users?.name} · {sub.users?.phone || sub.users?.email}
-                        </p>
-                      </div>
-                      <span className={`shrink-0 text-xs font-bold rounded-full px-2.5 py-1 ${STATUS_STYLE[sub.status]}`}>
-                        {sub.status}
-                      </span>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
             )

@@ -22,12 +22,16 @@
  * Change those files to retheme the entire menu without touching this file.
  */
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { MenuItem } from '@/types'
 import { formatPrice, getImageUrl } from '@/lib/utils'
 import { useCart } from '@/context/CartContext'
-import SubscriptionModal from '@/components/SubscriptionModal'
+import SubscriptionModal, {
+  loadPendingSubscription,
+  clearPendingSubscription,
+  type PendingSubscriptionConfig,
+} from '@/components/SubscriptionModal'
 
 // UI primitives — the only place theme tokens live
 import { Card, CardImage, CardContent, CardFooter } from '@/components/ui/card'
@@ -81,13 +85,26 @@ export default function MenuCard({ item }: MenuCardProps) {
   const qty = cartEntry?.quantity ?? 0
 
   const [showSubscribe, setShowSubscribe] = useState(false)
+  const [restoredConfig, setRestoredConfig] = useState<PendingSubscriptionConfig | null>(null)
+
+  // Check for pending subscription from localStorage (after login redirect)
+  useEffect(() => {
+    const pending = loadPendingSubscription()
+    if (pending && pending.selectedItemIds.includes(item.id)) {
+      setRestoredConfig(pending)
+      setShowSubscribe(true)
+      // Only the first MenuCard that matches will handle it
+      clearPendingSubscription()
+    }
+  }, [item.id])
 
   return (
     <>
       {showSubscribe && (
         <SubscriptionModal
           initialItem={item}
-          onClose={() => setShowSubscribe(false)}
+          restoredConfig={restoredConfig}
+          onClose={() => { setShowSubscribe(false); setRestoredConfig(null) }}
         />
       )}
 
