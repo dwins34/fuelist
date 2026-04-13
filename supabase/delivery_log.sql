@@ -6,8 +6,8 @@ CREATE TABLE IF NOT EXISTS public.delivery_log (
     user_id         uuid         NOT NULL REFERENCES public.users(id),
     delivery_date   date         NOT NULL DEFAULT current_date,
     delivery_slot   text         NOT NULL CHECK (delivery_slot IN ('morning', 'afternoon', 'evening')),
-    status          text         NOT NULL DEFAULT 'preparing' 
-                                 CHECK (status IN ('preparing', 'ready', 'out_for_delivery', 'delivered', 'cancelled')),
+    status          text         NOT NULL DEFAULT 'new' 
+                                 CHECK (status IN ('new', 'preparing', 'ready', 'out_for_delivery', 'delivered', 'cancelled')),
     items           jsonb        NOT NULL, -- Snapshotted items for this delivery
     total_amount    numeric(8,2) NOT NULL DEFAULT 0,
     address         jsonb,

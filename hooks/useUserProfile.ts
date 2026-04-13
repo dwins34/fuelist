@@ -7,12 +7,12 @@ export interface UserProfileData {
   name: string
   email: string
   phone: string
-  address_line1: string
-  address_line2: string
-  city: string
-  state: string
-  pincode: string
-  landmark: string
+  address_line1?: string
+  address_line2?: string
+  city?: string
+  state?: string
+  pincode?: string
+  landmark?: string
   role: string
   reward_points?: number
 }

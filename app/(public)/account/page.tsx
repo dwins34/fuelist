@@ -9,6 +9,7 @@ import Button from '@/components/ui/Button'
 import Image from 'next/image'
 import { formatPrice, getImageUrl } from '@/lib/utils'
 import { UserRewardLog } from '@/types'
+import AddressManager from '@/components/account/AddressManager'
 
 // ── Subscription type (local, not in global types to keep it scoped) ──────────
 interface SubscriptionRow {
@@ -50,9 +51,6 @@ const FREQ_LABEL: Record<string, string> = {
 interface FormErrors {
   name?: string
   phone?: string
-  address_line1?: string
-  city?: string
-  pincode?: string
   password?: string
   confirm?: string
 }
@@ -60,9 +58,6 @@ interface FormErrors {
 function validateProfile(fields: {
   name: string
   phone: string
-  address_line1: string
-  city: string
-  pincode: string
 }): FormErrors {
   const errs: FormErrors = {}
 
@@ -78,21 +73,6 @@ function validateProfile(fields: {
     errs.phone = 'Phone number is required.'
   else if (!/^\+?\d{7,15}$/.test(rawPhone))
     errs.phone = 'Enter a valid phone number (7–15 digits).'
-
-  if (!fields.address_line1.trim())
-    errs.address_line1 = 'Address line 1 is required.'
-  else if (fields.address_line1.trim().length < 5)
-    errs.address_line1 = 'Please enter a complete address.'
-
-  if (!fields.city.trim())
-    errs.city = 'City is required.'
-  else if (fields.city.trim().length < 2)
-    errs.city = 'Enter a valid city name.'
-
-  if (!fields.pincode.trim())
-    errs.pincode = 'Pincode is required.'
-  else if (!/^\d{4,10}$/.test(fields.pincode.trim()))
-    errs.pincode = 'Enter a valid pincode (digits only).'
 
   return errs
 }
@@ -173,12 +153,6 @@ export default function AccountPage() {
   // Profile form state
   const [name,          setName]          = useState('')
   const [phone,         setPhone]         = useState('')
-  const [addressLine1,  setAddressLine1]  = useState('')
-  const [addressLine2,  setAddressLine2]  = useState('')
-  const [city,          setCity]          = useState('')
-  const [state,         setState]         = useState('')
-  const [pincode,       setPincode]       = useState('')
-  const [landmark,      setLandmark]      = useState('')
   const [formErrors,    setFormErrors]    = useState<FormErrors>({})
   const [saving,        setSaving]        = useState(false)
 
@@ -218,12 +192,6 @@ export default function AccountPage() {
     if (!profile) return
     setName(profile.name)
     setPhone(profile.phone)
-    setAddressLine1(profile.address_line1)
-    setAddressLine2(profile.address_line2)
-    setCity(profile.city)
-    setState(profile.state)
-    setPincode(profile.pincode)
-    setLandmark(profile.landmark)
   }, [profile])
 
   // Fetch reward log
@@ -302,21 +270,15 @@ export default function AccountPage() {
 
   async function handleSaveProfile(e: React.BaseSyntheticEvent) {
     e.preventDefault()
-    const errs = validateProfile({ name, phone, address_line1: addressLine1, city, pincode })
+    const errs = validateProfile({ name, phone })
     if (Object.keys(errs).length) { setFormErrors(errs); return }
     setFormErrors({})
     setSaving(true)
 
     try {
       const { error } = await saveProfile({
-        name:          name.trim(),
-        phone:         phone.trim(),
-        address_line1: addressLine1.trim(),
-        address_line2: addressLine2.trim(),
-        city:          city.trim(),
-        state:         state.trim(),
-        pincode:       pincode.trim(),
-        landmark:      landmark.trim(),
+        name:  name.trim(),
+        phone: phone.trim()
       })
       if (error) showToast('Failed to save. Please try again.', 'error')
       else       showToast('Profile saved successfully.', 'success')
@@ -705,74 +667,13 @@ export default function AccountPage() {
           />
         </section>
 
-        <section className="rounded-2xl bg-white border border-gray-100 shadow-sm p-6 space-y-4 mt-6">
-          <h2 className="text-base font-semibold text-gray-800">Delivery address</h2>
-
-          <Input
-            label="Address line 1"
-            id="address_line1"
-            type="text"
-            value={addressLine1}
-            onChange={(e) => { setAddressLine1(e.target.value); setFormErrors((p) => ({ ...p, address_line1: undefined })) }}
-            placeholder="House / flat / building number"
-            error={formErrors.address_line1}
-          />
-
-          <Input
-            label="Address line 2 (optional)"
-            id="address_line2"
-            type="text"
-            value={addressLine2}
-            onChange={(e) => setAddressLine2(e.target.value)}
-            placeholder="Street / area / colony"
-          />
-
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="City"
-              id="city"
-              type="text"
-              value={city}
-              onChange={(e) => { setCity(e.target.value); setFormErrors((p) => ({ ...p, city: undefined })) }}
-              placeholder="New Delhi"
-              error={formErrors.city}
-            />
-            <Input
-              label="State (optional)"
-              id="state"
-              type="text"
-              value={state}
-              onChange={(e) => setState(e.target.value)}
-              placeholder="Delhi"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="Pincode"
-              id="pincode"
-              type="text"
-              inputMode="numeric"
-              value={pincode}
-              onChange={(e) => { setPincode(e.target.value); setFormErrors((p) => ({ ...p, pincode: undefined })) }}
-              placeholder="110001"
-              error={formErrors.pincode}
-            />
-            <Input
-              label="Landmark (optional)"
-              id="landmark"
-              type="text"
-              value={landmark}
-              onChange={(e) => setLandmark(e.target.value)}
-              placeholder="Near metro station"
-            />
-          </div>
-        </section>
-
         <Button type="submit" loading={saving} className="w-full mt-4">
           Save details
         </Button>
       </form>
+
+      {/* ── Delivery Addresses ── */}
+      <AddressManager />
 
       {/* ── Login & Security ── */}
       <section className="rounded-2xl bg-white border border-gray-100 shadow-sm p-6 space-y-5">

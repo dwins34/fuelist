@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { formatPrice } from '@/lib/utils'
+import { formatPrice, getTodayStrIST } from '@/lib/utils'
 import { CartItem, MenuItem, OrderStatus, Role } from '@/types'
 import { DeliveryAddress } from '@/lib/whatsapp'
 
@@ -74,7 +74,7 @@ function OrderCard({
   const cfg    = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.preparing
   const action = (NEXT_ACTION[role] ?? {})[order.status]
   const shortId = order.subscription_id ? `SUB-${order.id.slice(-4).toUpperCase()}` : `#${order.id.slice(-6).toUpperCase()}`
-  const isNew  = order.status === 'preparing' // In the new system, 'new' from orders maps to 'preparing' in logs
+  const isNew  = order.status === 'new' // New orders show the pulsing indicator
 
   return (
     <div className={`relative rounded-2xl border p-4 space-y-3 transition-shadow
@@ -221,7 +221,7 @@ export default function KitchenPage() {
 
   // Fetch initial deliveries for today
   const fetchOrders = useCallback(async () => {
-    const today = new Date().toISOString().split('T')[0]
+    const today = getTodayStrIST()
     const { data } = await supabase
       .from('delivery_log')
       .select('*')

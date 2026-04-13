@@ -7,12 +7,14 @@ import { formatPrice, getImageUrl, categoryLabel } from '@/lib/utils'
 import { useAuthContext } from '@/context/AuthContext'
 import { useServiceStatus } from '@/context/ServiceStatusContext'
 import { useRouter } from 'next/navigation'
+import AddressManager from '@/components/account/AddressManager'
+import { UserAddress } from '@/hooks/useAddresses'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
 type DeliverySlot = 'morning' | 'afternoon' | 'evening'
 type Frequency    = 'daily' | 'weekdays' | 'weekends'
-type Step         = 'items' | 'schedule' | 'confirm' | 'login' | 'profile' | 'paying' | 'success'
+type Step         = 'items' | 'schedule' | 'confirm' | 'login' | 'address' | 'paying' | 'success'
 
 interface SubscriptionModalProps {
   /** Pre-selected item (from MenuCard). If omitted, user starts with empty selection. */
@@ -102,16 +104,10 @@ function deliveriesCount(freq: Frequency, duration: number) {
   return Math.round((perWeek * duration) / 7)
 }
 
-/** Check if a user's profile is complete enough to subscribe */
-function isProfileComplete(profile: { name: string; phone: string; address_line1: string; city: string; pincode: string } | null): boolean {
+/** Check if a user's profile is complete enough for billing */
+function isProfileComplete(profile: { name: string; phone: string } | null): boolean {
   if (!profile) return false
-  return !!(
-    profile.name?.trim() &&
-    profile.phone?.trim() &&
-    profile.address_line1?.trim() &&
-    profile.city?.trim() &&
-    profile.pincode?.trim()
-  )
+  return !!(profile.name?.trim() && profile.phone?.trim())
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -125,6 +121,10 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
   const [slot,     setSlot]     = useState<DeliverySlot>(restoredConfig?.slot ?? 'morning')
   const [freq,     setFreq]     = useState<Frequency>(restoredConfig?.freq ?? 'daily')
   const [duration, setDuration] = useState<number>(restoredConfig?.duration ?? 7)
+
+  const onSlotChange = (s: DeliverySlot) => { setSlot(s); setError(null) }
+  const onFreqChange = (f: Frequency) => { setFreq(f); setError(null) }
+  const onDurationChange = (d: number) => { setDuration(d); setError(null) }
 
   // ── Item picker state ─────────────────────────────────────────────────────
   const [allItems,  setAllItems]  = useState<MenuItem[]>([])
@@ -140,6 +140,7 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
   const [step,    setStep]    = useState<Step>(restoredConfig ? 'confirm' : 'items')
   const [loading, setLoading] = useState(false)
   const [error,   setError]   = useState<string | null>(null)
+  const [selectedAddress, setSelectedAddress] = useState<UserAddress | null>(null)
 
   // ── Fetch all available menu items ────────────────────────────────────────
   useEffect(() => {
@@ -159,9 +160,8 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
   useEffect(() => {
     if (restoredConfig && profile && step === 'confirm') {
       clearPendingSubscription()
-      // Check profile completeness
       if (!isProfileComplete(profile)) {
-        setStep('profile')
+        setStep('address')
       }
     }
   }, [restoredConfig, profile, step])
@@ -194,7 +194,6 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
   // ── Advance to confirm — checks auth & profile ──────────────────────────
   const handleAdvanceToConfirm = useCallback(() => {
     if (!profile) {
-      // Save current config so it persists across login redirect
       savePendingSubscription({
         selectedItemIds: Array.from(selected),
         slot,
@@ -205,18 +204,23 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
       return
     }
 
-    if (!isProfileComplete(profile)) {
-      setStep('profile')
+    if (!isProfileComplete(profile) || !selectedAddress) {
+      setStep('address')
       return
     }
 
     setStep('confirm')
-  }, [profile, selected, slot, freq, duration])
+  }, [profile, selected, slot, freq, duration, selectedAddress])
+
+  const handleSelectAddress = useCallback((addr: UserAddress) => {
+    setSelectedAddress(addr)
+    setStep('confirm')
+  }, [])
 
   // ── Submit ────────────────────────────────────────────────────────────────
   async function handleSubscribe() {
     if (!profile) { router.push('/login'); return }
-    if (!isProfileComplete(profile)) { setStep('profile'); return }
+    if (!selectedAddress) { setStep('address'); return }
 
     setLoading(true)
     setError(null)
@@ -231,17 +235,28 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
           delivery_slot: slot,
           frequency:     freq,
           duration_days: duration,
-          address: profile.address_line1 ? {
+          address: {
             name:          profile.name,
             phone:         profile.phone,
-            address_line1: profile.address_line1,
-            city:          profile.city,
-            pincode:       profile.pincode,
-          } : null,
+            address_line1: selectedAddress.house_number,
+            address_line2: selectedAddress.street_address,
+            city:          selectedAddress.city,
+            state:         selectedAddress.state,
+            pincode:       selectedAddress.pincode,
+            landmark:      selectedAddress.landmark,
+          },
         }),
       })
-      const orderData = await res.json()
-      if (!res.ok) { setError(orderData.error ?? 'Failed to subscribe'); setLoading(false); return }
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error ?? 'Failed to subscribe')
+        setLoading(false)
+        // If it's the duplicate subscription error, send them back to pick a different slot
+        if (data.error?.toLowerCase().includes('already have active subscriptions')) {
+          setStep('schedule')
+        }
+        return
+      }
 
       // 2. Load Razorpay
       const loaded = await loadRazorpayScript()
@@ -254,11 +269,11 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
       // 3. Open Razorpay Checkout
       const options = {
         key:         process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        amount:      orderData.amount,
-        currency:    orderData.currency,
+        amount:      data.amount,
+        currency:    data.currency,
         name:        'Fuelist',
         description: 'Monthly Subscription',
-        order_id:    orderData.order_id,
+        order_id:    data.order_id,
         prefill: {
           name:    profile.name,
           contact: profile.phone,
@@ -297,7 +312,7 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
         },
       }
 
-      const rzp = new window.Razorpay(options)
+      const rzp = new (window as any).Razorpay(options)
       rzp.open()
 
     } catch {
@@ -307,15 +322,15 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
   }
 
   // ── Step header labels ────────────────────────────────────────────────────
-  const FLOW_STEPS: Step[] = ['items', 'schedule', 'confirm']
-  const stepIdx = FLOW_STEPS.indexOf(step)
+  const FLOW_STEPS: Step[] = ['items', 'schedule', 'address', 'confirm']
+  const stepIdx = FLOW_STEPS.indexOf(step === 'login' ? 'confirm' : step)
 
   const headerTitle =
     step === 'items'    ? 'Choose items'       :
     step === 'schedule' ? 'Set your schedule'  :
+    step === 'address'  ? 'Delivery address'   :
     step === 'confirm'  ? 'Confirm subscription' :
     step === 'login'    ? 'Login Required'     :
-    step === 'profile'  ? 'Complete Your Profile' :
     step === 'paying'   ? 'Processing payment' :
                           'Subscribed!'
 
@@ -330,7 +345,7 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
           <div>
             <h2 className="font-bold text-gray-900">{headerTitle}</h2>
-            {step !== 'success' && step !== 'paying' && step !== 'login' && step !== 'profile' && (
+            {step !== 'success' && step !== 'paying' && step !== 'login' && (
               <p className="text-xs text-gray-400 mt-0.5">
                 {selected.size === 0 ? 'Select items below' :
                  `${selected.size} item${selected.size !== 1 ? 's' : ''} selected`}
@@ -339,11 +354,11 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
           </div>
           <div className="flex items-center gap-3">
             {/* Step dots */}
-            {step !== 'success' && step !== 'paying' && step !== 'login' && step !== 'profile' && (
+            {step !== 'success' && step !== 'paying' && step !== 'login' && (
               <div className="flex gap-1.5">
-                {FLOW_STEPS.map((s, i) => (
+                {['items', 'schedule', 'address', 'confirm'].map((s, i) => (
                   <div key={s} className={`h-1.5 rounded-full transition-all ${
-                    i <= stepIdx ? 'w-4 bg-green-500' : 'w-1.5 bg-gray-200'
+                    (step === s || FLOW_STEPS.indexOf(step as any) > i) ? 'w-4 bg-green-500' : 'w-1.5 bg-gray-200'
                   }`} />
                 ))}
               </div>
@@ -359,7 +374,7 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
         </div>
 
         {/* ── Scrollable body ── */}
-        <div className="overflow-y-auto flex-1">
+        <div className="overflow-y-auto flex-1 min-h-0">
 
           {/* ═══ STEP: Login Required ═══ */}
           {step === 'login' && (
@@ -420,56 +435,28 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
             </div>
           )}
 
-          {/* ═══ STEP: Profile Incomplete ═══ */}
-          {step === 'profile' && (
-            <div className="px-5 py-10 text-center space-y-4">
-              <div className="text-5xl">📋</div>
-              <div>
-                <h3 className="text-lg font-extrabold text-gray-900">Complete Your Profile</h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  We need your delivery details to process this subscription. Please fill in your profile first.
-                </p>
+          {/* ═══ STEP: Address Selection ═══ */}
+          {step === 'address' && (
+            <div className="px-5 py-6">
+              <div className="mb-6">
+                <h3 className="text-lg font-extrabold text-gray-900">Delivery Location</h3>
+                <p className="text-sm text-gray-500">Select where you&apos;d like your meals delivered.</p>
               </div>
+              
+              <AddressManager 
+                hideHeader 
+                selectedId={selectedAddress?.id} 
+                onSelect={handleSelectAddress} 
+              />
 
-              {/* Show what&apos;s missing */}
-              <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-left space-y-1.5">
-                <p className="text-xs font-semibold text-amber-700">Required information:</p>
-                {[
-                  { label: 'Full name',    ok: !!profile?.name?.trim() },
-                  { label: 'Phone number', ok: !!profile?.phone?.trim() },
-                  { label: 'Address',      ok: !!profile?.address_line1?.trim() },
-                  { label: 'City',         ok: !!profile?.city?.trim() },
-                  { label: 'Pincode',      ok: !!profile?.pincode?.trim() },
-                ].map(({ label, ok }) => (
-                  <div key={label} className="flex items-center gap-2 text-xs">
-                    <span className={ok ? 'text-green-500' : 'text-red-400'}>{ok ? '✓' : '✕'}</span>
-                    <span className={ok ? 'text-gray-500' : 'text-amber-800 font-medium'}>{label}</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="pt-2">
+              <div className="mt-6 flex flex-col gap-4">
                 <button
-                  onClick={() => {
-                    savePendingSubscription({
-                      selectedItemIds: Array.from(selected),
-                      slot,
-                      freq,
-                      duration,
-                    })
-                    router.push('/account')
-                  }}
-                  className="w-full rounded-full bg-green-600 px-5 py-3 text-sm font-bold text-white hover:bg-green-700 transition-colors"
+                  onClick={() => setStep('schedule')}
+                  className="text-center text-sm text-gray-400 hover:text-gray-600"
                 >
-                  Go to Account Settings
+                  ← Back to schedule
                 </button>
               </div>
-              <button
-                onClick={() => setStep('schedule')}
-                className="text-xs text-gray-400 hover:text-gray-600"
-              >
-                ← Go back
-              </button>
             </div>
           )}
 
@@ -566,7 +553,7 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
                 <p className="text-sm font-semibold text-gray-700 mb-2">Delivery time</p>
                 <div className="grid grid-cols-3 gap-2">
                   {SLOTS.map((s) => (
-                    <button key={s.value} onClick={() => setSlot(s.value)}
+                    <button key={s.value} onClick={() => onSlotChange(s.value)}
                       className={`rounded-xl border-2 p-3 text-center transition-all ${
                         slot === s.value ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:border-gray-300'
                       }`}
@@ -584,7 +571,7 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
                 <p className="text-sm font-semibold text-gray-700 mb-2">Frequency</p>
                 <div className="space-y-2">
                   {FREQS.map((f) => (
-                    <button key={f.value} onClick={() => setFreq(f.value)}
+                    <button key={f.value} onClick={() => onFreqChange(f.value)}
                       className={`w-full flex items-center justify-between rounded-xl border-2 px-4 py-2.5 transition-all ${
                         freq === f.value ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:border-gray-300'
                       }`}
@@ -610,7 +597,7 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
                 <p className="text-sm font-semibold text-gray-700 mb-2">Duration</p>
                 <div className="grid grid-cols-3 gap-2">
                   {DURATIONS.map((d) => (
-                    <button key={d.value} onClick={() => setDuration(d.value)}
+                    <button key={d.value} onClick={() => onDurationChange(d.value)}
                       className={`rounded-xl border-2 p-3 text-center transition-all ${
                         duration === d.value ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:border-gray-300'
                       }`}
@@ -649,42 +636,43 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
           {/* ═══ STEP 3: Confirm ═══ */}
           {step === 'confirm' && (
             <div className="px-5 py-5 space-y-4">
-              {/* Items */}
+              {/* Items - Compact Thumbnail Grid */}
               <div>
-                <p className="text-sm font-semibold text-gray-700 mb-2">Items ({selectedItems.length})</p>
-                <div className="space-y-2">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">Items ({selectedItems.length})</p>
+                <div className="flex flex-wrap gap-2">
                   {selectedItems.map((item) => (
-                    <div key={item.id} className="flex items-center gap-3 rounded-xl bg-gray-50 border border-gray-100 p-3">
-                      <div className="relative h-10 w-10 shrink-0 rounded-lg overflow-hidden bg-white">
+                    <div key={item.id} className="flex items-center gap-2 rounded-lg bg-gray-50 border border-gray-100 p-1.5 pr-3 transition-colors hover:bg-gray-100">
+                      <div className="relative h-8 w-8 shrink-0 rounded-md overflow-hidden bg-white">
                         {item.image_url ? (
                           <Image src={getImageUrl(item.image_url)} alt={item.name} fill className="object-cover" />
-                        ) : <div className="flex h-full items-center justify-center text-lg">🥗</div>}
+                        ) : <div className="flex h-full items-center justify-center text-xs">🥗</div>}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
-                        <p className="text-xs text-gray-400">{formatPrice(item.price)}/delivery</p>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-gray-900 truncate max-w-[120px]">{item.name}</p>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Schedule summary */}
-              <div className="rounded-xl border border-gray-100 bg-gray-50 divide-y divide-gray-100">
+              {/* Schedule summary - 2 Column Grid */}
+              <div className="rounded-xl border border-gray-100 bg-gray-50 p-3 grid grid-cols-2 gap-x-4 gap-y-2.5">
                 {[
-                  { label: 'Delivery time', value: `${slotLabel.icon} ${slotLabel.label} (${slotLabel.time})` },
-                  { label: 'Frequency',     value: `${freqLabel.label} — ${freqLabel.desc}` },
-                  { label: 'Duration',      value: `${durationLabel.label} · ${deliveries} deliveries` },
-                  { label: 'Total amount',  value: formatPrice(finalTotal) },
-                ].map(({ label, value }) => (
-                  <div key={label} className="flex items-center justify-between px-4 py-2.5 text-sm">
-                    <span className="text-gray-500">{label}</span>
-                    <span className="font-medium text-gray-800 text-right">{value}</span>
+                  { label: 'Time',     value: `${slotLabel.icon} ${slotLabel.label}` },
+                  { label: 'Freq',     value: freqLabel.label },
+                  { label: 'Plan',     value: durationLabel.label },
+                  { label: 'Deliveries',value: deliveries },
+                  { label: 'Address',  value: selectedAddress ? [selectedAddress.house_number, selectedAddress.street_address, selectedAddress.landmark, selectedAddress.city, selectedAddress.pincode].filter(Boolean).join(', ') : 'None', fullWidth: true },
+                  { label: 'Total',    value: formatPrice(finalTotal), isTotal: true },
+                ].map(({ label, value, fullWidth, isTotal }) => (
+                  <div key={label} className={`flex flex-col ${fullWidth ? 'col-span-2' : ''} ${isTotal ? 'border-t border-gray-200 mt-1 pt-2 col-span-2' : ''}`}>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{label}</span>
+                    <span className={`text-sm ${isTotal ? 'text-lg font-black text-green-600' : 'font-semibold text-gray-800'} truncate`}>
+                      {value}
+                    </span>
                   </div>
                 ))}
               </div>
-
-              {error && <p className="text-sm text-red-500 text-center">{error}</p>}
             </div>
           )}
 
@@ -745,9 +733,14 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
 
         {step === 'schedule' && (
           <div className="px-5 py-4 border-t border-gray-100 shrink-0 bg-white space-y-2">
+            {error && (
+              <p className="text-center text-xs font-semibold text-red-500 pb-1 animate-in fade-in slide-in-from-bottom-1 duration-300">
+                {error}
+              </p>
+            )}
             <button onClick={handleAdvanceToConfirm}
               className="flex w-full items-center justify-center gap-2 rounded-full bg-green-600 px-6 py-3.5 text-white font-bold text-base hover:bg-green-700 active:scale-95 transition-all shadow-md shadow-green-100">
-              Review & confirm
+              Continue to delivery
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
@@ -756,8 +749,20 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
           </div>
         )}
 
+        {step === 'address' && (
+          <div className="px-5 py-4 border-t border-gray-100 shrink-0 bg-white space-y-2">
+             <p className="text-center text-xs text-gray-400 pb-2">Select an address above to continue</p>
+             <button onClick={() => setStep('schedule')} className="w-full text-center text-sm text-gray-400 hover:text-gray-600 py-1">Back</button>
+          </div>
+        )}
+
         {step === 'confirm' && (
           <div className="px-5 py-4 border-t border-gray-100 shrink-0 bg-white space-y-2">
+            {error && (
+              <p className="text-center text-xs font-semibold text-red-500 pb-1 animate-in fade-in slide-in-from-bottom-1 duration-300">
+                {error}
+              </p>
+            )}
             <button
               onClick={handleSubscribe}
               disabled={loading || !isEnabled}
@@ -774,12 +779,7 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
                 'Service Paused'
               )}
             </button>
-            {!isEnabled && (
-              <p className="text-center text-xs text-gray-400 mt-1">
-                {serviceMessage}
-              </p>
-            )}
-            <button onClick={() => setStep('schedule')} className="w-full text-center text-sm text-gray-400 hover:text-gray-600 py-1">Back</button>
+            <button onClick={() => setStep('address')} className="w-full text-center text-sm text-gray-400 hover:text-gray-600 py-1">Change address</button>
           </div>
         )}
       </div>

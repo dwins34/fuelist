@@ -38,7 +38,7 @@ const CONTACT_METHODS = [
   },
   {
     title: 'Phone',
-    value: '+91 888282892',
+    value: '+91 888282822',
     description: 'For urgent delivery issues, give us a call.',
     icon: Phone,
     color: 'text-purple-600',

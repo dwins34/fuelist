@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { createClient } from '@/lib/supabase/server'
 import { Coupon } from '@/types'
+import { getTodayStrIST } from '@/lib/utils'
 
 const POINTS_PER_RUPEE    = 1 / 100  // ₹100 = 1 point
 const MAX_REDEEM_FRACTION = 0.5      // max 50% of order value redeemable
@@ -140,13 +141,27 @@ export async function POST(req: NextRequest) {
       })
       .select('id')
       .single()
-
+    
     if (insertError) {
       console.error('Order insert error:', insertError)
       return NextResponse.json({ error: 'Failed to save order' }, { status: 500 })
     }
 
     const orderId = order.id
+
+    // ── 8b. Add to delivery_log for real-time visibility ───────────────────────
+    void Promise.resolve(
+      supabase.from('delivery_log').insert({
+        order_id:      orderId,
+        user_id:       user?.id ?? null,
+        delivery_date: getTodayStrIST(),
+        delivery_slot: 'afternoon', // Default for one-time orders
+        status:        'new',
+        items:         items?.map((i: any) => ({ item: i, quantity: i.quantity || 1 })) || [],
+        total_amount:  baseAmount,
+        address:       address ?? null,
+      })
+    ).catch(err => console.error('Failed to create initial delivery_log entry:', err))
 
     // ── 9. Post-order side effects (non-blocking) ─────────────────────────────
     if (user) {

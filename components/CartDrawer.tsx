@@ -11,6 +11,8 @@ import { useServiceStatus } from '@/context/ServiceStatusContext'
 import { isInServiceArea, SERVICE_AREA_DESCRIPTION, SERVED_AREAS } from '@/lib/serviceArea'
 import CouponInput from '@/components/CouponInput'
 import RewardPointsToggle from '@/components/RewardPointsToggle'
+import AddressManager from '@/components/account/AddressManager'
+import { UserAddress } from '@/hooks/useAddresses'
 import { ApplyCouponResult } from '@/types'
 
 // Extend Window to hold the Razorpay constructor
@@ -73,8 +75,6 @@ const EMPTY_ADDRESS: DeliveryAddress = {
 }
 
 // ── Load Razorpay checkout.js once ───────────────────────────────────────────
-// TODO: Uncomment when enabling Razorpay live keys
-//
 function loadRazorpayScript(): Promise<boolean> {
   return new Promise((resolve) => {
     if (typeof window !== 'undefined' && window.Razorpay) {
@@ -131,8 +131,8 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
 
   const [address, setAddress]         = useState<DeliveryAddress>(EMPTY_ADDRESS)
   const [errors, setErrors]           = useState<AddressErrors>({})
-  const [saveAddr, setSaveAddr]       = useState(false)
   const [addrLoading, setAddrLoading] = useState(false)
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null)
   const [payError, setPayError]       = useState<string | null>(null)
   const [outOfArea, setOutOfArea]     = useState(false)
 
@@ -175,8 +175,14 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
 
   // ── Lock body scroll ──────────────────────────────────────────────────────
   useEffect(() => {
-    document.body.style.overflow = open ? 'hidden' : ''
-    return () => { document.body.style.overflow = '' }
+    if (typeof document !== 'undefined') {
+      document.body.style.overflow = open ? 'hidden' : ''
+    }
+    return () => { 
+      if (typeof document !== 'undefined') {
+        document.body.style.overflow = ''
+      }
+    }
   }, [open])
 
   // ── Pre-fill address from profile when entering step 2 ───────────────────
@@ -185,17 +191,11 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
     setAddrLoading(true)
     try {
       if (!profile) { setAddrLoading(false); return }
-      setAddress({
+      setAddress((prev) => ({
+        ...prev,
         name:          profile.name          ?? '',
-        phone:         profile.phone         ?? '',
-        address_line1: profile.address_line1 ?? '',
-        address_line2: profile.address_line2 ?? '',
-        city:          profile.city          ?? '',
-        state:         profile.state         ?? '',
-        pincode:       profile.pincode       ?? '',
-        landmark:      profile.landmark      ?? '',
-      })
-      setSaveAddr(!profile.address_line1)
+        phone:         profile.phone         ?? ''
+      }))
     } catch {
       // Guest — show empty form
     } finally {
@@ -214,52 +214,41 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
       headers: { apikey: sbKey, Authorization: `Bearer ${accessToken}` },
     })
       .then((r) => r.json())
-      .then((rows: unknown[]) => setIsFirstOrder(rows.length === 0))
+      .then((rows: any[]) => setIsFirstOrder(rows?.length === 0))
       .catch(() => {})
   }, [profile, accessToken])
 
-  function setField(key: keyof DeliveryAddress) {
+  const setField = useCallback((key: keyof DeliveryAddress) => {
     return (val: string) => {
       setAddress((prev) => ({ ...prev, [key]: val }))
       setErrors((prev) => ({ ...prev, [key]: undefined }))
     }
-  }
+  }, [])
 
-  // ── Optionally persist address to profile ─────────────────────────────────
-  async function maybeSaveAddress() {
-    if (!saveAddr || !profile || !accessToken) return
-    const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    if (!sbUrl || !sbKey) return
-    await fetch(`${sbUrl}/rest/v1/users`, {
-      method: 'POST',
-      headers: {
-        apikey:         sbKey,
-        Authorization:  `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-        Prefer:         'resolution=merge-duplicates',
-      },
-      body: JSON.stringify({
-        id:            profile.id,
-        name:          address.name,
-        phone:         address.phone,
-        address_line1: address.address_line1,
-        address_line2: address.address_line2 ?? '',
-        city:          address.city,
-        state:         address.state ?? '',
-        pincode:       address.pincode,
-        landmark:      address.landmark ?? '',
-      }),
-    })
-    await reloadProfile()
-  }
+  const handleSelectAddress = useCallback((addr: UserAddress) => {
+    setSelectedAddressId(addr.id)
+    setAddress(prev => ({
+      ...prev,
+      address_line1: addr.house_number,
+      address_line2: addr.street_address,
+      city: addr.city,
+      state: addr.state,
+      pincode: addr.pincode,
+      landmark: addr.landmark ?? ''
+    }))
+    setErrors(prev => ({
+      ...prev,
+      address_line1: undefined,
+      city: undefined,
+      pincode: undefined
+    }))
+  }, [])
 
   // ── Checkout handler ──────────────────────────────────────────────────────
   const handlePayment = useCallback(async () => {
     const errs = validateAddress(address)
     if (Object.keys(errs).length) { setErrors(errs); return }
 
-    // ── Service area check ─────────────────────────────────────────────────
     if (!isInServiceArea(address.pincode)) {
       setOutOfArea(true)
       return
@@ -268,13 +257,6 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
     setPayError(null)
     setStep('paying')
 
-    // Optionally save address to profile
-    maybeSaveAddress().catch(() => {})
-
-    // ── PRODUCTION: Razorpay flow ──────────────────────────────────────────
-    // TODO: Uncomment this entire block and remove the "Direct confirm" block
-    //       below once you have live Razorpay API keys.
-    //
     const loaded = await loadRazorpayScript()
     if (!loaded) {
       setPayError('Could not load payment gateway. Please check your internet connection.')
@@ -298,7 +280,7 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
       return
     }
     
-    const options: Record<string, unknown> = {
+    const options: Record<string, any> = {
       key:         process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
       amount:      orderData.amount,
       currency:    orderData.currency,
@@ -311,11 +293,7 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
         email:   profile?.email ?? '',
       },
       theme: { color: '#16a34a' },
-      handler: async (response: {
-        razorpay_order_id:   string
-        razorpay_payment_id: string
-        razorpay_signature:  string
-      }) => {
+      handler: async (response: any) => {
         try {
           const verifyRes = await fetch('/api/payment/verify', {
             method:  'POST',
@@ -358,64 +336,14 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
     const rzp = new window.Razorpay(options)
     rzp.on?.('payment.failed', () => {
       setStep('address')
-      setPayError('Payment failed. Please try again with a different method.')
+      setPayError('Payment failed. Please try again.')
     })
     rzp.open()
-    // ── END Razorpay block ─────────────────────────────────────────────────
 
-    // ── TEMPORARY: Direct confirm (bypasses payment, remove when going live) ─
-    // try {
-    //   const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    //   const sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    //   if (!sbUrl || !sbKey) throw new Error('Supabase not configured')
-
-    //   const body: Record<string, unknown> = {
-    //     items,
-    //     total_amount:   total,
-    //     payment_status: 'paid',
-    //     order_status:   'new',
-    //     address,
-    //   }
-    //   if (profile?.id) body.user_id = profile.id
-
-    //   const res = await fetch(`${sbUrl}/rest/v1/orders`, {
-    //     method:  'POST',
-    //     headers: {
-    //       apikey:         sbKey,
-    //       Authorization:  `Bearer ${accessToken ?? sbKey}`,
-    //       'Content-Type': 'application/json',
-    //       Prefer:         'return=representation',
-    //     },
-    //     body: JSON.stringify(body),
-    //   })
-
-    //   if (!res.ok) throw new Error(await res.text())
-    //   const [order] = await res.json()
-
-    //   try {
-    //     sessionStorage.setItem('fuelist_last_order', JSON.stringify({
-    //       order_id: order.id, items, total, address,
-    //     }))
-    //   } catch {}
-
-    //   clearCart()
-    //   onClose()
-    //   router.push(`/payment/success?order_id=${order.id}`)
-    // } catch (err) {
-    //   console.error('direct confirm failed:', err)
-    //   setPayError('Could not place order. Please try again.')
-    //   setStep('address')
-    // }
-    // ── END temporary block ────────────────────────────────────────────────
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [address, items, total, finalTotal, appliedCoupon, pointsToUse, profile, accessToken, clearCart, onClose, router])
-
-  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <>
-      {/* Backdrop */}
       <div
         className={`fixed inset-0 z-50 bg-black/40 transition-opacity duration-300 ${
           open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
@@ -424,7 +352,6 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
         aria-hidden="true"
       />
 
-      {/* Drawer */}
       <div
         ref={drawerRef}
         className={`fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col bg-white shadow-2xl transition-transform duration-300 ease-out ${
@@ -432,9 +359,7 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
         }`}
         role="dialog"
         aria-modal="true"
-        aria-label={step === 'cart' ? 'Shopping cart' : 'Delivery address'}
       >
-        {/* ── Header ── */}
         <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
           <div className="flex items-center gap-2">
             {(step === 'address') && (
@@ -483,7 +408,6 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
           </div>
         </div>
 
-        {/* ── Step indicator ── */}
         {items.length > 0 && (
           <div className="flex items-center gap-2 px-5 py-2.5 bg-gray-50 border-b border-gray-100 text-xs text-gray-400">
             <span className={step === 'cart' ? 'text-green-600 font-semibold' : ''}>1. Cart</span>
@@ -498,7 +422,6 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
           </div>
         )}
 
-        {/* ── STEP 1: Cart items ── */}
         {step === 'cart' && (
           <>
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
@@ -523,26 +446,14 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
                       <p className="text-xs text-gray-400">{item.calories} kcal · P {item.protein}g</p>
                       <div className="flex items-center justify-between mt-auto">
                         <div className="flex items-center gap-1.5 rounded-full bg-gray-50 border border-gray-200 px-1">
-                          <button
-                            onClick={() => updateQuantity(item.id, quantity - 1)}
-                            className="h-6 w-6 rounded-full text-gray-500 hover:bg-gray-200 flex items-center justify-center text-sm font-bold transition-colors"
-                          >−</button>
+                          <button onClick={() => updateQuantity(item.id, quantity - 1)} className="h-6 w-6 rounded-full text-gray-500 hover:bg-gray-200 flex items-center justify-center text-sm font-bold transition-colors">−</button>
                           <span className="w-4 text-center text-sm font-bold text-gray-700">{quantity}</span>
-                          <button
-                            onClick={() => updateQuantity(item.id, quantity + 1)}
-                            className="h-6 w-6 rounded-full text-gray-500 hover:bg-gray-200 flex items-center justify-center text-sm font-bold transition-colors"
-                          >+</button>
+                          <button onClick={() => updateQuantity(item.id, quantity + 1)} className="h-6 w-6 rounded-full text-gray-500 hover:bg-gray-200 flex items-center justify-center text-sm font-bold transition-colors">+</button>
                         </div>
-                        <span className="font-bold text-green-600 text-sm">
-                          {formatPrice(item.price * quantity)}
-                        </span>
+                        <span className="font-bold text-green-600 text-sm">{formatPrice(item.price * quantity)}</span>
                       </div>
                     </div>
-                    <button
-                      onClick={() => removeItem(item.id)}
-                      className="self-start rounded-full p-1 text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors"
-                      aria-label={`Remove ${item.name}`}
-                    >
+                    <button onClick={() => removeItem(item.id)} className="self-start rounded-full p-1 text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors">
                       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
@@ -554,25 +465,8 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
 
             {items.length > 0 && (
               <div className="border-t border-gray-100 px-5 py-4 space-y-3 bg-white">
-
-                {/* Coupon input */}
-                <CouponInput
-                  orderAmount={total}
-                  applied={appliedCoupon}
-                  isFirstOrder={isFirstOrder}
-                  onApply={(result) => setAppliedCoupon(result)}
-                  onRemove={() => { setAppliedCoupon(null); setPointsToUse(0) }}
-                />
-
-                {/* Reward points toggle */}
-                <RewardPointsToggle
-                  availablePoints={profile?.reward_points ?? 0}
-                  orderAmount={total - discountAmount}
-                  pointsToUse={pointsToUse}
-                  onChange={setPointsToUse}
-                />
-
-                {/* Order total breakdown */}
+                <CouponInput orderAmount={total} applied={appliedCoupon} isFirstOrder={isFirstOrder} onApply={(result) => setAppliedCoupon(result)} onRemove={() => { setAppliedCoupon(null); setPointsToUse(0) }} />
+                <RewardPointsToggle availablePoints={profile?.reward_points ?? 0} orderAmount={total - discountAmount} pointsToUse={pointsToUse} onChange={setPointsToUse} />
                 <div className="space-y-1 pt-1">
                   <div className="flex items-center justify-between text-sm text-gray-500">
                     <span>{count} item{count !== 1 ? 's' : ''}</span>
@@ -594,82 +488,26 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
                     <span>Total</span>
                     <span className="text-base">{formatPrice(finalTotal)}</span>
                   </div>
-                  {Math.floor(finalTotal / 100) > 0 && (
-                    <div className="flex items-center justify-between text-xs text-amber-600 bg-amber-50 rounded-lg px-2.5 py-1.5 mt-1">
-                      <span>⭐ Points you&apos;ll earn</span>
-                      <span className="font-semibold">+{Math.floor(finalTotal / 100)} pts</span>
-                    </div>
-                  )}
                 </div>
-
                 <button
                   onClick={goToAddressStep}
                   disabled={!isEnabled}
-                  className="flex w-full items-center justify-center gap-2 rounded-full bg-green-600 px-6 py-3.5 text-white font-bold text-base hover:bg-green-700 active:scale-95 transition-all shadow-md shadow-green-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-400"
+                  className="flex w-full items-center justify-center gap-2 rounded-full bg-green-600 px-6 py-3.5 text-white font-bold text-base hover:bg-green-700 active:scale-95 transition-all shadow-md shadow-green-100 disabled:opacity-50 disabled:bg-gray-400"
                 >
-                  {isEnabled ? (
-                    <>
-                      Continue to delivery
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </>
-                  ) : (
-                    'Service Paused'
-                  )}
+                  {isEnabled ? 'Continue to delivery' : 'Service Paused'}
                 </button>
-                <p className="text-center text-xs text-gray-400">
-                  {isEnabled ? 'Next: confirm your delivery address' : serviceMessage}
-                </p>
               </div>
             )}
           </>
         )}
 
-        {/* ── STEP 2: Address ── */}
         {step === 'address' && outOfArea && (
-          <>
-            <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
-              <div className="text-5xl">🚫</div>
-              <div>
-                <h3 className="text-lg font-bold text-gray-900 mb-1">Outside Delivery Area</h3>
-                <p className="text-sm text-gray-500 leading-relaxed">
-                  Sorry! We currently only deliver within{' '}
-                  <span className="font-semibold text-gray-700">{SERVICE_AREA_DESCRIPTION}</span>.
-                </p>
-              </div>
-
-              <div className="w-full rounded-2xl bg-green-50 border border-green-100 px-4 py-4 text-left">
-                <p className="text-xs font-semibold text-green-700 mb-2">Areas we serve:</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {SERVED_AREAS.map((area) => (
-                    <span key={area} className="rounded-full bg-white border border-green-200 px-2.5 py-0.5 text-xs text-green-700">
-                      {area}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <p className="text-xs text-gray-400">
-                We&apos;re expanding soon — hope to serve your area shortly! 🙏
-              </p>
-            </div>
-
-            <div className="border-t border-gray-100 px-5 py-4 space-y-2 bg-white">
-              <button
-                onClick={() => setOutOfArea(false)}
-                className="flex w-full items-center justify-center gap-2 rounded-full bg-green-600 px-6 py-3.5 text-white font-bold text-base hover:bg-green-700 active:scale-95 transition-all"
-              >
-                Change address
-              </button>
-              <button
-                onClick={onClose}
-                className="w-full text-center text-sm text-gray-400 hover:text-gray-600 py-1 transition-colors"
-              >
-                Continue browsing
-              </button>
-            </div>
-          </>
+          <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
+            <div className="text-5xl">🚫</div>
+            <h3 className="text-lg font-bold text-gray-900 mb-1">Outside Delivery Area</h3>
+            <p className="text-sm text-gray-500 mb-4">We deliver within {SERVICE_AREA_DESCRIPTION}.</p>
+            <button onClick={() => setOutOfArea(false)} className="bg-green-600 text-white px-6 py-2 rounded-full font-bold transition-all">Change address</button>
+          </div>
         )}
 
         {step === 'address' && !outOfArea && (
@@ -678,107 +516,34 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
               {addrLoading ? (
                 <div className="space-y-3 animate-pulse">
                   {[...Array(5)].map((_, i) => (
-                    <div key={i} className="space-y-1">
-                      <div className="h-3 w-20 bg-gray-200 rounded" />
-                      <div className="h-9 bg-gray-100 rounded-lg" />
-                    </div>
+                    <div key={i} className="h-12 bg-gray-100 rounded-lg" />
                   ))}
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {/* Order summary pill */}
                   <div className="rounded-xl bg-green-50 border border-green-100 px-4 py-3 flex items-center justify-between">
-                    <span className="text-sm text-green-800 font-medium">
-                      {count} item{count !== 1 ? 's' : ''}
-                    </span>
+                    <span className="text-sm text-green-800 font-medium">{count} item{count !== 1 ? 's' : ''}</span>
                     <span className="text-sm font-bold text-green-700">{formatPrice(total)}</span>
                   </div>
-
-                  <p className="text-xs text-gray-400 pb-1">
-                    Where should we deliver your order?
-                  </p>
-
-                  <Field label="Full name" value={address.name}
-                    onChange={setField('name')} placeholder="Your name" error={errors.name} />
-
-                  <Field label="Phone number" value={address.phone}
-                    onChange={setField('phone')} placeholder="+91 98765 43210"
-                    type="tel" error={errors.phone} />
-
-                  <Field label="Address line 1" value={address.address_line1}
-                    onChange={setField('address_line1')}
-                    placeholder="House / flat / building no." error={errors.address_line1} />
-
-                  <Field label="Address line 2" value={address.address_line2 ?? ''}
-                    onChange={setField('address_line2')}
-                    placeholder="Street / area / colony" optional />
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <Field label="City" value={address.city}
-                      onChange={setField('city')} placeholder="New Delhi" error={errors.city} />
-                    <Field label="State" value={address.state ?? ''}
-                      onChange={setField('state')} placeholder="Delhi" optional />
+                  <Field label="Full name" value={address.name} onChange={setField('name')} placeholder="Your name" error={errors.name} />
+                  <Field label="Phone number" value={address.phone} onChange={setField('phone')} placeholder="+91 98765 43210" type="tel" error={errors.phone} />
+                  <div className="pt-2">
+                    <AddressManager hideHeader selectedId={selectedAddressId || undefined} onSelect={handleSelectAddress} />
                   </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <Field label="Pincode" value={address.pincode}
-                      onChange={setField('pincode')} placeholder="110001"
-                      inputMode="numeric" error={errors.pincode} />
-                    <Field label="Landmark" value={address.landmark ?? ''}
-                      onChange={setField('landmark')} placeholder="Near metro" optional />
-                  </div>
-
-                  <label className="flex items-center gap-2.5 cursor-pointer pt-1">
-                    <input
-                      type="checkbox"
-                      checked={saveAddr}
-                      onChange={(e) => setSaveAddr(e.target.checked)}
-                      className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
-                    />
-                    <span className="text-xs text-gray-500">Save this address to my profile</span>
-                  </label>
                 </div>
               )}
             </div>
-
-            <div className="border-t border-gray-100 px-5 py-4 space-y-2 bg-white">
-              {payError && (
-                <p className="text-xs text-red-500 text-center">{payError}</p>
-              )}
-              {Object.keys(errors).length > 0 && (
-                <p className="text-xs text-red-500 text-center">
-                  Please fill in all required fields above.
-                </p>
-              )}
-              <button
-                onClick={handlePayment}
-                disabled={addrLoading}
-                className="flex w-full items-center justify-center gap-2.5 rounded-full bg-green-600 px-6 py-3.5 text-white font-bold text-base hover:bg-green-700 active:scale-95 transition-all shadow-md shadow-green-100 disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                </svg>
-                Proceed to Payment
-              </button>
-              <p className="text-center text-xs text-gray-400">
-                Secure payment via Razorpay · UPI / Card / Wallet
-              </p>
+            <div className="border-t border-gray-100 px-5 py-4 bg-white">
+              {payError && <p className="text-xs text-red-500 mb-2 truncate">{payError}</p>}
+              <button onClick={handlePayment} disabled={addrLoading} className="w-full rounded-full bg-green-600 py-3.5 text-white font-bold hover:bg-green-700 transition-all">Proceed to Payment</button>
             </div>
           </>
         )}
 
-        {/* ── STEP 3: Paying spinner (Razorpay modal is open) ── */}
         {step === 'paying' && (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 px-5">
-            <svg className="h-10 w-10 animate-spin text-green-500" viewBox="0 0 24 24" fill="none">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-            </svg>
-            <p className="text-gray-500 font-medium text-sm">Opening payment gateway…</p>
-            <p className="text-xs text-gray-400 text-center">
-              Complete your payment in the Razorpay window.<br />Do not close this tab.
-            </p>
+            <svg className="h-10 w-10 animate-spin text-green-500" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" /></svg>
+            <p className="text-gray-500 font-medium">Opening payment gateway…</p>
           </div>
         )}
       </div>

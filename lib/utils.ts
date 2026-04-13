@@ -31,3 +31,14 @@ export function getImageUrl(url: string) {
 
   return url
 }
+
+/**
+ * Returns today's date in YYYY-MM-DD format using IST (+5:30)
+ */
+export function getTodayStrIST(): string {
+  const date = new Date()
+  // IST is UTC + 5:30
+  const istOffset = 5.5 * 60 * 60 * 1000
+  const istDate = new Date(date.getTime() + istOffset)
+  return istDate.toISOString().split('T')[0]
+}

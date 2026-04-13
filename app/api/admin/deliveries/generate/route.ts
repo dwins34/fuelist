@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { getTodayStrIST } from '@/lib/utils'
 
 const supabaseAdmin = createAdminClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -31,9 +32,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    const today = new Date()
-    const todayStr = today.toISOString().split('T')[0]
-    const dayOfWeek = today.getDay() // 0=Sun, 1=Mon, ..., 6=Sat
+    const todayStr = getTodayStrIST()
+    
+    // Get day of week in IST
+    const date = new Date()
+    const istOffset = 5.5 * 60 * 60 * 1000
+    const istDate = new Date(date.getTime() + istOffset)
+    const dayOfWeek = istDate.getUTCDay() // 0=Sun, 1=Mon... 6=Sat (using UTC day on offset date is effectively IST day)
+
 
     // 1. Fetch active subscriptions for today
     const { data: subscriptions, error: subError } = await supabaseAdmin
@@ -76,7 +82,7 @@ export async function POST(req: NextRequest) {
         user_id:         sub.user_id,
         delivery_date:   todayStr,
         delivery_slot:   sub.delivery_slot,
-        status:          'preparing',
+        status:          'new',
         items:           [{ item: sub.menu_items, quantity: 1 }],
         total_amount:    sub.price_per_delivery,
         address:         sub.address,
@@ -90,7 +96,7 @@ export async function POST(req: NextRequest) {
         user_id:         order.user_id,
         delivery_date:   todayStr,
         delivery_slot:   'afternoon', // Default for one-off if not specified
-        status:          order.order_status === 'new' ? 'preparing' : order.order_status,
+        status:          'new',
         items:           order.items,
         total_amount:    order.total_amount,
         address:         order.address,

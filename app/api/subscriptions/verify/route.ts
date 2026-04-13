@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { createClient } from '@/lib/supabase/server'
+import { getTodayStrIST } from '@/lib/utils'
 
 export async function POST(req: NextRequest) {
   try {
@@ -54,6 +55,40 @@ export async function POST(req: NextRequest) {
     if (!data || data.length === 0) {
       // Maybe already processed or mismatch
       return NextResponse.json({ success: true, message: 'Already activated or no matching pending subscriptions' })
+    }
+
+    // ── 5. Add to delivery_log if start_date is today ─────────────────────────
+    try {
+      const todayStr = getTodayStrIST()
+      const dayOfWeek = new Date().getDay() // 0=Sun, 1=Mon... 6=Sat
+
+      // Fetch items for the logs
+      const itemIds = data.map(s => s.menu_item_id)
+      const { data: items } = await supabase.from('menu_items').select('id, name, image_url, price').in('id', itemIds)
+      const itemMap = Object.fromEntries(items?.map(i => [i.id, i]) || [])
+
+      const logs = data.filter(sub => {
+        if (sub.start_date !== todayStr) return false
+        if (sub.frequency === 'daily') return true
+        if (sub.frequency === 'weekdays') return dayOfWeek >= 1 && dayOfWeek <= 5
+        if (sub.frequency === 'weekends') return dayOfWeek === 0 || dayOfWeek === 6
+        return false
+      }).map(sub => ({
+        subscription_id: sub.id,
+        user_id:         sub.user_id,
+        delivery_date:   todayStr,
+        delivery_slot:   sub.delivery_slot,
+        status:          'new',
+        items:           [{ item: itemMap[sub.menu_item_id], quantity: 1 }],
+        total_amount:    sub.price_per_delivery,
+        address:         sub.address,
+      }))
+
+      if (logs.length > 0) {
+        await supabase.from('delivery_log').insert(logs)
+      }
+    } catch (err) {
+      console.error('Failed to auto-generate first delivery log:', err)
     }
 
     return NextResponse.json({
