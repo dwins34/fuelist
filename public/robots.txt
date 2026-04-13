@@ -2,6 +2,13 @@
 User-agent: *
 Allow: /
 
+# *
+User-agent: *
+Disallow: /orders
+Disallow: /account
+Disallow: /admin
+Disallow: /payment
+
 # Host
 Host: https://fuelist.in
 
