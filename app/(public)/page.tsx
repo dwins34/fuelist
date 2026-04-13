@@ -1,6 +1,20 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import Button from '@/components/ui/Button'
 import HeroCTA from '@/components/HeroCTA'
+
+// Page-level metadata overrides the root layout defaults for the home page.
+export const metadata: Metadata = {
+  title: 'Fuelist — Healthy Bowls Delivered',
+  description:
+    'Order handcrafted fruit bowls, breakfast bowls, and power bowls made with fresh, real ingredients. Full macro transparency. Delivered fast.',
+  alternates: { canonical: 'https://fuelist.in' },
+  openGraph: {
+    title: 'Fuelist — Healthy Bowls Delivered',
+    description: 'Fresh, nutritious bowls crafted with real ingredients. Order now.',
+    url: 'https://fuelist.in',
+  },
+}
 
 const FEATURES = [
   {
@@ -52,7 +66,9 @@ const CATEGORIES = [
   },
 ]
 
-export default function HomePage() {
+
+export default async function HomePage() {
+
   return (
     <>
       {/* Hero */}
@@ -121,6 +137,7 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
 
       {/* CTA */}
       <section className="bg-green-600 px-4 py-20 text-center">

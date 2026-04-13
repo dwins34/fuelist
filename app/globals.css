@@ -9,15 +9,112 @@
   box-sizing: border-box;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
+/* ── Default theme tokens ────────────────────────────────────────────────────
+   These CSS custom properties are the single source of truth for colours.
+   ThemeContext applies the same values programmatically after hydration.
+
+   To add a new theme later:
+     1. Add an entry to lib/themes.ts
+     2. Add a [data-theme="..."] block below (see the commented example)
+     3. Re-enable ThemeContext + ThemeSwitcher
+   ─────────────────────────────────────────────────────────────────────────── */
+:root {
+  --theme-bg:           #ffffff;
+  --theme-surface:      #ffffff;
+  --theme-surface-alt:  #f9fafb;
+  --theme-border:       #f3f4f6;
+  --theme-text-primary: #111827;
+  --theme-text-muted:   #6b7280;
+  --theme-accent:       #22c55e;
+  --theme-accent-hover: #16a34a;
+  --theme-overlay-bg:   transparent;
+  --theme-card-bg:      #ffffff;
+  --theme-card-border:  #f3f4f6;
+  --theme-card-blur:    0px;
+  --theme-nav-bg:       rgba(255,255,255,0.90);
+  --theme-nav-border:   #f3f4f6;
+}
+
+/*
+   ── Theme override stubs ────────────────────────────────────────────────────
+   Uncomment and fill in when you re-enable theme switching.
+
+   [data-theme="dark"] {
+     --theme-bg:           #0f172a;
+     --theme-surface:      #1e293b;
+     ... all other vars ...
+   }
+
+   [data-theme="your-new-theme"] {
+     ... vars ...
+   }
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* ── Base body ──────────────────────────────────────────────────────────────── */
 body {
-  background: #ffffff;
-  color: #111827;
+  background: var(--theme-bg);
+  color: var(--theme-text-primary);
   font-family: var(--font-sans), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background 0.4s ease, color 0.3s ease;
 }
 
-/* Smooth scroll */
-html {
-  scroll-behavior: smooth;
+/* ── Navbar glass ───────────────────────────────────────────────────────────── */
+/* Targets the <header> rendered by Navbar.tsx */
+header.fuelist-nav {
+  background: var(--theme-nav-bg) !important;
+  border-bottom-color: var(--theme-nav-border) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  transition: background 0.4s ease, border-color 0.3s ease;
+}
+
+
+/* ── Shared smooth transitions ──────────────────────────────────────────────── */
+/* Smooth card & surface colour transitions when theme switches */
+.rounded-2xl,
+header,
+footer,
+nav {
+  transition:
+    background    0.35s ease,
+    border-color  0.35s ease,
+    color         0.25s ease,
+    backdrop-filter 0.35s ease;
+}
+
+/* ── Utility classes ────────────────────────────────────────────────────────── */
+.glass {
+  background: var(--theme-card-bg);
+  border: 1px solid var(--theme-card-border);
+  backdrop-filter: blur(var(--theme-card-blur, 0px));
+  -webkit-backdrop-filter: blur(var(--theme-card-blur, 0px));
+}
+
+.glass-strong {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.50);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+/* ── Text contrast helper ───────────────────────────────────────────────────── */
+/* Adds subtle text-shadow for legibility over busy backgrounds */
+[data-theme="fruit-3d"] h1,
+[data-theme="fruit-3d"] h2 {
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* ── Page transition fade ───────────────────────────────────────────────────── */
+main {
+  animation: page-fade-in 0.3s ease;
+}
+@keyframes page-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }

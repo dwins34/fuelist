@@ -190,8 +190,9 @@ export default function AccountPage() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
   // Rewards state
-  const [rewardsLog, setRewardsLog]       = useState<UserRewardLog[]>([])
+  const [rewardsLog, setRewardsLog]         = useState<UserRewardLog[]>([])
   const [rewardsLoading, setRewardsLoading] = useState(false)
+  const [showRedeemTips, setShowRedeemTips] = useState(false)
 
   // Subscriptions state
   const [subscriptions, setSubscriptions]         = useState<SubscriptionRow[]>([])
@@ -397,55 +398,167 @@ export default function AccountPage() {
         <p className="text-sm text-gray-500 mt-1">Your details are saved for faster checkout.</p>
       </div>
 
-      {/* ── Reward Points ── */}
-      <section className="rounded-2xl bg-gradient-to-br from-amber-50 to-yellow-50 border border-amber-200 shadow-sm p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-base font-semibold text-gray-800 flex items-center gap-2">
-              ⭐ Reward Points
-            </h2>
-            <p className="text-xs text-gray-500 mt-0.5">Earn 1 pt for every ₹100 spent · 1 pt = ₹1 off</p>
+      {/* ── Reward Points Card ── */}
+      <section className="rounded-2xl overflow-hidden border border-green-100 shadow-sm" aria-label="Reward points">
+
+        {/* ── Card: Header ── */}
+        <div className="bg-white border-b border-green-100 px-5 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            {/* Fuelist leaf icon */}
+            <svg viewBox="0 0 24 24" className="h-6 w-6 text-green-500" fill="currentColor" aria-hidden="true">
+              <path d="M17 8C8 10 5.9 16.17 3.82 21.34L5.71 22l1-2.3A4.49 4.49 0 008 20C19 20 22 3 22 3c-1 2-8 2-8 2 0-3 7-2 7-2S23.5 3 17 8z"/>
+            </svg>
+            <span className="text-base font-bold text-gray-800 tracking-wide">Fuelist</span>
           </div>
           <div className="text-right">
-            <p className="text-3xl font-extrabold text-amber-600">{profile?.reward_points ?? 0}</p>
-            <p className="text-xs text-amber-500 font-medium">
-              ≈ {formatPrice(profile?.reward_points ?? 0)} value
+            <p className="text-[10px] font-bold tracking-widest text-green-500 uppercase">Points</p>
+            <p className="text-3xl font-extrabold text-green-600 leading-none">
+              {profile?.reward_points ?? 0}
             </p>
           </div>
         </div>
 
-        {rewardsLoading ? (
-          <div className="space-y-2 animate-pulse">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="h-8 bg-amber-100 rounded-lg" />
-            ))}
+        {/* ── Card: Middle — light aesthetic band ── */}
+        <div className="relative bg-gradient-to-br from-green-50 via-white to-emerald-50 flex flex-col items-center justify-center py-9 px-6 overflow-hidden">
+
+          {/* Decorative bokeh circles */}
+          <div className="pointer-events-none" aria-hidden="true">
+            <div className="absolute -top-4 -left-4 h-24 w-24 rounded-full bg-green-200/40 blur-2xl" />
+            <div className="absolute -bottom-4 -right-4 h-28 w-28 rounded-full bg-emerald-200/50 blur-2xl" />
+            <div className="absolute top-3 right-10 h-12 w-12 rounded-full bg-green-100/60 blur-xl" />
+            <div className="absolute bottom-3 left-10 h-10 w-10 rounded-full bg-teal-100/50 blur-lg" />
+            {/* Subtle dot grid pattern */}
+            <div className="absolute inset-0 opacity-[0.04]" style={{
+              backgroundImage: 'radial-gradient(#16a34a 1px, transparent 1px)',
+              backgroundSize: '18px 18px',
+            }} />
           </div>
-        ) : rewardsLog.length === 0 ? (
-          <p className="text-xs text-gray-400 text-center py-3">
-            No reward activity yet. Start ordering to earn points!
-          </p>
-        ) : (
-          <div className="space-y-1">
-            {rewardsLog.map((log) => (
-              <div key={log.id} className="flex items-center justify-between rounded-lg bg-white/70 px-3 py-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm">
-                    {log.type === 'order_earn'   ? '🛍️' :
-                     log.type === 'order_redeem' ? '💳' :
-                     log.type === 'review'       ? '⭐' : '🎁'}
-                  </span>
-                  <span className="text-xs text-gray-600 truncate max-w-[200px]">
-                    {log.description ?? log.type}
+
+          {/* Medallion */}
+          <div className="relative flex items-center justify-center mb-3">
+            {/* Outer glow ring */}
+            <div className="absolute h-28 w-28 rounded-full bg-green-100/70 blur-md" />
+            {/* Ring */}
+            <div className="absolute h-24 w-24 rounded-full border-2 border-green-200" />
+            {/* Inner white circle */}
+            <div className="relative h-16 w-16 rounded-full bg-white shadow-md border border-green-100 flex items-center justify-center">
+              <svg viewBox="0 0 24 24" className="h-8 w-8 text-green-500" fill="currentColor" aria-hidden="true">
+                <path d="M17 8C8 10 5.9 16.17 3.82 21.34L5.71 22l1-2.3A4.49 4.49 0 008 20C19 20 22 3 22 3c-1 2-8 2-8 2 0-3 7-2 7-2S23.5 3 17 8z"/>
+              </svg>
+            </div>
+          </div>
+
+          {/* Status chip */}
+          <div className="relative flex items-center gap-1.5 rounded-full bg-white border border-green-200 shadow-sm px-3 py-1">
+            <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+            <span className="text-[11px] font-semibold text-green-700 tracking-wide">Active Member</span>
+          </div>
+        </div>
+
+        {/* ── Card: Footer ── */}
+        <div className="bg-white border-t border-green-100 px-5 py-4 grid grid-cols-2 gap-4">
+          <div>
+            <p className="text-[10px] font-bold tracking-widest text-green-500 uppercase">Reward Value</p>
+            <p className="text-xl font-extrabold text-green-600 mt-0.5">
+              {formatPrice(profile?.reward_points ?? 0)}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] font-bold tracking-widest text-green-500 uppercase">Earn Rate</p>
+            <p className="text-xl font-extrabold text-green-600 mt-0.5">₹100 = 1 pt</p>
+          </div>
+        </div>
+
+        {/* ── Activity log / empty states (below card) ── */}
+        <div className="bg-gray-50 border border-t-0 border-green-100 rounded-b-2xl px-5 py-4">
+          {rewardsLoading ? (
+            <div className="space-y-2 animate-pulse">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="h-8 bg-gray-200 rounded-lg" />
+              ))}
+            </div>
+          ) : rewardsLog.length === 0 ? (
+            (profile?.reward_points ?? 0) > 0 ? (
+              /* Has points but no log entries */
+              <div className="space-y-3">
+                {/* Collapsible redeem tips */}
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => setShowRedeemTips((v) => !v)}
+                    className="flex w-full items-center justify-between text-xs font-medium text-gray-600 hover:text-gray-800 transition-colors"
+                  >
+                    <span>How to redeem</span>
+                    <svg
+                      className={`h-3.5 w-3.5 text-gray-400 transition-transform duration-200 ${showRedeemTips ? 'rotate-180' : ''}`}
+                      fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  {showRedeemTips && (
+                    <div className="mt-2.5 space-y-1.5">
+                      <div className="flex items-start gap-2 text-xs text-gray-500">
+                        <span className="text-green-500 mt-px">✓</span>
+                        <span>Add items to your cart and tap <span className="font-semibold">Use reward points</span> at checkout.</span>
+                      </div>
+                      <div className="flex items-start gap-2 text-xs text-gray-500">
+                        <span className="text-green-500 mt-px">✓</span>
+                        <span>1 point = ₹1 discount on your order total.</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <p className="text-[10px] text-gray-400">
+                  Detailed activity log recorded for orders going forward.
+                </p>
+              </div>
+            ) : (
+              /* No points yet */
+              <div className="space-y-3">
+                <p className="text-xs font-medium text-gray-600">Ways to earn points:</p>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3 rounded-lg bg-white border border-gray-100 px-3 py-2">
+                    <span className="text-base">🛍️</span>
+                    <div>
+                      <p className="text-xs font-semibold text-gray-700">Place an order</p>
+                      <p className="text-[11px] text-gray-400">Earn 1 pt for every ₹100 spent automatically.</p>
+                    </div>
+                  </div>
+                </div>
+                <a
+                  href="/menu"
+                  className="block text-center text-xs font-semibold text-green-600 hover:text-green-800 transition-colors pt-1"
+                >
+                  Browse menu →
+                </a>
+              </div>
+            )
+          ) : (
+            <div className="space-y-1">
+              {rewardsLog.map((log) => (
+                <div key={log.id} className="flex items-center justify-between rounded-lg bg-white border border-gray-100 px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">
+                      {log.type === 'order_earn'   ? '🛍️' :
+                       log.type === 'order_redeem' ? '💳' :
+                       log.type === 'review'       ? '⭐' : '🎁'}
+                    </span>
+                    <span className="text-xs text-gray-600 truncate max-w-[200px]">
+                      {log.description ?? log.type}
+                    </span>
+                  </div>
+                  <span className={`text-xs font-bold shrink-0 ${log.points_change > 0 ? 'text-green-600' : 'text-red-500'}`}>
+                    {log.points_change > 0 ? '+' : ''}{log.points_change} pts
                   </span>
                 </div>
-                <span className={`text-xs font-bold shrink-0 ${log.points_change > 0 ? 'text-green-600' : 'text-red-500'}`}>
-                  {log.points_change > 0 ? '+' : ''}{log.points_change} pts
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
       </section>
+
 
       {/* ── Subscriptions ── */}
       <section className="rounded-2xl bg-white border border-gray-100 shadow-sm p-6 space-y-4">

@@ -7,6 +7,7 @@ import { usePathname } from 'next/navigation'
 import { useAuthContext } from '@/context/AuthContext'
 import Button from './ui/Button'
 import Logo from "@/components/Logo"
+// import ThemeSwitcher from '@/components/ui/ThemeSwitcher'  // re-enable when themes are active
 
 // ── Avatar ───────────────────────────────────────────────────────────────────
 function UserAvatar({ avatarUrl, name, large = false }: { avatarUrl: string | null; name: string; large?: boolean }) {
@@ -55,7 +56,7 @@ export default function Navbar() {
   ]
 
   return (
-    <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-100">
+    <header className="fuelist-nav sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-100">
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
 
         {/* Logo */}
@@ -81,6 +82,7 @@ export default function Navbar() {
 
         {/* Desktop auth */}
         <div className="hidden md:flex items-center gap-3">
+          {/* <ThemeSwitcher compact /> */}
           {loading ? (
             <div className="h-[34px] w-[34px] animate-pulse rounded-full bg-gray-100" />
           ) : profile ? (

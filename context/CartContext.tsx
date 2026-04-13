@@ -33,6 +33,16 @@ function loadLocal(): CartItem[] {
   } catch { return [] }
 }
 
+/**
+ * Returns true only when the key has NEVER been written.
+ * An empty array `[]` written by clearCart() counts as "explicitly cleared"
+ * and should NOT trigger a DB fallback — that would re-populate a cart the
+ * user just cleared.
+ */
+function isLocalCartAbsent(): boolean {
+  try { return localStorage.getItem(STORAGE_KEY) === null } catch { return true }
+}
+
 export function CartProvider({ children }: { children: ReactNode }) {
   // ── Initialize items from localStorage immediately — no flash of empty cart ──
   const [items, setItems] = useState<CartItem[]>(() => loadLocal())
@@ -120,10 +130,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
           if (event === 'INITIAL_SESSION') {
             // Page reload — items are already loaded from localStorage by useState.
-            // If localStorage was empty, fall back to DB.
+            // Only fall back to DB when the key has NEVER been written.
+            // If the key exists but holds [] (i.e. clearCart() ran), we must NOT
+            // overwrite it with stale DB data — the async DB delete may not have
+            // completed before the page refreshed.
             setUserId(uid)
-            const local = loadLocal()
-            if (local.length === 0) {
+            if (isLocalCartAbsent()) {
               const dbCart = await loadFromDB(uid)
               setItems(dbCart)
               saveLocal(dbCart)

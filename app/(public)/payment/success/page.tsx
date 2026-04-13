@@ -9,8 +9,6 @@ import { formatPrice, getImageUrl } from '@/lib/utils'
 // import { buildWhatsAppMessage } from '@/lib/whatsapp'
 import { CartItem } from '@/types'
 import { DeliveryAddress } from '@/lib/whatsapp'
-import ReviewRewardPopup from '@/components/ReviewRewardPopup'
-import { useAuthContext } from '@/context/AuthContext'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -149,9 +147,7 @@ function SuccessContent() {
   const orderId      = searchParams.get('order_id')
 
   const [order, setOrder] = useState<StoredOrder | null>(null)
-  const [showReviewPopup, setShowReviewPopup] = useState(false)
 
-  const { user } = useAuthContext()
 
   useEffect(() => {
     try {
@@ -164,22 +160,10 @@ function SuccessContent() {
     } catch {}
   }, [])
 
-  // Show review popup after a short delay so the success screen is seen first
-  useEffect(() => {
-    const t = setTimeout(() => setShowReviewPopup(true), 4000)
-    return () => clearTimeout(t)
-  }, [])
-
   const shortId = orderId ? `#${orderId.slice(-8).toUpperCase()}` : ''
 
   return (
     <>
-    {showReviewPopup && (
-      <ReviewRewardPopup
-        isLoggedIn={!!user}
-        onClose={() => setShowReviewPopup(false)}
-      />
-    )}
     <div className="mx-auto max-w-lg px-4 py-10 space-y-6">
 
       {/* ── Hero: checkmark + heading ── */}

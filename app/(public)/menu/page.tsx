@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic'
 import { useEffect, useState, useMemo, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { MenuItem, Category } from '@/types'
-import MenuCard from '@/components/MenuCard'
+import MenuCard from '@/components/menu/MenuCard'
 import CategoryFilter from '@/components/CategoryFilter'
 
 type SortKey = 'default' | 'price_asc' | 'price_desc' | 'calories_asc' | 'protein_desc'
