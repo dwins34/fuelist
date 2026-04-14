@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Section from '@/components/ui/Section'
 import Button from '@/components/ui/Button'
 import { Target, Users, Zap, Award, ShoppingBag, MapPin, Smile } from 'lucide-react'
+import SubscriptionSection from '@/components/about/SubscriptionSection'
 import { cn } from '@/lib/utils'
 
 interface StatsData {
@@ -163,6 +164,9 @@ export default function AboutPage() {
           ))}
         </div>
       </Section>
+
+      {/* Subscription Section */}
+      <SubscriptionSection />
 
       {/* CTA Section */}
       <Section bg="dark" className="text-center">

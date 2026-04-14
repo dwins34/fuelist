@@ -18,7 +18,7 @@ const FOOTER_LINKS = [
   {
     title: 'Program',
     links: [
-      { label: 'Subscriptions', href: '/subscriptions' },
+      { label: 'Subscriptions', href: '/about#subscriptions' },
       { label: 'Fuelist Rewards', href: '/account' },
       { label: 'How it Works', href: '/about' }
     ]
@@ -95,7 +95,7 @@ export default function Footer() {
         <div className="pt-4 border-t border-stone-50 flex flex-col md:flex-row items-center justify-between gap-8">
           <div className="flex flex-col md:flex-row items-center gap-8">
             <p className="text-xs font-black uppercase tracking-widest text-stone-300 opacity-60">
-              © {new Date().getFullYear()} FUELIST SYSTEMS PVT LTD.
+              © {new Date().getFullYear()} FUELIST PVT LTD.
             </p>
             <div className="flex gap-6">
               <Link href="/privacy" className="text-xs font-black capitalize tracking-widest text-stone-300 hover:text-stone-900">Privacy Protocol</Link>

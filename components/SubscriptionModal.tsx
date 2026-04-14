@@ -41,6 +41,7 @@ export interface PendingSubscriptionConfig {
   slot: DeliverySlot
   freq: Frequency
   duration: number
+  step?: Step
 }
 
 const PENDING_SUB_KEY = 'fuelist_pending_subscription'
@@ -131,7 +132,7 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
   )
   const [search, setSearch] = useState('')
 
-  const [step,    setStep]    = useState<Step>(restoredConfig ? 'confirm' : 'items')
+  const [step,    setStep]    = useState<Step>(restoredConfig?.step ?? (restoredConfig ? 'confirm' : 'items'))
   const [loading, setLoading] = useState(false)
   const [error,   setError]   = useState<string | null>(null)
   const [selectedAddress, setSelectedAddress] = useState<UserAddress | null>(null)
