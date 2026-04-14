@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/layout/Footer'
@@ -9,21 +9,29 @@ import CartButton from '@/components/CartButton'
 import { CartProvider } from '@/context/CartContext'
 import { AuthProvider } from '@/context/AuthContext'
 
+function CartRestoration({ onOpen }: { onOpen: () => void }) {
+  const searchParams = useSearchParams()
+  
+  useEffect(() => {
+    if (searchParams.get('cart') === 'open') {
+      onOpen()
+    }
+  }, [searchParams, onOpen])
+  
+  return null
+}
+
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   const [cartOpen, setCartOpen] = useState(false)
   const pathname = usePathname()
-  const searchParams = useSearchParams()
   const isAccountPage = pathname.startsWith('/account')
-
-  useEffect(() => {
-    if (searchParams.get('cart') === 'open') {
-      setCartOpen(true)
-    }
-  }, [searchParams])
 
   return (
     <AuthProvider>
       <CartProvider>
+        <Suspense fallback={null}>
+          <CartRestoration onOpen={() => setCartOpen(true)} />
+        </Suspense>
         <div className="flex flex-col min-h-screen">
           {/* Navbar — fuelist-nav class picks up CSS-variable glass styles */}
           <Navbar />
