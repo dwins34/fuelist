@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { usePathname } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { usePathname, useSearchParams } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/layout/Footer'
 import CartDrawer from '@/components/CartDrawer'
@@ -12,7 +12,14 @@ import { AuthProvider } from '@/context/AuthContext'
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   const [cartOpen, setCartOpen] = useState(false)
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const isAccountPage = pathname.startsWith('/account')
+
+  useEffect(() => {
+    if (searchParams.get('cart') === 'open') {
+      setCartOpen(true)
+    }
+  }, [searchParams])
 
   return (
     <AuthProvider>

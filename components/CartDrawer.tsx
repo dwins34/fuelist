@@ -41,6 +41,23 @@ interface AddressErrors {
   pincode?: string
 }
 
+const CART_DRAWER_KEY = 'fuelist_cart_drawer_state'
+
+export function saveCartDrawerState(state: { step: string; address: DeliveryAddress }) {
+  try { localStorage.setItem(CART_DRAWER_KEY, JSON.stringify(state)) } catch {}
+}
+
+export function loadCartDrawerState(): { step: string; address: DeliveryAddress } | null {
+  try {
+    const raw = localStorage.getItem(CART_DRAWER_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch { return null }
+}
+
+export function clearCartDrawerState() {
+  try { localStorage.removeItem(CART_DRAWER_KEY) } catch {}
+}
+
 function validateAddress(a: DeliveryAddress): AddressErrors {
   const errs: AddressErrors = {}
   if (!a.name.trim()) errs.name = 'Name is required.'
@@ -106,6 +123,14 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
   useEffect(() => {
     if (open) {
       document.body.style.overflow = 'hidden'
+      
+      // Attempt to restore saved state
+      const saved = loadCartDrawerState()
+      if (saved) {
+        setStep(saved.step as any)
+        setAddress(saved.address)
+        clearCartDrawerState()
+      }
     } else {
       document.body.style.overflow = ''
     }
@@ -158,8 +183,13 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
 
   const goToAddressStep = useCallback(() => {
     if (count === 0) return
+    if (!profile) {
+      saveCartDrawerState({ step: 'address', address })
+      router.push(`/login?redirect=${encodeURIComponent(window.location.pathname + '?cart=open')}`)
+      return
+    }
     setStep('address')
-  }, [count])
+  }, [count, profile, address, router])
 
   const handlePayment = useCallback(async () => {
     const errs = validateAddress(address)
