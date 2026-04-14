@@ -1,79 +1,87 @@
+'use client'
+
 import Link from 'next/link'
-import { Leaf } from 'lucide-react'
-
-const InstagramIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
-    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
-    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
-  </svg>
-)
-
-// Twitter and LinkedIn icons removed as per request
+import { motion } from 'framer-motion'
+import { Icon } from '@/lib/icons'
+import { cn } from '@/lib/utils'
 
 const FOOTER_LINKS = [
   {
-    title: 'Company',
+    title: 'Selection',
     links: [
-      { label: 'About Us', href: '/about' }
+      { label: 'Signature Menu', href: '/menu' },
+      { label: 'High Protein', href: '/menu?category=power' },
+      { label: 'Morning Fuel', href: '/menu?category=breakfast' },
+      { label: 'Fresh Fruits', href: '/menu?category=fruit' }
+    ]
+  },
+  {
+    title: 'Program',
+    links: [
+      { label: 'Subscriptions', href: '/subscriptions' },
+      { label: 'Fuelist Rewards', href: '/account' },
+      { label: 'How it Works', href: '/about' }
     ]
   },
   {
     title: 'Support',
     links: [
+      { label: 'Help Center', href: '/contact' },
+      { label: 'Account', href: '/account' },
       { label: 'Contact Us', href: '/contact' }
-    ]
-  },
-  {
-    title: 'Discover',
-    links: [
-      { label: 'Rewards', href: '/account' },
-      { label: 'Menu', href: '/menu' },
-      { label: 'Subscriptions', href: '/subscriptions' }
     ]
   }
 ]
 
 export default function Footer() {
   return (
-    <footer className="bg-white border-t border-gray-100 pt-16 pb-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
-          {/* Brand Section */}
-          <div className="space-y-6">
-            <Link href="/" className="flex items-center gap-2">
-              <Leaf className="h-8 w-8 text-green-500 fill-green-500" />
-              <span className="text-2xl font-extrabold text-gray-900 tracking-tight">Fuelist</span>
+    <footer className="bg-white border-t border-stone-50 pt-12 pb-12">
+      <div className="max-w-7xl mx-auto px-6 sm:px-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 mb-4 lg:grid-cols-5 gap-16">
+
+          {/* Brand Focus */}
+          <div className="lg:col-span-2 space-y-10">
+            <Link href="/" className="flex items-center gap-3 group">
+              <div className="h-10 w-10 bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl flex items-center justify-center p-2 shadow-md shadow-amber-200 group-hover:rotate-6 transition-transform">
+                <Icon name="bowl" size={24} className="text-white" />
+              </div>
+              <span className="text-3xl font-black text-stone-900 tracking-tighter">Fuelist</span>
             </Link>
-            <p className="text-gray-500 text-sm leading-relaxed max-w-xs">
-              Handcrafted, clean, and nutritious bowls designed to fuel your active lifestyle. No shortcuts, just real food.
+
+            <p className="text-stone-400 text-lg font-medium leading-relaxed max-w-sm">
+              Handcrafted, high-density nutrition systems designed for peak performance. Nutritious by design, delicious by nature.
             </p>
+
             <div className="flex items-center gap-4">
-              <a 
-                href={process.env.NEXT_PUBLIC_INSTAGRAM_URL || "https://instagram.com/fuelist"} 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="p-2 rounded-full bg-gray-50 text-gray-400 hover:text-green-500 hover:bg-green-50 transition-all"
-                title="Follow us on Instagram!"
+              <a
+                href={process.env.NEXT_PUBLIC_INSTAGRAM_URL || "https://instagram.com/fuelist"}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="h-12 w-12 rounded-[1.25rem] bg-stone-50 text-stone-300 flex items-center justify-center hover:bg-amber-50 hover:text-amber-500 transition-all shadow-inner group"
+                title="Join our premium community on Instagram"
               >
-                <InstagramIcon className="h-5 w-5" />
+                <Icon name="search" size={20} strokeWidth={2.5} className="group-hover:scale-110 transition-transform" />
               </a>
+              <div className="text-xs font-black uppercase tracking-widest text-stone-300">
+                Join our premium community
+              </div>
             </div>
           </div>
 
-          {/* Links Section */}
+          {/* Navigational Links */}
           {FOOTER_LINKS.map((section) => (
-            <div key={section.title}>
-              <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-6">
+            <div key={section.title} className="space-y-8">
+              <h3 className="text-xs font-black text-stone-900 uppercase tracking-widest ml-3">
                 {section.title}
               </h3>
               <ul className="space-y-4">
                 {section.links.map((link) => (
                   <li key={link.label}>
-                    <Link 
-                      href={link.href} 
-                      className="text-gray-500 hover:text-green-600 transition-colors text-sm font-medium"
+                    <Link
+                      href={link.href}
+                      className="group flex items-center gap-2 text-stone-400 hover:text-amber-600 transition-all text-sm font-bold capitalize tracking-tight"
                     >
+                      <span className="h-1 w-1 rounded-full bg-amber-500 opacity-0 group-hover:opacity-100 transition-opacity" />
                       {link.label}
                     </Link>
                   </li>
@@ -83,15 +91,22 @@ export default function Footer() {
           ))}
         </div>
 
-        {/* Bottom Banner */}
-        <div className="pt-8 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-gray-400 text-xs">
-            © {new Date().getFullYear()} Fuelist. All rights reserved.
-          </p>
-          <div className="flex items-center gap-6">
-            <span className="text-gray-400 text-xs flex items-center gap-1">
-              Made with 💚 for a healthier India
-            </span>
+        {/* High-Contrast Bottom Tier */}
+        <div className="pt-4 border-t border-stone-50 flex flex-col md:flex-row items-center justify-between gap-8">
+          <div className="flex flex-col md:flex-row items-center gap-8">
+            <p className="text-xs font-black uppercase tracking-widest text-stone-300 opacity-60">
+              © {new Date().getFullYear()} FUELIST SYSTEMS PVT LTD.
+            </p>
+            <div className="flex gap-6">
+              <Link href="/privacy" className="text-xs font-black capitalize tracking-widest text-stone-300 hover:text-stone-900">Privacy Protocol</Link>
+              <Link href="/terms" className="text-xs font-black capitalize tracking-widest text-stone-300 hover:text-stone-900">Terms Of Service</Link>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 py-2 px-5 rounded-full bg-stone-50 border border-stone-100 shadow-inner">
+            <span className="text-[10px] font-black uppercase tracking-wider text-stone-400">Status</span>
+            <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-200 animate-pulse" />
+            <span className="text-[10px] font-black capitalize tracking-wider text-stone-900">All Operations Green</span>
           </div>
         </div>
       </div>

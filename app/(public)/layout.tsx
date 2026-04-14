@@ -1,16 +1,18 @@
 'use client'
 
 import { useState } from 'react'
+import { usePathname } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/layout/Footer'
 import CartDrawer from '@/components/CartDrawer'
 import CartButton from '@/components/CartButton'
-// import ThemeSwitcher from '@/components/ui/ThemeSwitcher'  // re-enable when themes are active
 import { CartProvider } from '@/context/CartContext'
 import { AuthProvider } from '@/context/AuthContext'
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   const [cartOpen, setCartOpen] = useState(false)
+  const pathname = usePathname()
+  const isAccountPage = pathname.startsWith('/account')
 
   return (
     <AuthProvider>
@@ -21,13 +23,15 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
 
           <main className="flex-1">{children}</main>
 
-          <Footer />
+          {!isAccountPage && <Footer />}
         </div>
 
         {/* Floating cart button */}
-        <div className="fixed bottom-6 right-6 z-40">
-          <CartButton onClick={() => setCartOpen(true)} />
-        </div>
+        {!isAccountPage && (
+          <div className="fixed bottom-6 right-6 z-40">
+            <CartButton onClick={() => setCartOpen(true)} />
+          </div>
+        )}
 
         <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
       </CartProvider>

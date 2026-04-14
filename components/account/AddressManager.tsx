@@ -1,12 +1,16 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { MapPin, Plus, Check, Loader2, Trash2 } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Icon } from '@/lib/icons'
 import LocationPicker from '@/components/ui/LocationPicker'
 import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
+import { Badge } from '@/components/ui/badge'
+import { Card, CardContent } from '@/components/ui/card'
 import { useAddresses, CreateAddressInput, UserAddress } from '@/hooks/useAddresses'
 import { PlaceDetails } from '@/hooks/usePlacesAutocomplete'
+import { cn } from '@/lib/utils'
 
 interface AddressManagerProps {
   onSelect?: (address: UserAddress) => void
@@ -14,14 +18,14 @@ interface AddressManagerProps {
   hideHeader?: boolean
 }
 
-export default function AddressManager({ onSelect, selectedId, hideHeader }: AddressManagerProps = {}) {
+export default function AddressManager({ onSelect, selectedId, hideHeader }: AddressManagerProps) {
   const { addresses, loading, fetchAddresses, addAddress, setDefaultAddress, deleteAddress } = useAddresses()
   const [isAdding, setIsAdding] = useState(false)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
 
   // Form State
-  const [label, setLabel] = useState<'Home'|'Work'|'Other'>('Home')
+  const [label, setLabel] = useState<'Home' | 'Work' | 'Other'>('Home')
   const [houseNumber, setHouseNumber] = useState('')
   const [streetAddress, setStreetAddress] = useState('')
   const [city, setCity] = useState('')
@@ -74,7 +78,6 @@ export default function AddressManager({ onSelect, selectedId, hideHeader }: Add
     if (res.error) {
       setFormError(res.error)
     } else {
-      // Reset form & close
       setIsAdding(false)
       setHouseNumber('')
       setStreetAddress('')
@@ -90,193 +93,246 @@ export default function AddressManager({ onSelect, selectedId, hideHeader }: Add
   }
 
   return (
-    <section className="rounded-2xl bg-white border border-gray-100 shadow-sm p-4 sm:p-6 space-y-4">
+    <div className="space-y-6">
+      {/* Header section */}
       {!hideHeader && (
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-base font-semibold text-gray-800">Saved Addresses</h2>
-            <p className="text-xs text-gray-500">Manage where you want your meals delivered.</p>
+            <h2 className="text-xl font-black text-stone-900 tracking-tight capitalize">Saved Deployments</h2>
+            <p className="text-[11px] font-medium text-stone-400 mt-1 capitalize tracking-widest leading-none">Manage delivery logistics.</p>
           </div>
           {!isAdding && (
-            <button 
-              onClick={() => setIsAdding(true)} 
-              className="text-xs font-semibold text-green-600 hover:text-green-700 flex items-center gap-1"
-            >
-              <Plus size={14} /> Add new
-            </button>
+            <Button onClick={() => setIsAdding(true)} variant="outline" size="sm" className="shadow-sm">
+              <Icon name="plus" size={12} strokeWidth={3} className="mr-2" />
+              Add New
+            </Button>
           )}
         </div>
       )}
-      
+
       {hideHeader && !isAdding && (
-         <div className="flex justify-end mb-2">
-            <button 
-              onClick={() => setIsAdding(true)} 
-              className="text-xs font-semibold text-green-600 hover:text-green-700 flex items-center gap-1"
-            >
-              <Plus size={14} /> Add new address
-            </button>
-         </div>
+        <div className="flex justify-end">
+          <Button onClick={() => setIsAdding(true)} variant="outline" size="sm" className="shadow-sm">
+            <Icon name="plus" size={12} strokeWidth={3} className="mr-2" />
+            Add New
+          </Button>
+        </div>
       )}
 
-      {loading && !isAdding && addresses.length === 0 ? (
-        <div className="flex justify-center p-6"><Loader2 className="animate-spin text-gray-400" /></div>
-      ) : null}
-
-      {!isAdding && addresses.length === 0 && !loading && (
-        <div className="p-8 border border-dashed border-gray-200 rounded-xl text-center bg-gray-50">
-          <MapPin className="mx-auto text-gray-300 mb-2" size={24} />
-          <p className="text-sm font-medium text-gray-600">No addresses saved yet</p>
-          <button onClick={() => setIsAdding(true)} className="mt-3 text-sm font-medium text-green-600">
-            Add your first address
-          </button>
+      {/* Loading State */}
+      {loading && !isAdding && addresses.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-16 gap-3 opacity-30">
+          <div className="h-8 w-8 border-4 border-amber-500/20 border-t-amber-500 rounded-full animate-spin" />
+          <p className="text-[10px] font-black capitalize tracking-widest text-stone-500">Hydrating logistics...</p>
         </div>
+      )}
+
+      {/* Empty State */}
+      {!isAdding && addresses.length === 0 && !loading && (
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-10 border-2 border-dashed border-stone-100 rounded-[2rem] text-center bg-stone-50/20 group hover:border-amber-200 transition-colors"
+        >
+          <div className="mx-auto w-14 h-14 bg-stone-100 rounded-xl flex items-center justify-center text-stone-300 group-hover:bg-amber-50 group-hover:text-amber-400 transition-colors mb-4">
+            <Icon name="location" size={28} />
+          </div>
+          <h3 className="text-sm font-black text-stone-900 capitalize">Empty Deployment Log</h3>
+          <p className="text-[11px] text-stone-400 mt-1 max-w-[200px] mx-auto leading-relaxed">Add a delivery location to begin your fuelist experience.</p>
+          <Button onClick={() => setIsAdding(true)} variant="primary" size="md" className="mt-6">
+            Log New Address
+          </Button>
+        </motion.div>
       )}
 
       {/* List Existing Addresses */}
-      {!isAdding && addresses.length > 0 && (
-        <div className="space-y-4">
-          {addresses.map(addr => (
-            <div 
-              key={addr.id} 
-              className={`p-4 rounded-xl border transition-all ${
-                (onSelect ? selectedId === addr.id : addr.is_default) 
-                  ? 'border-green-500 bg-green-50/50' 
-                  : 'border-gray-200 bg-white hover:border-gray-300'
-              }`}
-            >
-              <div className="flex justify-between items-start gap-4">
-                <div 
-                  className="flex-1 cursor-pointer" 
-                  onClick={() => {
-                    if (onSelect) onSelect(addr)
-                    else if (!addr.is_default) setDefaultAddress(addr.id)
-                  }}
+      <AnimatePresence mode="popLayout">
+        {!isAdding && addresses.length > 0 && (
+          <motion.div 
+            layout
+            className="grid grid-cols-1 gap-4"
+          >
+            {addresses.map((addr, idx) => {
+              const isSelected = onSelect ? selectedId === addr.id : addr.is_default
+              return (
+                <motion.div
+                  layout
+                  key={addr.id}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0, transition: { delay: idx * 0.05 } }}
+                  exit={{ opacity: 0, scale: 0.95 }}
                 >
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-bold text-gray-800 uppercase tracking-wide bg-gray-100 px-2 py-0.5 rounded">
-                      {addr.label}
-                    </span>
-                    {((!onSelect && addr.is_default) || (onSelect && selectedId === addr.id)) && (
-                      <span className="flex items-center gap-1 text-[10px] font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded-full">
-                        <Check size={10} strokeWidth={3} /> {onSelect ? 'Selected' : 'Default'}
-                      </span>
+                  <Card 
+                    interactive 
+                    onClick={() => {
+                      if (onSelect) onSelect(addr)
+                      else if (!addr.is_default) setDefaultAddress(addr.id)
+                    }}
+                    className={cn(
+                      "group relative !rounded-[2rem] border transition-all duration-300",
+                      isSelected 
+                        ? "border-amber-500 bg-amber-50/10 ring-1 ring-amber-500/20 shadow-premium" 
+                        : "border-stone-100 bg-white hover:border-amber-200 shadow-sm"
                     )}
-                  </div>
-                  <p className="text-sm font-medium text-gray-900 mt-2">{addr.house_number}, {addr.street_address}</p>
-                  <p className="text-xs text-gray-500 mt-1">{addr.city}, {addr.state} {addr.pincode}</p>
-                  {addr.landmark && <p className="text-xs text-gray-400 mt-0.5">Landmark: {addr.landmark}</p>}
-                </div>
+                  >
+                    <CardContent className="flex flex-row items-center gap-6 p-6">
+                      {/* Left: Dynamic Icon Container */}
+                      <div className={cn(
+                        "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-all duration-300",
+                        isSelected 
+                          ? "bg-amber-500 text-white shadow-lg shadow-amber-200/40" 
+                          : "bg-stone-50 text-stone-400 group-hover:bg-amber-50 group-hover:text-amber-500"
+                      )}>
+                        <Icon 
+                          name={(addr.label?.toLowerCase() || 'other') as any} 
+                          size={22} 
+                        />
+                      </div>
+                      
+                      {/* Middle: Address Manifest (Truncation-Safe) */}
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <div className="flex items-center gap-2 mb-2 font-black capitalize">
+                          <Badge variant={isSelected ? "premium" : "secondary"} className="text-[9px] py-1 px-3 !rounded-full">
+                            {addr.label}
+                          </Badge>
+                          {isSelected && (
+                            <Badge variant="success" className="text-[9px] py-1 px-3 !rounded-full flex items-center gap-1.5">
+                              <Icon name="success" size={10} strokeWidth={3} /> {onSelect ? 'Selected' : 'Default'}
+                            </Badge>
+                          )}
+                        </div>
+                        <h4 className="text-sm font-black text-stone-900 truncate leading-tight tracking-tight capitalize">
+                          {addr.house_number}, {addr.street_address}
+                        </h4>
+                        <p className="text-[11px] font-bold text-stone-400 truncate capitalize mt-1 tracking-wider">
+                          {addr.city}, {addr.state} {addr.pincode}
+                        </p>
+                      </div>
 
-                <button 
-                  onClick={() => deleteAddress(addr.id)}
-                  className="p-2 text-gray-400 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50"
-                  title="Delete address"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+                      {/* Right: Actions Container */}
+                      <div className="shrink-0 pl-10">
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            deleteAddress(addr.id)
+                          }}
+                          className="p-3 text-stone-200 hover:text-rose-500 hover:bg-rose-50 rounded-2xl transition-all duration-300 active:scale-90"
+                          title="Delete Protocol"
+                        >
+                          <Icon name="delete" size={18} strokeWidth={2.5} />
+                        </button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )
+            })}
+          </motion.div>
+        )}
 
-      {/* Add New Form */}
-      {isAdding && (
-        <div className="mt-4 pt-4 border-t border-gray-100">
-          <h3 className="text-sm font-semibold text-gray-800 mb-4">Add a new address</h3>
-          
-          <div className="mb-5">
-            <LocationPicker onLocationSelect={handleLocationSelect} />
-          </div>
-
-          <div className="space-y-4">
-            <Input
-              label="House / Flat Number"
-              id="house_number"
-              type="text"
-              value={houseNumber}
-              onChange={(e) => { setHouseNumber(e.target.value); setFormError('') }}
-              placeholder="e.g. Flat 402, Building A"
-            />
-
-            <Input
-              label="Street / Area"
-              id="street_address"
-              type="text"
-              value={streetAddress}
-              onChange={(e) => setStreetAddress(e.target.value)}
-              placeholder="Auto-filled via location search"
-            />
-
-            <div className="grid grid-cols-2 gap-4">
-              <Input
-                label="City"
-                id="city"
-                type="text"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                placeholder="Auto-filled"
-              />
-              <Input
-                label="State"
-                id="state"
-                type="text"
-                value={stateName}
-                onChange={(e) => setStateName(e.target.value)}
-                placeholder="Auto-filled"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <Input
-                label="Pincode"
-                id="pincode"
-                type="text"
-                inputMode="numeric"
-                value={pincode}
-                onChange={(e) => setPincode(e.target.value)}
-                placeholder="Auto-filled"
-              />
-              <Input
-                label="Landmark (optional)"
-                id="landmark"
-                type="text"
-                value={landmark}
-                onChange={(e) => setLandmark(e.target.value)}
-                placeholder="Near metro station"
-              />
+        {/* Add New Form */}
+        {isAdding && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            className="rounded-[2.5rem] bg-white border border-stone-100 p-6 md:p-8 shadow-premium"
+          >
+            <div className="mb-8">
+              <h3 className="text-xl font-black text-stone-900 tracking-tighter capitalize">New Deployment Zone</h3>
+              <p className="text-[11px] font-bold text-stone-400 mt-1 capitalize tracking-widest">Specify logistics details below.</p>
             </div>
             
-            {/* Label Chips */}
-            <div>
-              <p className="block text-sm font-medium text-gray-700 mb-2">Save as</p>
-              <div className="flex gap-2">
-                {(['Home', 'Work', 'Other'] as const).map(l => (
-                  <button
-                    key={l}
-                    onClick={() => setLabel(l)}
-                    className={`px-4 py-1.5 text-xs font-semibold rounded-full border transition-colors ${
-                      label === l 
-                        ? 'bg-green-500 border-green-500 text-white' 
-                        : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
-                    }`}
-                  >
-                    {l}
-                  </button>
-                ))}
+            <div className="mb-6">
+              <div className="text-[9px] font-black capitalize tracking-widest text-stone-300 mb-2 ml-1">Search Terminal</div>
+              <LocationPicker onLocationSelect={handleLocationSelect} />
+            </div>
+
+            <div className="space-y-5">
+              <Input
+                label="Premise Identifier"
+                id="house_number"
+                type="text"
+                value={houseNumber}
+                onChange={(e) => { setHouseNumber(e.target.value); setFormError('') }}
+                placeholder="Flat / Floor / Suite"
+                icon={<Icon name="home" size={16} />}
+              />
+
+              <Input
+                label="Protocol Street"
+                id="street_address"
+                type="text"
+                value={streetAddress}
+                onChange={(e) => setStreetAddress(e.target.value)}
+                placeholder="Auto-filled via terminal search"
+                icon={<Icon name="compass" size={16} />}
+              />
+
+              <div className="grid grid-cols-2 gap-5">
+                <Input 
+                  label="Registry City" 
+                  id="city"
+                  value={city} 
+                  onChange={(e) => setCity(e.target.value)}
+                  placeholder="City" 
+                  icon={<Icon name="location" size={16} />}
+                />
+                <Input 
+                  label="Protocol Pincode" 
+                  id="pincode"
+                  value={pincode} 
+                  onChange={(e) => setPincode(e.target.value)}
+                  placeholder="Pincode" 
+                  icon={<Icon name="package" size={16} />}
+                />
+              </div>
+
+              <Input 
+                label="Operational Landmark (optional)" 
+                id="landmark"
+                value={landmark} 
+                onChange={(e) => setLandmark(e.target.value)} 
+                placeholder="Near landmark" 
+                icon={<Icon name="info" size={16} />}
+              />
+              
+              <div>
+                <p className="text-[9px] font-black capitalize tracking-widest text-stone-300 mb-3 ml-1">Zone Tag</p>
+                <div className="flex flex-wrap gap-2">
+                  {(['Home', 'Work', 'Other'] as const).map(l => (
+                    <button
+                      key={l}
+                      onClick={() => setLabel(l)}
+                      className={cn(
+                        "flex items-center gap-2 px-5 py-2 rounded-xl text-[10px] font-black capitalize tracking-widest transition-all duration-200 border-2",
+                        label === l 
+                          ? "bg-stone-900 border-stone-900 text-amber-500 shadow-md" 
+                          : "bg-white border-stone-100 text-stone-400 hover:border-stone-200"
+                      )}
+                    >
+                      <Icon name={l.toLowerCase() as any} size={14} strokeWidth={3} />
+                      {l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {formError && (
+                <Badge variant="danger" className="w-full py-2.5 justify-center gap-2 shadow-none rounded-xl">
+                  <Icon name="error" size={14} strokeWidth={3} />
+                  {formError}
+                </Badge>
+              )}
+
+              <div className="flex gap-3 pt-6">
+                <Button onClick={handleSave} loading={saving} size="md" className="flex-1">Deploy Zone</Button>
+                <Button onClick={() => setIsAdding(false)} variant="ghost" size="md" className="shrink-0">Cancel</Button>
               </div>
             </div>
-
-            {formError && <p className="text-xs font-medium text-red-500">{formError}</p>}
-
-            <div className="flex gap-3 pt-2">
-              <Button onClick={handleSave} loading={saving} className="flex-1">Save Address</Button>
-              <Button onClick={() => setIsAdding(false)} variant="secondary" className="px-6">Cancel</Button>
-            </div>
-          </div>
-        </div>
-      )}
-    </section>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   )
 }

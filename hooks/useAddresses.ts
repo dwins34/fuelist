@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useAuthContext } from '@/context/AuthContext'
+import { createClient } from '@/lib/supabase/client'
 
 export interface UserAddress {
   id: string
@@ -23,12 +24,15 @@ export type CreateAddressInput = Omit<UserAddress, 'id' | 'user_id' | 'is_defaul
 
 export function useAddresses() {
   const { profile, accessToken } = useAuthContext()
+  const supabase = useMemo(() => createClient(), [])
+  
   const [addresses, setAddresses] = useState<UserAddress[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const fetchAddresses = useCallback(async () => {
     if (!profile?.id || !accessToken) return
+    
     const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
     if (!sbUrl || !sbKey) return
@@ -53,7 +57,10 @@ export function useAddresses() {
   }, [profile?.id, accessToken])
 
   const addAddress = async (input: CreateAddressInput) => {
-    if (!profile?.id || !accessToken) return { error: 'Not authenticated' }
+    if (!profile?.id) return { error: 'Not authenticated' }
+
+    if (!accessToken) return { error: 'Session expired. Please refresh.' }
+
     const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
     if (!sbUrl || !sbKey) return { error: 'Supabase not configured' }
@@ -95,6 +102,7 @@ export function useAddresses() {
 
   const setDefaultAddress = async (addressId: string) => {
     if (!accessToken) return { error: 'Not authenticated' }
+
     const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
     if (!sbUrl || !sbKey) return { error: 'Supabase not configured' }
@@ -127,6 +135,7 @@ export function useAddresses() {
 
   const deleteAddress = async (addressId: string) => {
     if (!accessToken) return { error: 'Not authenticated' }
+
     const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
     if (!sbUrl || !sbKey) return { error: 'Supabase not configured' }

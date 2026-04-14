@@ -3,22 +3,27 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useCart } from '@/context/CartContext'
 import { formatPrice, getImageUrl } from '@/lib/utils'
 import { DeliveryAddress } from '@/lib/whatsapp'
 import { useAuthContext } from '@/context/AuthContext'
 import { useServiceStatus } from '@/context/ServiceStatusContext'
-import { isInServiceArea, SERVICE_AREA_DESCRIPTION, SERVED_AREAS } from '@/lib/serviceArea'
+import { isInServiceArea, SERVICE_AREA_DESCRIPTION } from '@/lib/serviceArea'
+import { Icon, IconName } from '@/lib/icons'
 import CouponInput from '@/components/CouponInput'
 import RewardPointsToggle from '@/components/RewardPointsToggle'
 import AddressManager from '@/components/account/AddressManager'
 import { UserAddress } from '@/hooks/useAddresses'
 import { ApplyCouponResult } from '@/types'
+import Button from '@/components/ui/Button'
+import Input from '@/components/ui/Input'
+import { Badge } from '@/components/ui/badge'
+import { cn } from '@/lib/utils'
 
 // Extend Window to hold the Razorpay constructor
 declare global {
   interface Window {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     Razorpay: new (options: Record<string, unknown>) => { open(): void; on?(event: string, handler: () => void): void }
   }
 }
@@ -27,8 +32,6 @@ interface CartDrawerProps {
   open: boolean
   onClose: () => void
 }
-
-// ── Validation ────────────────────────────────────────────────────────────────
 
 interface AddressErrors {
   name?: string
@@ -40,41 +43,29 @@ interface AddressErrors {
 
 function validateAddress(a: DeliveryAddress): AddressErrors {
   const errs: AddressErrors = {}
-  if (!a.name.trim())
-    errs.name = 'Name is required.'
-  else if (a.name.trim().length < 2)
-    errs.name = 'Enter your full name.'
+  if (!a.name.trim()) errs.name = 'Name is required.'
+  else if (a.name.trim().length < 2) errs.name = 'Enter your full name.'
 
   const rawPhone = a.phone.replace(/[\s\-()]/g, '')
-  if (!rawPhone)
-    errs.phone = 'Phone number is required.'
-  else if (!/^\+?\d{7,15}$/.test(rawPhone))
-    errs.phone = 'Enter a valid phone number.'
+  if (!rawPhone) errs.phone = 'Phone number is required.'
+  else if (!/^\+?\d{7,15}$/.test(rawPhone)) errs.phone = 'Enter a valid phone number.'
 
-  if (!a.address_line1.trim())
-    errs.address_line1 = 'Address is required.'
-  else if (a.address_line1.trim().length < 5)
-    errs.address_line1 = 'Please enter a complete address.'
+  if (!a.address_line1.trim()) errs.address_line1 = 'Address is required.'
+  else if (a.address_line1.trim().length < 5) errs.address_line1 = 'Please enter a complete address.'
 
-  if (!a.city.trim())
-    errs.city = 'City is required.'
+  if (!a.city.trim()) errs.city = 'City is required.'
 
-  if (!a.pincode.trim())
-    errs.pincode = 'Pincode is required.'
-  else if (!/^\d{4,10}$/.test(a.pincode.trim()))
-    errs.pincode = 'Enter a valid pincode (digits only).'
+  if (!a.pincode.trim()) errs.pincode = 'Pincode is required.'
+  else if (!/^\d{4,10}$/.test(a.pincode.trim())) errs.pincode = 'Enter a valid pincode.'
 
   return errs
 }
-
-// ── Empty address ─────────────────────────────────────────────────────────────
 
 const EMPTY_ADDRESS: DeliveryAddress = {
   name: '', phone: '', address_line1: '',
   address_line2: '', city: '', state: '', pincode: '', landmark: '',
 }
 
-// ── Load Razorpay checkout.js once ───────────────────────────────────────────
 function loadRazorpayScript(): Promise<boolean> {
   return new Promise((resolve) => {
     if (typeof window !== 'undefined' && window.Razorpay) {
@@ -89,121 +80,54 @@ function loadRazorpayScript(): Promise<boolean> {
   })
 }
 
-// ── Field component ───────────────────────────────────────────────────────────
-
-function Field({
-  label, value, onChange, placeholder, type = 'text', inputMode, error, optional,
-}: {
-  label: string; value: string; onChange: (v: string) => void
-  placeholder?: string; type?: string; inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode']
-  error?: string; optional?: boolean
-}) {
-  return (
-    <div className="flex flex-col gap-1">
-      <label className="text-xs font-medium text-gray-600">
-        {label}{optional && <span className="ml-1 text-gray-400">(optional)</span>}
-      </label>
-      <input
-        type={type}
-        inputMode={inputMode}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className={`w-full rounded-lg border px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 ${
-          error
-            ? 'border-red-400 focus:border-red-400 focus:ring-red-100'
-            : 'border-gray-200 focus:border-green-500 focus:ring-green-100'
-        }`}
-      />
-      {error && <p className="text-xs text-red-500">{error}</p>}
-    </div>
-  )
-}
-
-// ── Main component ────────────────────────────────────────────────────────────
-
 export default function CartDrawer({ open, onClose }: CartDrawerProps) {
   const { items, count, total, updateQuantity, removeItem, clearCart } = useCart()
   const router = useRouter()
 
-  // 'cart' | 'address' | 'paying'
   const [step, setStep] = useState<'cart' | 'address' | 'paying'>('cart')
-
-  const [address, setAddress]         = useState<DeliveryAddress>(EMPTY_ADDRESS)
-  const [errors, setErrors]           = useState<AddressErrors>({})
+  const [address, setAddress] = useState<DeliveryAddress>(EMPTY_ADDRESS)
+  const [errors, setErrors] = useState<AddressErrors>({})
   const [addrLoading, setAddrLoading] = useState(false)
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null)
-  const [payError, setPayError]       = useState<string | null>(null)
-  const [outOfArea, setOutOfArea]     = useState(false)
+  const [payError, setPayError] = useState<string | null>(null)
+  const [outOfArea, setOutOfArea] = useState(false)
 
-  // ── Coupon + reward points state ──────────────────────────────────────────
   const [appliedCoupon, setAppliedCoupon] = useState<ApplyCouponResult | null>(null)
-  const [pointsToUse, setPointsToUse]     = useState(0)
-  const [isFirstOrder, setIsFirstOrder]   = useState(false)
+  const [pointsToUse, setPointsToUse] = useState(0)
+  const [isFirstOrder, setIsFirstOrder] = useState(false)
 
-  const { profile, accessToken, reloadProfile } = useAuthContext()
-  const { isEnabled, message: serviceMessage } = useServiceStatus()
+  const { profile, accessToken } = useAuthContext()
+  const { isEnabled } = useServiceStatus()
 
-  // Computed totals
-  const discountAmount  = appliedCoupon?.discount_amount ?? 0
-  const pointsValue     = pointsToUse                       // 1 point = ₹1
-  const finalTotal      = Math.max(0, total - discountAmount - pointsValue)
-  const drawerRef = useRef<HTMLDivElement>(null)
+  const discountAmount = appliedCoupon?.discount_amount ?? 0
+  const pointsValue = pointsToUse
+  const finalTotal = Math.max(0, total - discountAmount - pointsValue)
 
-  // ── Reset to cart step when drawer closes ─────────────────────────────────
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [open])
+
   useEffect(() => {
     if (!open) {
-      setTimeout(() => {
-        setStep('cart'); setErrors({}); setPayError(null); setOutOfArea(false)
-        setAppliedCoupon(null); setPointsToUse(0)
+      const timer = setTimeout(() => {
+        setStep('cart')
+        setErrors({})
+        setPayError(null)
+        setOutOfArea(false)
+        setAppliedCoupon(null)
+        setPointsToUse(0)
       }, 300)
+      return () => clearTimeout(timer)
     }
   }, [open])
 
-  // ── Keyboard: Escape closes / goes back ──────────────────────────────────
-  useEffect(() => {
-    if (!open) return
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
-        if (step === 'address') setStep('cart')
-        else if (step !== 'paying') onClose()
-      }
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [open, onClose, step])
-
-  // ── Lock body scroll ──────────────────────────────────────────────────────
-  useEffect(() => {
-    if (typeof document !== 'undefined') {
-      document.body.style.overflow = open ? 'hidden' : ''
-    }
-    return () => { 
-      if (typeof document !== 'undefined') {
-        document.body.style.overflow = ''
-      }
-    }
-  }, [open])
-
-  // ── Pre-fill address from profile when entering step 2 ───────────────────
-  async function goToAddressStep() {
-    setStep('address')
-    setAddrLoading(true)
-    try {
-      if (!profile) { setAddrLoading(false); return }
-      setAddress((prev) => ({
-        ...prev,
-        name:          profile.name          ?? '',
-        phone:         profile.phone         ?? ''
-      }))
-    } catch {
-      // Guest — show empty form
-    } finally {
-      setAddrLoading(false)
-    }
-  }
-
-  // ── Check first-order status for coupon badge ──────────────────────────────
   useEffect(() => {
     if (!profile || !accessToken) return
     const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -218,13 +142,6 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
       .catch(() => {})
   }, [profile, accessToken])
 
-  const setField = useCallback((key: keyof DeliveryAddress) => {
-    return (val: string) => {
-      setAddress((prev) => ({ ...prev, [key]: val }))
-      setErrors((prev) => ({ ...prev, [key]: undefined }))
-    }
-  }, [])
-
   const handleSelectAddress = useCallback((addr: UserAddress) => {
     setSelectedAddressId(addr.id)
     setAddress(prev => ({
@@ -236,15 +153,14 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
       pincode: addr.pincode,
       landmark: addr.landmark ?? ''
     }))
-    setErrors(prev => ({
-      ...prev,
-      address_line1: undefined,
-      city: undefined,
-      pincode: undefined
-    }))
+    setErrors({})
   }, [])
 
-  // ── Checkout handler ──────────────────────────────────────────────────────
+  const goToAddressStep = useCallback(() => {
+    if (count === 0) return
+    setStep('address')
+  }, [count])
+
   const handlePayment = useCallback(async () => {
     const errs = validateAddress(address)
     if (Object.keys(errs).length) { setErrors(errs); return }
@@ -259,298 +175,305 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
 
     const loaded = await loadRazorpayScript()
     if (!loaded) {
-      setPayError('Could not load payment gateway. Please check your internet connection.')
+      setPayError('Could not load payment gateway.')
       setStep('address')
       return
     }
     
-    let orderData: { order_id: string; amount: number; currency: string }
     try {
       const res = await fetch('/api/payment/create-order', {
-        method:  'POST',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ amount: finalTotal }),
+        body: JSON.stringify({ amount: finalTotal }),
       })
       if (!res.ok) throw new Error(await res.text())
-      orderData = await res.json()
-    } catch (err) {
-      console.error('create-order failed:', err)
-      setPayError('Failed to initiate payment. Please try again.')
-      setStep('address')
-      return
-    }
-    
-    const options: Record<string, any> = {
-      key:         process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-      amount:      orderData.amount,
-      currency:    orderData.currency,
-      name:        'Fuelist',
-      description: 'Healthy Food Order',
-      order_id:    orderData.order_id,
-      prefill: {
-        name:    address.name,
-        contact: address.phone,
-        email:   profile?.email ?? '',
-      },
-      theme: { color: '#16a34a' },
-      handler: async (response: any) => {
-        try {
-          const verifyRes = await fetch('/api/payment/verify', {
-            method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({
-              razorpay_order_id:    response.razorpay_order_id,
-              razorpay_payment_id:  response.razorpay_payment_id,
-              razorpay_signature:   response.razorpay_signature,
-              items,
-              total_amount:         total,
-              address,
-              coupon_code:          appliedCoupon?.coupon?.code ?? null,
-              reward_points_to_use: pointsToUse,
-            }),
-          })
-          if (!verifyRes.ok) throw new Error('Verification failed')
-          const verifyData = await verifyRes.json()
-          try {
-            sessionStorage.setItem('fuelist_last_order', JSON.stringify({
-              order_id: verifyData.order_id, items, total, address,
-            }))
-          } catch {}
-          clearCart()
-          onClose()
-          router.push(`/payment/success?order_id=${verifyData.order_id}`)
-        } catch (err) {
-          console.error('verify failed:', err)
-          clearCart()
-          onClose()
-          router.push('/payment/failure')
-        }
-      },
-      modal: {
-        ondismiss: () => {
-          setStep('address')
-          setPayError('Payment cancelled. You can try again.')
-        },
-      },
-    }
-    const rzp = new window.Razorpay(options)
-    rzp.on?.('payment.failed', () => {
-      setStep('address')
-      setPayError('Payment failed. Please try again.')
-    })
-    rzp.open()
+      const orderData = await res.json()
 
-  }, [address, items, total, finalTotal, appliedCoupon, pointsToUse, profile, accessToken, clearCart, onClose, router])
+      const options: Record<string, any> = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: 'Fuelist',
+        description: 'Premium Meal Subscription',
+        order_id: orderData.order_id,
+        prefill: {
+          name: address.name,
+          contact: address.phone,
+          email: profile?.email ?? '',
+        },
+        theme: { color: '#d97706' },
+        handler: async (response: any) => {
+          try {
+            const verifyRes = await fetch('/api/payment/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                items,
+                total_amount: total,
+                address,
+                coupon_code: appliedCoupon?.coupon?.code ?? null,
+                reward_points_to_use: pointsToUse,
+              }),
+            })
+            if (!verifyRes.ok) throw new Error('Verification failed')
+            const verifyData = await verifyRes.json()
+            clearCart()
+            onClose()
+            router.push(`/payment/success?order_id=${verifyData.order_id}`)
+          } catch (err) {
+            console.error('verify failed:', err)
+            clearCart()
+            onClose()
+            router.push('/payment/failure')
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            setStep('address')
+            setPayError('Payment cancelled.')
+          },
+        },
+      }
+      const rzp = new window.Razorpay(options)
+      rzp.open()
+    } catch (err) {
+      setPayError('Failed to initiate payment.')
+      setStep('address')
+    }
+  }, [address, items, total, finalTotal, appliedCoupon, pointsToUse, profile, clearCart, onClose, router])
+
+  const stepIcon: Record<string, IconName> = {
+    cart: 'shoppingBag',
+    address: 'location',
+    paying: 'billing'
+  }
 
   return (
-    <>
-      <div
-        className={`fixed inset-0 z-50 bg-black/40 transition-opacity duration-300 ${
-          open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-        }`}
-        onClick={step === 'address' ? () => setStep('cart') : step === 'cart' ? onClose : undefined}
-        aria-hidden="true"
-      />
+    <AnimatePresence>
+      {open && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={step === 'paying' ? undefined : (step === 'address' ? () => setStep('cart') : onClose)}
+            className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-sm"
+          />
 
-      <div
-        ref={drawerRef}
-        className={`fixed right-0 z-50 flex w-full max-w-md flex-col bg-white shadow-2xl transition-all duration-300 ease-out ${
-          open ? 'translate-x-0' : 'translate-x-full'
-        }`}
-        style={{ 
-          top: isEnabled ? '0px' : 'var(--banner-height, 0px)',
-          height: isEnabled ? '100%' : 'calc(100% - var(--banner-height, 0px))'
-        }}
-        role="dialog"
-        aria-modal="true"
-      >
-        <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-          <div className="flex items-center gap-2">
-            {(step === 'address') && (
-              <button
-                onClick={() => setStep('cart')}
-                className="mr-1 rounded-full p-1.5 text-gray-400 hover:bg-gray-100 transition-colors"
-                aria-label="Back to cart"
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-            )}
-            <span className="text-xl">
-              {step === 'cart' ? '🛒' : step === 'address' ? '📍' : '💳'}
-            </span>
-            <h2 className="text-lg font-bold text-gray-900">
-              {step === 'cart' ? 'Your Cart' : step === 'address' ? 'Delivery address' : 'Processing…'}
-            </h2>
-            {step === 'cart' && count > 0 && (
-              <span className="rounded-full bg-green-500 px-2 py-0.5 text-xs font-bold text-white">
-                {count}
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {step === 'cart' && items.length > 0 && (
-              <button
-                onClick={clearCart}
-                className="text-xs text-red-400 hover:text-red-600 transition-colors font-medium"
-              >
-                Clear all
-              </button>
-            )}
-            {step !== 'paying' && (
-              <button
-                onClick={onClose}
-                className="rounded-full p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
-                aria-label="Close"
-              >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            )}
-          </div>
-        </div>
-
-        {items.length > 0 && (
-          <div className="flex items-center gap-2 px-5 py-2.5 bg-gray-50 border-b border-gray-100 text-xs text-gray-400">
-            <span className={step === 'cart' ? 'text-green-600 font-semibold' : ''}>1. Cart</span>
-            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-            <span className={step === 'address' ? 'text-green-600 font-semibold' : ''}>2. Address</span>
-            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-            <span className={step === 'paying' ? 'text-green-600 font-semibold' : ''}>3. Payment</span>
-          </div>
-        )}
-
-        {step === 'cart' && (
-          <>
-            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-              {items.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full gap-4 text-center py-16">
-                  <div className="text-6xl">🥗</div>
-                  <p className="text-gray-500 font-medium">Your cart is empty</p>
-                  <p className="text-sm text-gray-400">Add some bowls to get started!</p>
+          {/* Drawer */}
+          <motion.div
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+            className="fixed right-0 z-50 flex h-full w-full max-w-sm flex-col bg-white shadow-premium"
+            style={{ 
+              top: isEnabled ? '0px' : 'var(--banner-height, 0px)',
+              height: isEnabled ? '100%' : 'calc(100% - var(--banner-height, 0px))'
+            }}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-stone-100 px-5 py-4">
+              <div className="flex items-center gap-4">
+                {step === 'address' && (
+                  <button onClick={() => setStep('cart')} className="group rounded-full p-2 text-stone-400 hover:bg-stone-50 hover:text-stone-900 transition-colors">
+                    <Icon name="close" className="rotate-90" size={18} />
+                  </button>
+                )}
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-50 text-amber-600">
+                  <Icon name={stepIcon[step]} size={22} strokeWidth={2.5} />
                 </div>
-              ) : (
-                items.map(({ item, quantity }) => (
-                  <div key={item.id} className="flex gap-3 rounded-xl border border-gray-100 p-3">
-                    <div className="relative h-16 w-16 shrink-0 rounded-lg overflow-hidden bg-green-50">
-                      {item.image_url ? (
-                        <Image src={getImageUrl(item.image_url)} alt={item.name} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover" />
-                      ) : (
-                        <div className="flex h-full items-center justify-center text-2xl">🥗</div>
-                      )}
-                    </div>
-                    <div className="flex flex-1 flex-col gap-1 min-w-0">
-                      <p className="font-semibold text-gray-900 text-sm leading-tight truncate">{item.name}</p>
-                      <p className="text-xs text-gray-400">{item.calories} kcal · P {item.protein}g</p>
-                      <div className="flex items-center justify-between mt-auto">
-                        <div className="flex items-center gap-1.5 rounded-full bg-gray-50 border border-gray-200 px-1">
-                          <button onClick={() => updateQuantity(item.id, quantity - 1)} className="h-6 w-6 rounded-full text-gray-500 hover:bg-gray-200 flex items-center justify-center text-sm font-bold transition-colors">−</button>
-                          <span className="w-4 text-center text-sm font-bold text-gray-700">{quantity}</span>
-                          <button onClick={() => updateQuantity(item.id, quantity + 1)} className="h-6 w-6 rounded-full text-gray-500 hover:bg-gray-200 flex items-center justify-center text-sm font-bold transition-colors">+</button>
-                        </div>
-                        <span className="font-bold text-green-600 text-sm">{formatPrice(item.price * quantity)}</span>
-                      </div>
-                    </div>
-                    <button onClick={() => removeItem(item.id)} className="self-start rounded-full p-1 text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors">
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-                ))
-              )}
+                <div>
+                  <h2 className="text-xl font-black text-stone-900 tracking-tight leading-none">
+                    {step === 'cart' ? 'Your Cart' : step === 'address' ? 'Delivery' : 'Processing'}
+                  </h2>
+                  {step === 'cart' && count > 0 && (
+                    <p className="text-xs font-black text-stone-400 mt-1 uppercase tracking-widest">{count} items added</p>
+                  )}
+                </div>
+              </div>
+              <button 
+                onClick={onClose} 
+                className="group rounded-full p-2 text-stone-400 hover:bg-stone-100 hover:text-stone-900 transition-all duration-200"
+              >
+                <Icon name="close" size={20} strokeWidth={2.5} className="group-hover:rotate-90 transition-transform duration-300" />
+              </button>
             </div>
 
+            {/* Stepper */}
             {items.length > 0 && (
-              <div className="border-t border-gray-100 px-5 py-4 space-y-3 bg-white">
-                <CouponInput orderAmount={total} applied={appliedCoupon} isFirstOrder={isFirstOrder} onApply={(result) => setAppliedCoupon(result)} onRemove={() => { setAppliedCoupon(null); setPointsToUse(0) }} />
-                <RewardPointsToggle availablePoints={profile?.reward_points ?? 0} orderAmount={total - discountAmount} pointsToUse={pointsToUse} onChange={setPointsToUse} />
-                <div className="space-y-1 pt-1">
-                  <div className="flex items-center justify-between text-sm text-gray-500">
-                    <span>{count} item{count !== 1 ? 's' : ''}</span>
+              <div className="flex items-center justify-between px-6 py-2.5 bg-stone-50/50 border-b border-stone-100">
+                <div className={cn("flex items-center gap-2 text-xs font-black uppercase tracking-widest transition-colors", step === 'cart' ? "text-amber-600" : "text-stone-300")}>
+                  <span>01. Cart</span>
+                </div>
+                <div className="flex-1 h-[2px] mx-4 bg-stone-100 relative">
+                  <motion.div 
+                    initial={false}
+                    animate={{ width: step === 'cart' ? '0%' : step === 'address' ? '100%' : '100%' }}
+                    className="absolute inset-0 bg-amber-500"
+                  />
+                </div>
+                <div className={cn("flex items-center gap-2 text-xs font-black uppercase tracking-widest transition-colors", step === 'address' ? "text-amber-600" : "text-stone-300")}>
+                  <span>02. Address</span>
+                </div>
+              </div>
+            )}
+
+            {/* Content Area */}
+            <div className="flex-1 overflow-y-auto px-5 py-6 custom-scrollbar">
+              <AnimatePresence mode="wait">
+                {step === 'cart' && (
+                  <motion.div key="cart" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                    {items.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <div className="w-20 h-20 bg-stone-50 rounded-2xl flex items-center justify-center text-stone-200 mb-6">
+                          <Icon name="bowl" size={40} />
+                        </div>
+                        <h3 className="text-xl font-black text-stone-900 tracking-tight">Your cart is empty</h3>
+                        <p className="text-sm font-medium text-stone-400 mt-2 max-w-[200px]">Add some nutritious bowls to fuel your week!</p>
+                        <Button variant="primary" className="mt-8" onClick={onClose}>Browse Menu</Button>
+                      </div>
+                    ) : (
+                      items.map(({ item, quantity }) => (
+                        <motion.div key={item.id} layout className="flex gap-4 p-3 rounded-2xl border border-stone-100 bg-white shadow-sm group">
+                          <div className="relative h-16 w-16 shrink-0 rounded-xl overflow-hidden bg-stone-50">
+                            {item.image_url ? (
+                              <Image src={getImageUrl(item.image_url)} alt={item.name} fill className="object-cover group-hover:scale-110 transition-transform duration-500" />
+                            ) : (
+                              <div className="flex h-full items-center justify-center text-2xl text-stone-200"><Icon name="bowl" size={32} /></div>
+                            )}
+                          </div>
+                          <div className="flex flex-1 flex-col justify-between min-w-0">
+                            <div>
+                              <p className="font-black text-stone-900 tracking-tight leading-none truncate">{item.name}</p>
+                              <div className="flex items-center gap-1 text-[10px] font-bold mt-1 tracking-wide">
+                                <span className="text-stone-700">{item.calories} kCal</span>
+                                <span className="text-stone-300">·</span>
+                                <span className="text-blue-700">P {item.protein}g</span>
+                                <span className="text-stone-300">·</span>
+                                <span className="text-emerald-700">C {item.carbs}g</span>
+                                <span className="text-stone-300">·</span>
+                                <span className="text-amber-700">F {item.fats}g</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-1 bg-stone-50 rounded-xl p-1 border border-stone-100">
+                                <button onClick={() => updateQuantity(item.id, quantity - 1)} className="h-7 w-7 rounded-lg text-stone-500 hover:bg-white hover:text-amber-600 transition-all flex items-center justify-center font-bold">−</button>
+                                <span className="w-6 text-center text-xs font-black text-stone-900">{quantity}</span>
+                                <button onClick={() => updateQuantity(item.id, quantity + 1)} className="h-7 w-7 rounded-lg text-stone-500 hover:bg-white hover:text-amber-600 transition-all flex items-center justify-center font-bold">+</button>
+                              </div>
+                              <span className="font-black text-amber-600">{formatPrice(item.price * quantity)}</span>
+                            </div>
+                          </div>
+                          <button onClick={() => removeItem(item.id)} className="self-start p-2 text-stone-200 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all active:scale-90">
+                            <Icon name="delete" size={18} />
+                          </button>
+                        </motion.div>
+                      ))
+                    )}
+                  </motion.div>
+                )}
+
+                {step === 'address' && outOfArea && (
+                  <motion.div key="outofarea" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center justify-center py-20 text-center">
+                    <div className="w-24 h-24 bg-red-50 rounded-[2.5rem] flex items-center justify-center text-red-500 mb-6 border border-red-100 shadow-sm shadow-red-100">
+                      <Icon name="error" size={48} />
+                    </div>
+                    <h3 className="text-xl font-black text-stone-900 tracking-tight">Outside Delivery Area</h3>
+                    <p className="text-sm font-medium text-stone-400 mt-2 max-w-[240px]">We currently deliver within {SERVICE_AREA_DESCRIPTION}.</p>
+                    <Button variant="outline" className="mt-8" onClick={() => setOutOfArea(false)}>Try Another Address</Button>
+                  </motion.div>
+                )}
+
+                {step === 'address' && !outOfArea && (
+                  <motion.div key="address" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                    <div className="p-5 rounded-2xl bg-amber-50/40 border border-amber-100 flex items-center justify-between shadow-sm shadow-amber-100/30">
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 bg-white rounded-lg flex items-center justify-center shadow-sm text-amber-600"><Icon name="package" size={16} /></div>
+                        <div>
+                          <p className="text-xs font-black text-amber-600 uppercase tracking-widest leading-none">Order Summary</p>
+                          <p className="text-sm font-black text-stone-900 mt-1">{count} healthy bowls</p>
+                        </div>
+                      </div>
+                      <span className="text-xl font-black text-amber-700">{formatPrice(total)}</span>
+                    </div>
+
+                    <div className="space-y-6">
+                      <Input label="Recipient name" value={address.name} onChange={(v) => { setAddress({...address, name: v.target.value}); setErrors({...errors, name: undefined}) }} placeholder="Your name" error={errors.name} icon={<Icon name="user" size={18}/>} />
+                      <Input label="Mobile number" value={address.phone} onChange={(v) => { setAddress({...address, phone: v.target.value}); setErrors({...errors, phone: undefined}) }} placeholder="+91 98765 43210" type="tel" error={errors.phone} icon={<Icon name="phone" size={18}/>} />
+                      <div className="pt-4 border-t border-stone-50">
+                        <AddressManager hideHeader selectedId={selectedAddressId || undefined} onSelect={handleSelectAddress} />
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {step === 'paying' && (
+                  <motion.div key="paying" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center py-20 text-center">
+                    <div className="mb-6 relative">
+                      <div className="h-16 w-16 border-4 border-amber-100 border-t-amber-500 rounded-full animate-spin" />
+                      <div className="absolute inset-0 flex items-center justify-center text-amber-500"><Icon name="billing" size={24} /></div>
+                    </div>
+                    <h3 className="text-xl font-black text-stone-900 tracking-tight">Opening Secure Payment</h3>
+                    <p className="text-sm font-medium text-stone-400 mt-2">Connecting to Razorpay gateway…</p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Footer / Actions */}
+            {items.length > 0 && step !== 'paying' && (
+              <div className="border-t border-stone-100 px-5 py-5 space-y-4 bg-white shadow-[0_-8px_32px_rgba(28,25,23,0.05)]">
+                {step === 'cart' && (
+                  <>
+                    <CouponInput orderAmount={total} applied={appliedCoupon} isFirstOrder={isFirstOrder} onApply={(result) => setAppliedCoupon(result)} onRemove={() => { setAppliedCoupon(null); setPointsToUse(0) }} />
+                    <RewardPointsToggle availablePoints={profile?.reward_points ?? 0} orderAmount={total - discountAmount} pointsToUse={pointsToUse} onChange={setPointsToUse} />
+                  </>
+                )}
+
+                <div className="space-y-2 py-2">
+                  <div className="flex items-center justify-between text-xs font-bold text-stone-400">
+                    <span className="capitalize tracking-wider">Base Total</span>
                     <span>{formatPrice(total)}</span>
                   </div>
                   {discountAmount > 0 && (
-                    <div className="flex items-center justify-between text-sm text-green-600">
-                      <span>Coupon ({appliedCoupon?.coupon?.code})</span>
+                    <div className="flex items-center justify-between text-xs font-bold text-emerald-600">
+                      <span className="capitalize tracking-wider">Coupon Savings</span>
                       <span>−{formatPrice(discountAmount)}</span>
                     </div>
                   )}
                   {pointsValue > 0 && (
-                    <div className="flex items-center justify-between text-sm text-amber-600">
-                      <span>Reward points ({pointsToUse} pts)</span>
+                    <div className="flex items-center justify-between text-xs font-bold text-amber-600">
+                      <span className="capitalize tracking-wider">Rewards ({pointsToUse} pts)</span>
                       <span>−{formatPrice(pointsValue)}</span>
                     </div>
                   )}
-                  <div className="flex items-center justify-between text-sm font-bold text-gray-900 border-t border-gray-100 pt-1">
-                    <span>Total</span>
-                    <span className="text-base">{formatPrice(finalTotal)}</span>
+                  <div className="flex items-center justify-between pt-3 border-t border-stone-50">
+                    <span className="text-sm font-black text-stone-900 capitalize tracking-tighter">Grand Total</span>
+                    <span className="text-2xl font-black text-stone-900 tracking-tighter">{formatPrice(finalTotal)}</span>
                   </div>
                 </div>
-                <button
-                  onClick={goToAddressStep}
-                  disabled={!isEnabled}
-                  className="flex w-full items-center justify-center gap-2 rounded-full bg-green-600 px-6 py-3.5 text-white font-bold text-base hover:bg-green-700 active:scale-95 transition-all shadow-md shadow-green-100 disabled:opacity-50 disabled:bg-gray-400"
-                >
-                  {isEnabled ? 'Continue to delivery' : 'Service Paused'}
-                </button>
+
+                <div className="pt-2">
+                  {payError && <div className="mb-4 p-3 bg-red-50 text-red-500 rounded-xl text-center text-xs font-bold border border-red-100 flex items-center gap-2 justify-center"><Icon name="error" size={14} strokeWidth={3} /> {payError}</div>}
+                  <Button
+                    size="lg"
+                    className="w-full shadow-premium"
+                    disabled={addrLoading || (step === 'cart' && count === 0)}
+                    onClick={step === 'cart' ? goToAddressStep : handlePayment}
+                  >
+                    {step === 'cart' ? 'Proceed to Delivery' : 'Complete Payment'}
+                  </Button>
+                </div>
               </div>
             )}
-          </>
-        )}
-
-        {step === 'address' && outOfArea && (
-          <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
-            <div className="text-5xl">🚫</div>
-            <h3 className="text-lg font-bold text-gray-900 mb-1">Outside Delivery Area</h3>
-            <p className="text-sm text-gray-500 mb-4">We deliver within {SERVICE_AREA_DESCRIPTION}.</p>
-            <button onClick={() => setOutOfArea(false)} className="bg-green-600 text-white px-6 py-2 rounded-full font-bold transition-all">Change address</button>
-          </div>
-        )}
-
-        {step === 'address' && !outOfArea && (
-          <>
-            <div className="flex-1 overflow-y-auto px-5 py-4">
-              {addrLoading ? (
-                <div className="space-y-3 animate-pulse">
-                  {[...Array(5)].map((_, i) => (
-                    <div key={i} className="h-12 bg-gray-100 rounded-lg" />
-                  ))}
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="rounded-xl bg-green-50 border border-green-100 px-4 py-3 flex items-center justify-between">
-                    <span className="text-sm text-green-800 font-medium">{count} item{count !== 1 ? 's' : ''}</span>
-                    <span className="text-sm font-bold text-green-700">{formatPrice(total)}</span>
-                  </div>
-                  <Field label="Full name" value={address.name} onChange={setField('name')} placeholder="Your name" error={errors.name} />
-                  <Field label="Phone number" value={address.phone} onChange={setField('phone')} placeholder="+91 98765 43210" type="tel" error={errors.phone} />
-                  <div className="pt-2">
-                    <AddressManager hideHeader selectedId={selectedAddressId || undefined} onSelect={handleSelectAddress} />
-                  </div>
-                </div>
-              )}
-            </div>
-            <div className="border-t border-gray-100 px-5 py-4 bg-white">
-              {payError && <p className="text-xs text-red-500 mb-2 truncate">{payError}</p>}
-              <button onClick={handlePayment} disabled={addrLoading} className="w-full rounded-full bg-green-600 py-3.5 text-white font-bold hover:bg-green-700 transition-all">Proceed to Payment</button>
-            </div>
-          </>
-        )}
-
-        {step === 'paying' && (
-          <div className="flex flex-1 flex-col items-center justify-center gap-4 px-5">
-            <svg className="h-10 w-10 animate-spin text-green-500" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" /></svg>
-            <p className="text-gray-500 font-medium">Opening payment gateway…</p>
-          </div>
-        )}
-      </div>
-    </>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
   )
 }

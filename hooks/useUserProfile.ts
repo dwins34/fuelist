@@ -1,6 +1,8 @@
 'use client'
 
+import { useMemo } from 'react'
 import { useAuthContext } from '@/context/AuthContext'
+import { createClient } from '@/lib/supabase/client'
 
 export interface UserProfileData {
   id: string
@@ -19,10 +21,11 @@ export interface UserProfileData {
 
 export function useUserProfile() {
   const { profile, loading, error, reloadProfile, accessToken } = useAuthContext()
+  const supabase = useMemo(() => createClient(), [])
 
   async function saveProfile(fields: Omit<UserProfileData, 'id' | 'email' | 'role'>) {
-    if (!profile)      return { error: 'No session.' }
-    if (!accessToken)  return { error: 'Not authenticated.' }
+    if (!profile) return { error: 'No session.' }
+    if (!accessToken) return { error: 'Not authenticated. Please refresh.' }
 
     const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY

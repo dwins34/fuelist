@@ -1,39 +1,54 @@
-/**
- * Card primitives — shadcn-style.
- *
- * To retheme the entire card across the app, edit the `base` strings here.
- * Nothing else in the codebase needs to change.
- */
+'use client'
+
 import { HTMLAttributes, forwardRef } from 'react'
+import { motion, HTMLMotionProps } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
-// ── Card ──────────────────────────────────────────────────────────────────────
+/**
+ * Premium Card Primitives — Fuelist Design System.
+ * 
+ * Standardizes rounded corners, shadows, and spacing.
+ * Includes a 'glass' variant for premium floating UI.
+ */
 
-const Card = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div
-      ref={ref}
-      className={cn(
-        // ← theme token: change border-radius, shadow, background here
-        'rounded-2xl bg-white border border-gray-100 shadow-sm',
-        className
-      )}
-      {...props}
-    />
-  )
+interface CardProps extends HTMLAttributes<HTMLDivElement> {
+  variant?: 'default' | 'glass' | 'ghost'
+  interactive?: boolean
+}
+
+const Card = forwardRef<HTMLDivElement, CardProps>(
+  ({ className, variant = 'default', interactive = false, ...props }, ref) => {
+    const Component = interactive ? motion.div : 'div'
+    const motionProps = interactive ? {
+      whileHover: { y: -4, transition: { duration: 0.2 } },
+      whileTap: { scale: 0.98 }
+    } : {}
+
+    return (
+      <Component
+        ref={ref as any}
+        className={cn(
+          'rounded-[1.5rem] transition-all duration-300',
+          variant === 'default' && 'bg-white border border-stone-100 shadow-sm hover:shadow-premium',
+          variant === 'glass' && 'glass shadow-premium',
+          variant === 'ghost' && 'bg-transparent border border-transparent',
+          interactive && 'cursor-pointer',
+          className
+        )}
+        {...(motionProps as any)}
+        {...props}
+      />
+    )
+  }
 )
 Card.displayName = 'Card'
-
-// ── CardImage ─────────────────────────────────────────────────────────────────
-// Wrapper that clips the image to the top rounded corners of the card.
 
 const CardImage = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
       className={cn(
-        // ← theme token: change image height here
-        'relative h-48 w-full overflow-hidden rounded-t-2xl bg-gray-100',
+        'relative h-56 w-full overflow-hidden rounded-t-[1.5rem] bg-stone-100',
         className
       )}
       {...props}
@@ -42,15 +57,12 @@ const CardImage = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
 )
 CardImage.displayName = 'CardImage'
 
-// ── CardContent ───────────────────────────────────────────────────────────────
-
 const CardContent = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
       className={cn(
-        // ← theme token: change card body padding here
-        'flex flex-col gap-2.5 p-4',
+        'flex flex-col gap-4 p-6',
         className
       )}
       {...props}
@@ -59,13 +71,11 @@ const CardContent = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
 )
 CardContent.displayName = 'CardContent'
 
-// ── CardFooter ────────────────────────────────────────────────────────────────
-
 const CardFooter = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn('flex items-center gap-2 pt-1', className)}
+      className={cn('flex items-center gap-3 pt-2', className)}
       {...props}
     />
   )

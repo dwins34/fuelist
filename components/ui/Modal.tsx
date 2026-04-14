@@ -1,15 +1,36 @@
 'use client'
 
 import { useEffect, ReactNode } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Icon } from '@/lib/icons'
+import { cn } from '@/lib/utils'
 
 interface ModalProps {
   isOpen: boolean
   onClose: () => void
   title: string
   children: ReactNode
+  className?: string
+  maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl'
 }
 
-export default function Modal({ isOpen, onClose, title, children }: ModalProps) {
+const maxWeights = {
+  sm: 'max-w-sm',
+  md: 'max-w-md',
+  lg: 'max-w-lg',
+  xl: 'max-w-xl',
+  '2xl': 'max-w-2xl',
+}
+
+export default function Modal({ 
+  isOpen, 
+  onClose, 
+  title, 
+  children, 
+  className,
+  maxWidth = 'lg'
+}: ModalProps) {
+  
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden'
@@ -21,30 +42,52 @@ export default function Modal({ isOpen, onClose, title, children }: ModalProps) 
     }
   }, [isOpen])
 
-  if (!isOpen) return null
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      {/* Panel */}
-      <div className="relative z-10 w-full max-w-lg rounded-2xl bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-          <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
-          <button
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             onClick={onClose}
-            className="rounded-full p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+            className="absolute inset-0 bg-stone-900/40 backdrop-blur-md"
+          />
+
+          {/* Panel */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className={cn(
+              "relative z-10 w-full bg-white shadow-premium rounded-[2rem] overflow-hidden flex flex-col",
+              maxWeights[maxWidth],
+              className
+            )}
           >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+            {/* Header */}
+            <div className="flex items-center justify-between px-8 py-6 border-b border-stone-100">
+              <h2 className="text-xl font-black text-stone-900 tracking-tight">
+                {title}
+              </h2>
+              <button
+                onClick={onClose}
+                className="group rounded-full p-2 text-stone-400 hover:bg-stone-100 hover:text-stone-900 transition-all duration-200"
+                aria-label="Close modal"
+              >
+                <Icon name="close" size={20} strokeWidth={2.5} className="group-hover:rotate-90 transition-transform duration-300" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="px-8 py-7 overflow-y-auto max-h-[75vh] custom-scrollbar">
+              {children}
+            </div>
+          </motion.div>
         </div>
-        <div className="px-6 py-5">{children}</div>
-      </div>
-    </div>
+      )}
+    </AnimatePresence>
   )
 }

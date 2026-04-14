@@ -5,13 +5,16 @@ import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Suspense } from 'react'
+import { motion } from 'framer-motion'
 import { formatPrice, getImageUrl } from '@/lib/utils'
-// import { buildWhatsAppMessage } from '@/lib/whatsapp'
 import { CartItem } from '@/types'
 import { DeliveryAddress } from '@/lib/whatsapp'
+import { Icon, IconName } from '@/lib/icons'
+import Button from '@/components/ui/Button'
+import { Badge } from '@/components/ui/badge'
+import { cn } from '@/lib/utils'
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
+// ── Types ────────────────────────────────────────────────────────────────────
 interface StoredOrder {
   order_id: string
   items:    CartItem[]
@@ -19,60 +22,59 @@ interface StoredOrder {
   address:  DeliveryAddress
 }
 
-// ─── Animated checkmark ───────────────────────────────────────────────────────
-
-function CheckmarkCircle() {
+// ── Premium Success Indicator ─────────────────────────────────────────────────
+function SuccessIndicator() {
   return (
-    <div className="relative flex items-center justify-center">
-      {/* Pulse rings */}
-      <span className="absolute inline-flex h-28 w-28 rounded-full bg-green-400 opacity-20 animate-ping" />
-      <span className="absolute inline-flex h-24 w-24 rounded-full bg-green-400 opacity-20 animate-ping [animation-delay:200ms]" />
-      {/* Circle */}
-      <div className="relative z-10 flex h-20 w-20 items-center justify-center rounded-full bg-green-500 shadow-lg shadow-green-200">
-        <svg className="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-        </svg>
-      </div>
+    <div className="relative flex items-center justify-center py-12">
+      <motion.div
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="relative z-10 flex h-32 w-32 items-center justify-center rounded-[3rem] bg-gradient-to-br from-amber-400 to-amber-600 shadow-xl shadow-amber-200"
+      >
+        <Icon name="success" size={48} strokeWidth={3} className="text-white" />
+      </motion.div>
+      <motion.div 
+        animate={{ scale: [1, 1.2, 1], opacity: [0.2, 0.1, 0.2] }}
+        transition={{ duration: 4, repeat: Infinity }}
+        className="absolute inset-0 m-auto h-48 w-48 rounded-full bg-amber-400 blur-3xl opacity-20" 
+      />
     </div>
   )
 }
 
-// ─── Order timeline ───────────────────────────────────────────────────────────
-
-const TIMELINE = [
-  { label: 'Order placed',    icon: '📋', done: true,  active: false },
-  { label: 'Payment confirmed', icon: '✅', done: true,  active: false },
-  { label: 'Being prepared',  icon: '👨‍🍳', done: false, active: true  },
-  { label: 'Out for delivery', icon: '🛵', done: false, active: false },
-  { label: 'Delivered',       icon: '🎉', done: false, active: false },
+// ── Order Timeline ────────────────────────────────────────────────────────────
+const TIMELINE: { label: string; icon: IconName; done: boolean; active: boolean }[] = [
+  { label: 'Transmission Logged', icon: 'success', done: true,  active: false },
+  { label: 'Payment Authenticated', icon: 'security', done: true,  active: false },
+  { label: 'Kitchen Deployment', icon: 'preparing', done: false, active: true  },
+  { label: 'Logistics Transit', icon: 'shipping', done: false, active: false },
+  { label: 'Fulfilment Complete', icon: 'received', done: false, active: false },
 ]
 
 function OrderTimeline() {
   return (
-    <div className="w-full">
+    <div className="w-full space-y-6">
       {TIMELINE.map((step, i) => (
-        <div key={step.label} className="flex items-start gap-3">
-          {/* Dot + line */}
+        <div key={step.label} className="flex items-center gap-6 group">
           <div className="flex flex-col items-center">
-            <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-base
-              ${step.done  ? 'bg-green-500 text-white' :
-                step.active ? 'bg-green-100 ring-2 ring-green-500 text-green-700' :
-                              'bg-gray-100 text-gray-300'}`}>
-              {step.icon}
+            <div className={cn(
+              "flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl transition-all duration-500",
+              step.done ? "bg-amber-500 text-white shadow-md shadow-amber-100" :
+              step.active ? "bg-stone-900 text-white ring-4 ring-stone-100" :
+              "bg-stone-50 text-stone-300"
+            )}>
+              <Icon name={step.icon} size={18} strokeWidth={3} />
             </div>
-            {i < TIMELINE.length - 1 && (
-              <div className={`w-0.5 h-6 mt-0.5 ${step.done ? 'bg-green-400' : 'bg-gray-200'}`} />
-            )}
           </div>
-          {/* Label */}
-          <div className="pb-1 pt-1">
-            <p className={`text-sm font-medium ${
-              step.done ? 'text-green-700' : step.active ? 'text-gray-900' : 'text-gray-400'
-            }`}>
+          <div className="flex-1 border-b border-stone-50 pb-4">
+            <p className={cn(
+              "text-[10px] font-black uppercase tracking-[0.2em]",
+              step.done ? "text-amber-600" : step.active ? "text-stone-900" : "text-stone-300"
+            )}>
               {step.label}
             </p>
             {step.active && (
-              <p className="text-xs text-green-500 font-medium animate-pulse">In progress…</p>
+              <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest mt-1 animate-pulse">Processing at Station</p>
             )}
           </div>
         </div>
@@ -81,80 +83,16 @@ function OrderTimeline() {
   )
 }
 
-// ─── WhatsApp countdown button — disabled, re-enable when ready ───────────────
-//
-// const WHATSAPP_PHONE = process.env.NEXT_PUBLIC_WHATSAPP_PHONE ?? '919999999999'
-//
-// function WhatsAppNotify({ order }: { order: StoredOrder }) {
-//   const [countdown, setCountdown] = useState(5)
-//   const [sent,      setSent]      = useState(false)
-//   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
-//   const urlRef = useRef(
-//     `https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent(
-//       buildWhatsAppMessage(order.items, order.total, order.address)
-//     )}`
-//   )
-//   const hasFired = useRef(false)
-//
-//   useEffect(() => {
-//     timerRef.current = setInterval(() => {
-//       setCountdown((c) => { if (c <= 1) return 0; return c - 1 })
-//     }, 1000)
-//     return () => { if (timerRef.current) clearInterval(timerRef.current) }
-//   }, [])
-//
-//   useEffect(() => {
-//     if (countdown === 0 && !hasFired.current) {
-//       hasFired.current = true
-//       clearInterval(timerRef.current!)
-//       setSent(true)
-//       window.open(urlRef.current, '_blank', 'noopener,noreferrer')
-//     }
-//   }, [countdown])
-//
-//   function handleClick() {
-//     if (hasFired.current) return
-//     hasFired.current = true
-//     clearInterval(timerRef.current!)
-//     setSent(true)
-//     window.open(urlRef.current, '_blank', 'noopener,noreferrer')
-//   }
-//
-//   if (sent) {
-//     return (
-//       <div className="flex items-center gap-2 rounded-xl bg-green-50 border border-green-200 px-4 py-3">
-//         <p className="text-sm font-medium text-green-700">
-//           WhatsApp opened — your order was sent to the restaurant!
-//         </p>
-//       </div>
-//     )
-//   }
-//
-//   return (
-//     <button onClick={handleClick} className="flex w-full items-center justify-between gap-3 rounded-xl bg-[#25D366] px-4 py-3 text-white shadow-md shadow-green-200 hover:bg-[#20b858] active:scale-95 transition-all">
-//       <div className="text-left">
-//         <p className="text-sm font-bold">Notify restaurant via WhatsApp</p>
-//         <p className="text-xs text-green-100">Opens automatically in {countdown}s…</p>
-//       </div>
-//     </button>
-//   )
-// }
-
-// ─── Inner page (needs useSearchParams) ──────────────────────────────────────
-
 function SuccessContent() {
   const searchParams = useSearchParams()
-  const orderId      = searchParams.get('order_id')
-
+  const orderId = searchParams.get('order_id')
   const [order, setOrder] = useState<StoredOrder | null>(null)
-
 
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem('fuelist_last_order')
       if (raw) {
-        const parsed = JSON.parse(raw) as StoredOrder
-        setOrder(parsed)
+        setOrder(JSON.parse(raw))
         sessionStorage.removeItem('fuelist_last_order')
       }
     } catch {}
@@ -163,121 +101,99 @@ function SuccessContent() {
   const shortId = orderId ? `#${orderId.slice(-8).toUpperCase()}` : ''
 
   return (
-    <>
-    <div className="mx-auto max-w-lg px-4 py-10 space-y-6">
-
-      {/* ── Hero: checkmark + heading ── */}
-      <div className="flex flex-col items-center gap-5 text-center pt-4">
-        <CheckmarkCircle />
-        <div>
-          <h1 className="text-3xl font-extrabold text-gray-900">Order Confirmed!</h1>
-          {shortId && (
-            <p className="mt-1 text-sm text-gray-400 font-mono">{shortId}</p>
-          )}
-          <p className="mt-2 text-gray-500 text-sm max-w-xs mx-auto">
-            Your payment was successful. We&apos;re getting your bowls ready!
-          </p>
+    <div className="mx-auto max-w-2xl px-6 py-12 lg:py-20 flex flex-col items-center gap-12">
+      
+      {/* ── Visual confirmation ── */}
+      <div className="text-center space-y-6">
+        <SuccessIndicator />
+        <div className="space-y-4">
+          <h1 className="text-5xl font-black text-stone-900 tracking-tighter uppercase">Order Authenticated</h1>
+          <div className="flex flex-col items-center gap-3">
+             {shortId && <Badge variant="premium" className="px-6 py-1.5 text-xs tracking-[0.3em]">{shortId}</Badge>}
+             <p className="text-stone-400 font-medium text-lg max-w-md mx-auto leading-relaxed">
+               Your payment protocol has been successfully verified. Fuelist Kitchens are now preparing your nutrition system.
+             </p>
+          </div>
         </div>
-        <div className="flex items-center gap-2 rounded-full bg-amber-50 border border-amber-200 px-4 py-2 text-sm text-amber-700 font-medium">
-          <span>⏱</span> Estimated delivery: 30–45 min
+        
+        <div className="inline-flex items-center gap-3 px-6 py-3 bg-stone-50 rounded-2xl border border-stone-100">
+           <Icon name="time" size={16} className="text-amber-500" />
+           <span className="text-[10px] font-black uppercase tracking-[0.2em] text-stone-900">Est. Fulfilment: 35–50 MIN</span>
         </div>
       </div>
 
-      {/* ── WhatsApp notify — disabled, re-enable when ready ── */}
-      {/* {order && <WhatsAppNotify order={order} />} */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full mt-8">
+        {/* ── Tracking status ── */}
+        <div className="rounded-[3rem] bg-white border border-stone-100 shadow-premium p-10 space-y-8">
+          <h2 className="text-[11px] font-black text-stone-300 uppercase tracking-[0.3em]">Live Logistics Status</h2>
+          <OrderTimeline />
+        </div>
 
-      {/* ── Order timeline ── */}
-      <div className="rounded-2xl bg-white border border-gray-100 shadow-sm p-5">
-        <h2 className="text-sm font-semibold text-gray-700 mb-4">Order status</h2>
-        <OrderTimeline />
-      </div>
-
-      {/* ── Order summary ── */}
-      {order && (
-        <div className="rounded-2xl bg-white border border-gray-100 shadow-sm p-5 space-y-4">
-          <h2 className="text-sm font-semibold text-gray-700">Your order</h2>
-
-          <div className="space-y-3">
-            {order.items.map(({ item, quantity }) => (
-              <div key={item.id} className="flex items-center gap-3">
-                <div className="relative h-12 w-12 shrink-0 rounded-lg overflow-hidden bg-green-50">
-                  {item.image_url ? (
-                    <Image src={getImageUrl(item.image_url)} alt={item.name} fill className="object-cover" />
-                  ) : (
-                    <div className="flex h-full items-center justify-center text-xl">🥗</div>
-                  )}
+        {/* ── Summary Focus ── */}
+        <div className="space-y-8">
+           {order && (
+             <div className="rounded-[3rem] bg-stone-900 p-10 text-white shadow-premium space-y-8 relative overflow-hidden">
+                <div className="absolute top-0 right-0 h-40 w-40 bg-white/5 blur-3xl rounded-full" />
+                <h2 className="text-[11px] font-black text-stone-500 uppercase tracking-[0.3em] relative z-10">Consolidated Manifest</h2>
+                <div className="space-y-6 relative z-10">
+                   {order.items.map(({ item, quantity }) => (
+                     <div key={item.id} className="flex items-center justify-between group">
+                        <div className="flex items-center gap-4">
+                           <div className="h-12 w-12 rounded-2xl bg-white/5 border border-white/10 overflow-hidden flex items-center justify-center shrink-0">
+                              {item.image_url ? (
+                                <Image src={getImageUrl(item.image_url)} alt={item.name} width={48} height={48} className="object-cover" />
+                              ) : (
+                                <Icon name="bowl" size={20} className="text-stone-500" />
+                              )}
+                           </div>
+                           <div>
+                              <p className="text-sm font-black tracking-tight">{item.name}</p>
+                              <p className="text-[10px] font-black text-stone-500 uppercase tracking-widest mt-0.5">{quantity} QUANTITY</p>
+                           </div>
+                        </div>
+                        <span className="text-sm font-black text-amber-500 tracking-tighter">{formatPrice(item.price * quantity)}</span>
+                     </div>
+                   ))}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
-                  <p className="text-xs text-gray-400">×{quantity}</p>
+                
+                <div className="pt-8 border-t border-white/10 flex items-center justify-between relative z-10">
+                   <span className="text-[11px] font-black text-stone-500 uppercase tracking-[0.3em]">Aggregate Total</span>
+                   <span className="text-2xl font-black text-amber-500 tracking-tighter">{formatPrice(order.total)}</span>
                 </div>
-                <span className="text-sm font-bold text-green-600 shrink-0">
-                  {formatPrice(item.price * quantity)}
-                </span>
+             </div>
+           )}
+
+           {/* ── Actions ── */}
+           <div className="flex flex-col gap-4">
+              {orderId && (
+                <Button 
+                  href={`/orders/${orderId}`} 
+                  size="lg" 
+                  className="w-full !rounded-[2rem] py-8 text-lg shadow-premium"
+                >
+                  Global Order Tracking
+                </Button>
+              )}
+              <div className="flex gap-4">
+                <Link href="/orders" className="flex-1 py-4 text-center rounded-[1.5rem] bg-stone-50 text-[11px] font-black uppercase tracking-widest text-stone-900 border border-stone-100 hover:bg-stone-100 transition-colors">
+                  Archived Logs
+                </Link>
+                <Link href="/menu" className="flex-1 py-4 text-center rounded-[1.5rem] bg-stone-50 text-[11px] font-black uppercase tracking-widest text-stone-900 border border-stone-100 hover:bg-stone-100 transition-colors">
+                  New Order
+                </Link>
               </div>
-            ))}
-          </div>
-
-          <div className="border-t border-gray-100 pt-3 flex items-center justify-between">
-            <span className="text-sm text-gray-500">Total paid</span>
-            <span className="font-bold text-gray-900">{formatPrice(order.total)}</span>
-          </div>
-
-          {/* Delivery address */}
-          <div className="rounded-xl bg-gray-50 px-4 py-3 text-xs text-gray-500 space-y-0.5">
-            <p className="font-semibold text-gray-700 text-sm mb-1">📍 Delivering to</p>
-            <p>{order.address.name} · {order.address.phone}</p>
-            <p>{order.address.address_line1}{order.address.address_line2 ? `, ${order.address.address_line2}` : ''}</p>
-            <p>{order.address.city}{order.address.state ? `, ${order.address.state}` : ''} — {order.address.pincode}</p>
-            {order.address.landmark && <p>Near {order.address.landmark}</p>}
-          </div>
-        </div>
-      )}
-
-      {/* ── Actions ── */}
-      <div className="flex flex-col gap-3 pb-4">
-        {orderId && (
-          <Link
-            href={`/orders/${orderId}`}
-            className="flex items-center justify-center gap-2 rounded-full bg-green-600 px-5 py-3 text-sm font-bold text-white hover:bg-green-700 transition-colors"
-          >
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-300 opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-green-200" />
-            </span>
-            Track your order live
-          </Link>
-        )}
-        <div className="flex gap-3">
-          <Link
-            href="/orders"
-            className="flex-1 text-center rounded-full border border-gray-200 px-5 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
-          >
-            All orders
-          </Link>
-          <Link
-            href="/menu"
-            className="flex-1 text-center rounded-full border border-gray-200 px-5 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
-          >
-            Order again
-          </Link>
+           </div>
         </div>
       </div>
     </div>
-    </>
   )
 }
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function PaymentSuccessPage() {
   return (
     <Suspense fallback={
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <svg className="h-8 w-8 animate-spin text-green-500" viewBox="0 0 24 24" fill="none">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-        </svg>
+      <div className="flex min-h-[80vh] items-center justify-center">
+        <div className="h-12 w-12 border-4 border-stone-100 border-t-amber-500 rounded-full animate-spin shadow-inner" />
       </div>
     }>
       <SuccessContent />

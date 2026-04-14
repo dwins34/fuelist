@@ -6,6 +6,7 @@ import { MenuItem } from '@/types'
 import { formatPrice, categoryLabel, getImageUrl } from '@/lib/utils'
 // import { whatsAppSingleItemUrl } from '@/lib/whatsapp'
 import { useCart } from '@/context/CartContext'
+import Button from '@/components/ui/Button'
 import SubscriptionModal, {
   loadPendingSubscription,
   clearPendingSubscription,
@@ -53,7 +54,7 @@ export default function MenuCard({ item }: MenuCardProps) {
     )}
     <div className="group flex flex-col rounded-2xl bg-white border border-gray-100 shadow-sm hover:shadow-lg transition-shadow overflow-hidden">
       {/* Image */}
-      <div className="relative h-48 w-full bg-green-50 overflow-hidden">
+      <div className="relative h-40 w-full bg-stone-50 overflow-hidden">
         {item.image_url ? (
           <Image
             src={getImageUrl(item.image_url)}
@@ -63,7 +64,7 @@ export default function MenuCard({ item }: MenuCardProps) {
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-5xl">🥗</div>
+          <div className="flex h-full items-center justify-center text-4xl">🥗</div>
         )}
 
         {/* Unavailable overlay */}
@@ -77,7 +78,7 @@ export default function MenuCard({ item }: MenuCardProps) {
 
         {/* Badges row */}
         <div className="absolute top-3 left-3 flex gap-1.5">
-          <span className="rounded-full bg-green-500 px-2.5 py-0.5 text-xs font-semibold text-white">
+          <span className="rounded-full bg-amber-500 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-widest text-white shadow-sm">
             {categoryLabel(item.category)}
           </span>
           {item.is_bestseller && (
@@ -89,10 +90,10 @@ export default function MenuCard({ item }: MenuCardProps) {
       </div>
 
       {/* Body */}
-      <div className="flex flex-col flex-1 p-4 gap-3">
+      <div className="flex flex-col flex-1 px-4 py-3.5 gap-2.5">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="font-semibold text-gray-900 leading-tight">{item.name}</h3>
-          <span className="shrink-0 font-bold text-green-600 text-lg">{formatPrice(item.price)}</span>
+          <h3 className="font-black text-stone-900 leading-tight tracking-tight text-sm">{item.name}</h3>
+          <span className="shrink-0 font-black text-amber-600 text-base">{formatPrice(item.price)}</span>
         </div>
 
         {/* Macro pills */}
@@ -112,52 +113,40 @@ export default function MenuCard({ item }: MenuCardProps) {
         </div>
 
         {/* Ingredients */}
-        <p className="text-xs text-gray-400 line-clamp-2">
+        <p className="text-[10px] text-stone-400 font-medium line-clamp-2 leading-relaxed">
           {item.ingredients.join(', ')}
         </p>
 
         {/* Actions */}
         {item.is_available && (
-          <div className="mt-auto pt-2 space-y-2">
+          <div className="mt-auto pt-2.5 space-y-2">
             <div className="flex items-center gap-2">
               {qty === 0 ? (
-                <>
-                  <button
-                    onClick={() => addItem(item)}
-                    className="flex-1 rounded-full bg-green-500 text-white text-sm font-semibold py-2 hover:bg-green-600 active:scale-95 transition-all"
-                  >
-                    Add to Cart
-                  </button>
-                  {/* WhatsApp Order button — disabled, re-enable when ready
-                  <a
-                    href={whatsAppSingleItemUrl(item.name, item.price)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-1.5 rounded-full border border-green-500 text-green-600 px-3 py-2 text-xs font-semibold hover:bg-green-50 transition-colors shrink-0"
-                  >
-                    <WhatsAppIcon />
-                    Order
-                  </a>
-                  */}
-                </>
+                <Button
+                  onClick={() => addItem(item)}
+                  variant="primary"
+                  className="w-full !rounded-xl py-2 shadow-md"
+                >
+                  Add to Cart
+                </Button>
               ) : (
                 <>
-                  <div className="flex items-center gap-2 rounded-full bg-green-50 border border-green-200 px-1">
+                  <div className="flex items-center gap-1.5 rounded-xl bg-stone-50 border border-stone-100 px-1 py-0.5">
                     <button
                       onClick={() => updateQuantity(item.id, qty - 1)}
-                      className="h-7 w-7 rounded-full text-green-600 font-bold hover:bg-green-100 flex items-center justify-center transition-colors"
+                      className="h-7 w-7 rounded-lg text-stone-600 font-black hover:bg-stone-100 flex items-center justify-center transition-colors"
                     >
                       −
                     </button>
-                    <span className="w-5 text-center text-sm font-bold text-green-700">{qty}</span>
+                    <span className="w-5 text-center text-xs font-black text-stone-900">{qty}</span>
                     <button
                       onClick={() => addItem(item)}
-                      className="h-7 w-7 rounded-full text-green-600 font-bold hover:bg-green-100 flex items-center justify-center transition-colors"
+                      className="h-7 w-7 rounded-lg text-stone-600 font-black hover:bg-stone-100 flex items-center justify-center transition-colors"
                     >
                       +
                     </button>
                   </div>
-                  <span className="flex-1 text-right text-sm font-bold text-green-600">
+                  <span className="flex-1 text-right text-sm font-black text-stone-900">
                     {formatPrice(item.price * qty)}
                   </span>
                 </>
@@ -167,7 +156,7 @@ export default function MenuCard({ item }: MenuCardProps) {
             {/* Subscribe daily button */}
             <button
               onClick={() => setShowSubscribe(true)}
-              className="w-full rounded-full border border-dashed border-green-400 text-green-700 text-xs font-semibold py-1.5 hover:bg-green-50 transition-colors"
+              className="w-full rounded-xl border-2 border-dashed border-amber-200 text-amber-700 text-[10px] font-black uppercase tracking-widest py-2 hover:bg-amber-50 transition-colors"
             >
               🔄 Subscribe Daily
             </button>

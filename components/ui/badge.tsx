@@ -1,42 +1,52 @@
+'use client'
+
 /**
- * Badge primitive — shadcn-style.
+ * Badge primitive — Premium Fuelist Style.
  *
- * Supports named variants. To retheme badge colours globally, edit the
- * `variants` map below — no other file needs to change.
+ * Consistent with the warm gold/ivory design system.
  */
 import { HTMLAttributes } from 'react'
+import { motion, HTMLMotionProps } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
 type BadgeVariant =
-  | 'default'    // green — category label
-  | 'bestseller' // amber — ⭐ Bestseller
-  | 'macro-cal'  // amber tint — calories
-  | 'macro-p'    // blue tint — protein
-  | 'macro-c'    // purple tint — carbs
-  | 'macro-f'    // rose tint — fats
-  | 'unavailable'
+  | 'default'    // Stone / Neutral
+  | 'premium'    // Amber / Gold (Bestseller)
+  | 'success'    // Green (Active/Paid)
+  | 'warning'    // Orange
+  | 'danger'     // Red
+  | 'info'       // Blue
+  | 'secondary'  // Soft Beige
 
-// ← theme token: edit colours here to retheme all badges site-wide
 const variants: Record<BadgeVariant, string> = {
-  default:      'bg-green-500 text-white',
-  bestseller:   'bg-amber-400 text-white',
-  'macro-cal':  'bg-amber-50  text-amber-700',
-  'macro-p':    'bg-blue-50   text-blue-700',
-  'macro-c':    'bg-purple-50 text-purple-700',
-  'macro-f':    'bg-rose-50   text-rose-700',
-  unavailable:  'bg-white/90  text-gray-700',
+  default:   'bg-stone-100 text-stone-700 border-stone-200',
+  premium:   'bg-amber-100 text-amber-700 border-amber-200 shadow-sm shadow-amber-100/50',
+  success:   'bg-emerald-100 text-emerald-700 border-emerald-200',
+  warning:   'bg-orange-100 text-orange-700 border-orange-200',
+  danger:    'bg-red-100 text-red-700 border-red-200',
+  info:      'bg-blue-100 text-blue-700 border-blue-200',
+  secondary: 'bg-stone-50 text-stone-500 border-stone-100',
 }
 
-interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
+type CombinedProps = HTMLMotionProps<'span'> & Omit<HTMLAttributes<HTMLSpanElement>, keyof HTMLMotionProps<'span'>>
+
+interface BadgeProps extends CombinedProps {
   variant?: BadgeVariant
+  pill?: boolean
 }
 
-export function Badge({ variant = 'default', className, ...props }: BadgeProps) {
+export function Badge({ 
+  variant = 'default', 
+  pill = true, 
+  className, 
+  ...props 
+}: BadgeProps) {
   return (
-    <span
+    <motion.span
+      whileHover={{ y: -1 }}
       className={cn(
-        // ← theme token: change badge shape/padding here
-        'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold',
+        'inline-flex items-center gap-1.5 border px-2 py-0.5 text-[10px] font-black capitalize tracking-normal transition-all duration-200',
+        pill ? 'rounded-full' : 'rounded-lg',
         variants[variant],
         className
       )}

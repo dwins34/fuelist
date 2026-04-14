@@ -1,6 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Icon } from '@/lib/icons'
+import { Badge } from '@/components/ui/badge'
+import { cn } from '@/lib/utils'
 
 interface Inquiry {
   id: string
@@ -11,16 +15,10 @@ interface Inquiry {
   created_at: string
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  new: 'bg-blue-100 text-blue-800',
-  in_progress: 'bg-amber-100 text-amber-800',
-  resolved: 'bg-green-100 text-green-800',
-}
-
-const STATUS_LABELS: Record<string, string> = {
-  new: 'New',
-  in_progress: 'In Progress',
-  resolved: 'Resolved',
+const STATUS_CONFIG: Record<string, { label: string; variant: 'premium' | 'secondary' | 'default'; icon: string }> = {
+  new: { label: 'NEW ENTRY', variant: 'premium', icon: 'star' },
+  in_progress: { label: 'ACTIVE', variant: 'secondary', icon: 'time' },
+  resolved: { label: 'ARCHIVED', variant: 'default', icon: 'success' },
 }
 
 export default function AdminInquiriesPage() {
@@ -46,7 +44,6 @@ export default function AdminInquiriesPage() {
 
   const handleStatusChange = async (id: string, newStatus: string) => {
     try {
-      // Optimistic update
       setInquiries(prev => 
         prev.map(inq => inq.id === id ? { ...inq, status: newStatus as any } : inq)
       )
@@ -60,74 +57,116 @@ export default function AdminInquiriesPage() {
       if (!res.ok) throw new Error('Failed to update')
     } catch (error) {
       console.error('Error updating status:', error)
-      // On failure, we could revert, but a page refresh will fix it for now
     }
   }
 
   return (
-    <div>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Inquiries</h1>
-        <p className="text-gray-500 text-sm mt-1">Manage contact messages from your users.</p>
+    <div className="space-y-10 animate-in fade-in duration-700">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pb-2 border-b border-stone-100">
+        <div>
+          <h1 className="text-3xl font-black text-stone-900 tracking-tighter">Communications</h1>
+          <p className="text-xs font-black uppercase tracking-widest text-stone-300 mt-2">Internal Message Stream & Resolution</p>
+        </div>
+        <div className="flex items-center gap-2 px-6 py-3 bg-stone-50 rounded-2xl border border-stone-100 shadow-inner">
+           <Icon name="mail" size={16} className="text-amber-500" />
+           <span className="text-xs font-black uppercase tracking-widest text-stone-900">{inquiries.length} LOGGED MESSAGES</span>
+        </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-gray-600">
-            <thead className="bg-gray-50 text-gray-900 border-b border-gray-200 text-xs uppercase font-bold">
-              <tr>
-                <th className="px-6 py-4">Date</th>
-                <th className="px-6 py-4">User</th>
-                <th className="px-6 py-4">Message</th>
-                <th className="px-6 py-4">Status</th>
+      <div className="bg-white rounded-[2.5rem] border border-stone-100 shadow-premium overflow-hidden">
+        <div className="overflow-x-auto custom-scrollbar">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="bg-stone-900 text-white font-black text-xs uppercase tracking-widest">
+                <th className="px-8 py-6">TIMESTAMP</th>
+                <th className="px-8 py-6">ORIGIN / SOURCE</th>
+                <th className="px-8 py-6">CONTENT STREAM</th>
+                <th className="px-8 py-6 text-right">PROTOCOL STATUS</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-stone-50">
               {loading ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-8 text-center text-gray-400">
-                    Loading inquiries...
+                  <td colSpan={4} className="px-8 py-20 text-center">
+                    <div className="flex flex-col items-center gap-4">
+                       <div className="h-10 w-10 border-4 border-amber-100 border-t-amber-500 rounded-full animate-spin" />
+                       <span className="text-xs font-black text-stone-400 uppercase tracking-widest">Hydrating data...</span>
+                    </div>
                   </td>
                 </tr>
               ) : inquiries.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
-                    No inquiries found.
+                  <td colSpan={4} className="px-8 py-24 text-center">
+                    <div className="flex flex-col items-center gap-6 opacity-30">
+                       <Icon name="mail" size={64} strokeWidth={1} />
+                       <span className="text-xs font-black uppercase tracking-widest">No communication logs recorded</span>
+                    </div>
                   </td>
                 </tr>
               ) : (
-                inquiries.map((inquiry) => (
-                  <tr key={inquiry.id} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap text-gray-500 text-xs font-medium">
-                      {new Date(inquiry.created_at).toLocaleDateString('en-US', { 
-                        month: 'short', day: 'numeric', year: 'numeric' 
-                      })}
+                inquiries.map((inquiry, idx) => (
+                  <motion.tr 
+                    key={inquiry.id} 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.05 }}
+                    className="hover:bg-stone-50/50 transition-colors group"
+                  >
+                    <td className="px-8 py-8 whitespace-nowrap">
+                      <div className="flex flex-col">
+                        <span className="text-xs font-black text-stone-900 tracking-tight">
+                          {new Date(inquiry.created_at).toLocaleDateString('en-GB', { 
+                            day: '2-digit', month: 'short', year: 'numeric' 
+                          })}
+                        </span>
+                        <span className="text-xs font-black text-stone-300 uppercase tracking-widest mt-1">
+                          {new Date(inquiry.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="font-bold text-gray-900">{inquiry.user_name}</div>
-                      <a href={`mailto:${inquiry.user_email}`} className="text-green-600 hover:underline">
-                        {inquiry.user_email}
-                      </a>
+                    <td className="px-8 py-8">
+                      <div className="space-y-1">
+                        <div className="text-sm font-black text-stone-900 tracking-tight">{inquiry.user_name}</div>
+                        <a 
+                          href={`mailto:${inquiry.user_email}`} 
+                          className="text-xs font-black text-amber-500 hover:text-amber-600 transition-colors uppercase tracking-widest truncate block max-w-[180px]"
+                        >
+                          {inquiry.user_email}
+                        </a>
+                      </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <p className="text-gray-700 line-clamp-3 max-w-md" title={inquiry.message}>
-                        {inquiry.message}
-                      </p>
+                    <td className="px-8 py-8">
+                      <div className="relative group/msg max-w-lg">
+                        <p className="text-sm font-medium text-stone-500 leading-relaxed line-clamp-2 italic">
+                          "{inquiry.message}"
+                        </p>
+                      </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <select 
-                        value={inquiry.status || 'new'} 
-                        onChange={(e) => handleStatusChange(inquiry.id, e.target.value)}
-                        className={`text-xs font-bold rounded-full px-3 py-1 border-0 focus:ring-2 focus:ring-offset-1 focus:ring-green-500 cursor-pointer appearance-none ${STATUS_COLORS[inquiry.status || 'new']}`}
-                      >
-                        {Object.entries(STATUS_LABELS).map(([val, label]) => (
-                          <option key={val} value={val} className="bg-white text-gray-900 font-medium">
-                            {label}
-                          </option>
-                        ))}
-                      </select>
+                    <td className="px-8 py-8 whitespace-nowrap text-right">
+                      <div className="relative inline-flex items-center gap-4">
+                        <select 
+                          value={inquiry.status || 'new'} 
+                          onChange={(e) => handleStatusChange(inquiry.id, e.target.value)}
+                          className={cn(
+                            "absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                          )}
+                        >
+                          {Object.keys(STATUS_CONFIG).map((val) => (
+                            <option key={val} value={val}>{STATUS_CONFIG[val].label}</option>
+                          ))}
+                        </select>
+                        
+                        <Badge 
+                          variant={STATUS_CONFIG[inquiry.status || 'new'].variant}
+                          className="px-5 py-2 !rounded-full text-[10px] font-black tracking-widest shadow-sm flex items-center gap-2 group-hover:scale-105 transition-transform"
+                        >
+                          <Icon name={STATUS_CONFIG[inquiry.status || 'new'].icon as any} size={10} strokeWidth={3} />
+                          {STATUS_CONFIG[inquiry.status || 'new'].label}
+                        </Badge>
+                        <Icon name="chevronDown" size={14} className="text-stone-300" />
+                      </div>
                     </td>
-                  </tr>
+                  </motion.tr>
                 ))
               )}
             </tbody>

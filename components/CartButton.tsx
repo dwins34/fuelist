@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useCart } from '@/context/CartContext'
+import { Icon } from '@/lib/icons'
+import { motion, AnimatePresence } from 'framer-motion'
+import { cn } from '@/lib/utils'
 
 interface CartButtonProps {
   onClick: () => void
@@ -15,23 +18,46 @@ export default function CartButton({ onClick }: CartButtonProps) {
     setMounted(true)
   }, [])
 
+  if (!mounted) return null
+
   return (
-    <button
+    <motion.button
+      initial={{ scale: 0.9, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
       onClick={onClick}
-      className="relative flex items-center gap-2 rounded-full bg-green-500 px-4 py-2 text-white font-semibold text-sm hover:bg-green-600 active:scale-95 transition-all shadow-md shadow-green-200"
-    >
-      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-          d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-      </svg>
-      {mounted && count > 0 ? (
-        <>
-          <span>{count} item{count !== 1 ? 's' : ''}</span>
-          <span className="font-bold">₹{total.toFixed(0)}</span>
-        </>
-      ) : (
-        <span>Cart</span>
+      className={cn(
+        "relative flex items-center gap-3 rounded-2xl bg-stone-900 px-6 py-4 text-white shadow-premium transition-all duration-300",
+        count > 0 ? "border-amber-500/50 border-2" : "border-stone-800 border-2"
       )}
-    </button>
+    >
+      <div className="relative">
+        <Icon name="bowl" size={18} strokeWidth={2.5} className="text-amber-500" />
+        <AnimatePresence>
+          {count > 0 && (
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0 }}
+              className="absolute -top-3 -right-3 h-5 w-5 rounded-full bg-amber-500 flex items-center justify-center text-[10px] font-black border-2 border-stone-900"
+            >
+              {count}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      <div className="flex flex-col items-start leading-none">
+        <span className="text-[11px] font-black uppercase tracking-widest text-stone-400">
+          {count > 0 ? 'Your Order' : 'Cart'}
+        </span>
+        {count > 0 && (
+          <span className="text-sm font-black text-white tracking-tight mt-0.5">
+            ₹{total.toFixed(0)}
+          </span>
+        )}
+      </div>
+    </motion.button>
   )
 }

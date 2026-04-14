@@ -1,33 +1,70 @@
+'use client'
+
+import { motion } from 'framer-motion'
 import Link from 'next/link'
+import { Icon } from '@/lib/icons'
+import { Badge } from '@/components/ui/badge'
+import Button from '@/components/ui/Button'
 
 export default function PaymentFailurePage() {
   return (
-    <div className="flex min-h-[70vh] flex-col items-center justify-center px-4 text-center">
-      <div className="rounded-full bg-red-100 p-6 mb-6">
-        <svg className="h-12 w-12 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-        </svg>
+    <div className="flex min-h-[85vh] flex-col items-center justify-center px-6 text-center max-w-xl mx-auto py-12 animate-in fade-in duration-1000">
+      
+      {/* Visual Indicator - Refined Size */}
+      <div className="relative flex items-center justify-center py-8">
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="relative z-10 flex h-24 w-24 items-center justify-center rounded-[2.5rem] bg-stone-900 shadow-xl shadow-stone-200"
+        >
+          <Icon name="error" size={32} strokeWidth={3} className="text-rose-500" />
+        </motion.div>
+        <motion.div 
+          animate={{ scale: [1, 1.2, 1], opacity: [0.1, 0.05, 0.1] }}
+          transition={{ duration: 4, repeat: Infinity }}
+          className="absolute inset-0 m-auto h-40 w-40 rounded-full bg-rose-500/20 blur-3xl" 
+        />
       </div>
 
-      <h1 className="text-3xl font-extrabold text-gray-900 mb-3">Payment Failed</h1>
-      <p className="text-gray-500 max-w-sm mb-8">
-        Something went wrong while verifying your payment. If money was deducted, it will be
-        refunded automatically within 5–7 business days. Please try again.
-      </p>
+      <div className="space-y-4 mb-10">
+        <Badge variant="secondary" className="px-4 py-1 text-[9px] tracking-[0.2em] font-black border-rose-100 text-rose-600 bg-rose-50/50">
+          TRANSACTION INTERRUPTED
+        </Badge>
+        <h1 className="text-4xl font-black text-stone-900 tracking-tighter uppercase leading-none">Protocol Error</h1>
+        <p className="text-stone-400 font-medium text-sm max-w-sm mx-auto leading-relaxed">
+          The payment gateway reported a verification failure. Any funds deducted from your account will be automatically 
+          refunded within 5-7 operational days.
+        </p>
+      </div>
 
-      <div className="flex flex-col sm:flex-row gap-3">
-        <Link
+      <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+        <Button
           href="/menu"
-          className="rounded-full bg-green-600 px-6 py-3 text-sm font-bold text-white hover:bg-green-700 transition-colors"
+          size="md"
+          className="px-10 py-5 text-[11px] uppercase tracking-widest !rounded-2xl shadow-premium"
         >
-          Try again
-        </Link>
-        <Link
+          Re-Attempt Checkout
+        </Button>
+        <Button
           href="/"
-          className="rounded-full border border-gray-200 px-6 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+          variant="outline"
+          size="md"
+          className="px-10 py-5 text-[11px] uppercase tracking-widest !rounded-2xl"
         >
-          Go home
-        </Link>
+          Return to Dashboard
+        </Button>
+      </div>
+
+      <div className="mt-16 pt-8 border-t border-stone-50 w-full flex flex-col items-center gap-4">
+        <div className="flex items-center gap-3 text-stone-300">
+           <Icon name="warning" size={16} />
+           <span className="text-[9px] font-black uppercase tracking-[0.2em]">Contact support if issues persist</span>
+        </div>
+        <div className="flex gap-6">
+           <Link href="/contact" className="text-[9px] font-black uppercase tracking-widest text-stone-400 hover:text-amber-600 transition-colors">Help Center</Link>
+           <div className="h-3 w-[1px] bg-stone-100" />
+           <Link href="/terms" className="text-[9px] font-black uppercase tracking-widest text-stone-400 hover:text-amber-600 transition-colors">System Protocol</Link>
+        </div>
       </div>
     </div>
   )

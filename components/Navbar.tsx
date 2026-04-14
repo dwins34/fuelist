@@ -1,229 +1,251 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useAuthContext } from '@/context/AuthContext'
+import { useServiceStatus } from '@/context/ServiceStatusContext'
+import { Icon } from '@/lib/icons'
 import Button from './ui/Button'
 import Logo from "@/components/Logo"
-import { useServiceStatus } from '@/context/ServiceStatusContext'
-// import ThemeSwitcher from '@/components/ui/ThemeSwitcher'  // re-enable when themes are active
+import Dropdown from './ui/Dropdown'
+import { Badge } from './ui/badge'
+import { cn } from '@/lib/utils'
 
-// ── Avatar ───────────────────────────────────────────────────────────────────
-function UserAvatar({ avatarUrl, name, large = false }: { avatarUrl: string | null; name: string; large?: boolean }) {
-  const size = large ? 48 : 34
-  const base = large ? 'h-12 w-12 rounded-full ring-2 ring-green-100' : 'h-[34px] w-[34px] rounded-full ring-2 ring-green-100'
-
-  if (avatarUrl) {
-    return <Image src={avatarUrl} alt={name} width={size} height={size} className={`${base} object-cover`} referrerPolicy="no-referrer" />
-  }
+// ── Premium Avatar ───────────────────────────────────────────────────────────
+function UserAvatar({ avatarUrl, name, size = 'md' }: { avatarUrl: string | null; name: string; size?: 'sm' | 'md' | 'lg' }) {
+  const dimensions = size === 'lg' ? 56 : size === 'md' ? 40 : 32
+  
   return (
-    <div className={`${base} bg-green-500 text-white font-bold flex items-center justify-center shrink-0 ${large ? 'text-lg' : 'text-sm'}`}>
-      {name?.[0]?.toUpperCase() ?? 'U'}
+    <div 
+      className={cn(
+        "relative shrink-0 flex items-center justify-center rounded-full overflow-hidden border-2 border-white shadow-sm bg-gradient-to-br from-amber-100 to-amber-200",
+        size === 'lg' ? 'h-14 w-14' : size === 'md' ? 'h-10 w-10' : 'h-8 w-8'
+      )}
+    >
+      {avatarUrl ? (
+        <Image 
+          src={avatarUrl} 
+          alt={name} 
+          width={dimensions} 
+          height={dimensions} 
+          className="object-cover h-full w-full" 
+          referrerPolicy="no-referrer" 
+        />
+      ) : (
+        <span className={cn("font-black text-amber-700", size === 'lg' ? 'text-xl' : 'text-sm')}>
+          {name?.charAt(0).toUpperCase() || 'U'}
+        </span>
+      )}
     </div>
   )
 }
 
 // ── Navbar ────────────────────────────────────────────────────────────────────
 export default function Navbar() {
-  const { profile, avatarUrl, loading } = useAuthContext()
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [dropdownOpen, setDropdownOpen] = useState(false)
-  const dropdownRef = useRef<HTMLDivElement>(null)
+  const router = useRouter()
   const pathname = usePathname()
+  const { profile, avatarUrl, loading } = useAuthContext()
   const { isEnabled } = useServiceStatus()
-
-  // Close dropdown on outside click
-  useEffect(() => {
-    function onOutside(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setDropdownOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', onOutside)
-    return () => document.removeEventListener('mousedown', onOutside)
-  }, [])
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   async function handleSignOut() {
-    setDropdownOpen(false)
-    setMenuOpen(false)
-    try { await fetch('/api/auth/signout', { method: 'POST', redirect: 'manual' }) } catch { }
+    try { await fetch('/api/auth/signout', { method: 'POST' }) } catch { }
     window.location.href = '/'
   }
 
   const navLinks = [
-    { href: '/', label: 'Home' },
-    { href: '/menu', label: 'Menu' },
-    { href: '/about', label: 'About' },
-    { href: '/contact', label: 'Contact' },
+    { href: '/', label: 'Home', icon: 'home' },
+    { href: '/menu', label: 'Menu', icon: 'menu' },
+    { href: '/about', label: 'About', icon: 'info' },
+    { href: '/contact', label: 'Contact', icon: 'mail' },
+  ] as const
+
+  const menuItems = [
+    ...(profile?.role === 'admin' ? [{
+      id: 'admin',
+      label: 'Admin Dashboard',
+      icon: 'dashboard' as const,
+      onClick: () => router.push('/admin')
+    }] : []),
+    {
+      id: 'orders',
+      label: 'My Orders',
+      icon: 'subscriptions' as const,
+      onClick: () => router.push('/orders')
+    },
+    {
+      id: 'account',
+      label: 'Account Settings',
+      icon: 'settings' as const,
+      onClick: () => router.push('/account')
+    },
+    {
+      id: 'logout',
+      label: 'Sign Out',
+      icon: 'logout' as const,
+      variant: 'danger' as const,
+      onClick: handleSignOut
+    }
   ]
+
+  // Premium Header for the Dropdown
+  const DropdownHeader = profile ? (
+    <div className="px-4 py-4 mb-1">
+      <div className="flex items-center gap-3 mb-3">
+        <UserAvatar avatarUrl={avatarUrl} name={profile.name} size="md" />
+        <div className="min-w-0 flex-1">
+          <p className="font-black text-stone-900 truncate text-sm leading-tight">{profile.name}</p>
+          <p className="text-[11px] font-bold text-stone-400 truncate tracking-wide">{profile.email}</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-2 flex-wrap">
+        {profile.role === 'admin' && (
+          <Badge variant="premium" className="text-[9px] px-2 py-0">Admin</Badge>
+        )}
+        <Badge variant="premium" className="text-[9px] px-2 py-0 bg-amber-50 border-amber-200 text-amber-700">
+          <Icon name="points" size={10} strokeWidth={3} className="mr-1" />
+          {profile.reward_points ?? 0} PTS
+        </Badge>
+      </div>
+    </div>
+  ) : null
 
   return (
     <header 
-      className="fuelist-nav sticky z-40 bg-white/90 backdrop-blur border-b border-gray-100 transition-all"
+      className="fuelist-nav sticky z-50 bg-white/80 backdrop-blur-xl border-b border-stone-100 transition-all duration-300"
       style={{ top: isEnabled ? '0px' : 'var(--banner-height, 0px)' }}
     >
-      <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
-
+      <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+        
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 font-bold text-xl text-green-600">
-          <Logo size={40} /><span>Fuelist</span>
+        <Link href="/" className="group flex items-center gap-2.5 transition-transform active:scale-95">
+          <div className="relative h-10 w-10 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center p-1.5 shadow-md shadow-amber-200 group-hover:rotate-3 transition-transform">
+            <Logo size={32} />
+          </div>
+          <span className="text-xl font-black tracking-tighter text-stone-900 group-hover:text-amber-600 transition-colors">
+            Fuelist
+          </span>
         </Link>
 
-        {/* Desktop nav links */}
-        <div className="hidden md:flex items-center gap-6">
+        {/* Desktop Links */}
+        <div className="hidden md:flex items-center gap-1 ml-auto mr-8">
           {navLinks.map((link) => (
-            <Link key={link.href} href={link.href}
-              className={`text-sm font-medium transition-colors ${pathname === link.href ? 'text-green-600' : 'text-gray-600 hover:text-green-600'}`}>
+            <Link 
+              key={link.href} 
+              href={link.href}
+              className={cn(
+                "px-4 py-2 rounded-xl text-sm font-bold transition-all duration-200",
+                pathname === link.href 
+                  ? "bg-amber-50 text-amber-700 shadow-sm shadow-amber-100" 
+                  : "text-stone-500 hover:text-stone-900 hover:bg-stone-50"
+              )}
+            >
               {link.label}
             </Link>
           ))}
-          {profile?.role === 'admin' && (
-            <Link href="/admin"
-              className={`text-sm font-medium transition-colors ${pathname.startsWith('/admin') ? 'text-green-600' : 'text-gray-600 hover:text-green-600'}`}>
-              Admin
-            </Link>
-          )}
         </div>
 
-        {/* Desktop auth */}
-        <div className="hidden md:flex items-center gap-3">
-          {/* <ThemeSwitcher compact /> */}
+        {/* Auth / Profile Area */}
+        <div className="hidden md:flex items-center gap-4">
           {loading ? (
-            <div className="h-[34px] w-[34px] animate-pulse rounded-full bg-gray-100" />
+            <div className="h-10 w-10 animate-pulse rounded-full bg-stone-100" />
           ) : profile ? (
-            <div className="relative" ref={dropdownRef}>
-              <button onClick={() => setDropdownOpen((o) => !o)}
-                className="flex items-center gap-1.5 rounded-full p-0.5 hover:ring-2 hover:ring-green-300 transition-all focus:outline-none focus:ring-2 focus:ring-green-400"
-                aria-label="Profile menu">
-                <UserAvatar avatarUrl={avatarUrl} name={profile.name} />
-                <svg className={`h-4 w-4 text-gray-400 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-
-              {dropdownOpen && (
-                <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-white shadow-xl border border-gray-100 overflow-hidden z-50">
-                  <div className="flex items-center gap-3 px-4 py-4 bg-green-50">
-                    <UserAvatar avatarUrl={avatarUrl} name={profile.name} large />
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-gray-900 truncate">{profile.name}</p>
-                      <p className="text-xs text-gray-500 truncate">{profile.email}</p>
-                      <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                        {profile.role === 'admin' && (
-                          <span className="rounded-full bg-green-500 px-2 py-0.5 text-[10px] font-bold text-white uppercase tracking-wide">Admin</span>
-                        )}
-                        {(profile.reward_points ?? 0) >= 0 && (
-                          <span className="rounded-full bg-amber-100 border border-amber-300 px-2 py-0.5 text-[10px] font-bold text-amber-700">
-                            ⭐ {profile.reward_points ?? 0} pts
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="p-2">
-                    {profile.role === 'admin' && (
-                      <Link href="/admin" onClick={() => setDropdownOpen(false)}
-                        className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                        <span>📊</span> Admin Dashboard
-                      </Link>
-                    )}
-                    <Link href="/orders" onClick={() => setDropdownOpen(false)}
-                      className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                      </svg>
-                      My orders
-                    </Link>
-                    <Link href="/account" onClick={() => setDropdownOpen(false)}
-                      className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                      Account settings
-                    </Link>
-                    <div className="my-1 border-t border-gray-100" />
-                    <button onClick={handleSignOut}
-                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors">
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                      </svg>
-                      Sign out
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+            <Dropdown
+              width="w-72"
+              header={DropdownHeader}
+              items={menuItems}
+              trigger={
+                <button className="group flex items-center gap-2 rounded-full pl-1 pr-3 py-1 bg-stone-50 border border-stone-100 hover:border-amber-200 transition-all hover:bg-white hover:shadow-sm">
+                  <UserAvatar avatarUrl={avatarUrl} name={profile.name} size="sm" />
+                  <Icon name="chevronDown" size={14} strokeWidth={3} className="text-stone-300 group-hover:text-amber-500 transition-colors" />
+                </button>
+              }
+            />
           ) : (
-            <>
+            <div className="flex items-center gap-3">
               <Button href="/login" variant="ghost" size="sm">Log in</Button>
-              <Button href="/signup" size="sm">Sign up</Button>
-            </>
+              <Button href="/signup" size="sm" className="shadow-premium">Join Now</Button>
+            </div>
           )}
         </div>
 
-        {/* Mobile hamburger */}
-        <button className="md:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-100" onClick={() => setMenuOpen(!menuOpen)} aria-label="Toggle menu">
-          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            {menuOpen
-              ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />}
-          </svg>
+        {/* Mobile Toggle */}
+        <button 
+          className="md:hidden p-2.5 rounded-2xl bg-stone-50 text-stone-600 active:scale-90 transition-all"
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+        >
+          <Icon name={mobileMenuOpen ? "close" : "menu"} size={22} strokeWidth={2.5} />
         </button>
       </nav>
 
-      {/* Mobile drawer */}
-      {menuOpen && (
-        <div className="md:hidden border-t border-gray-100 bg-white px-4 py-4 space-y-3">
-          {navLinks.map((link) => (
-            <Link key={link.href} href={link.href} onClick={() => setMenuOpen(false)}
-              className="block text-sm font-medium text-gray-700 hover:text-green-600">
-              {link.label}
-            </Link>
-          ))}
-          {profile?.role === 'admin' && (
-            <Link href="/admin" onClick={() => setMenuOpen(false)} className="block text-sm font-medium text-gray-700 hover:text-green-600">Admin</Link>
-          )}
-          <div className="pt-3 border-t border-gray-100">
-            {loading ? (
-              <div className="h-16 w-full animate-pulse rounded-xl bg-gray-100" />
-            ) : profile ? (
-              <div className="rounded-xl bg-green-50 p-3 flex items-center gap-3">
-                <UserAvatar avatarUrl={avatarUrl} name={profile.name} />
-                <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-sm text-gray-900 truncate">{profile.name}</p>
-                  <p className="text-xs text-gray-500 truncate">{profile.email}</p>
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  <Link href="/orders" onClick={() => setMenuOpen(false)}
-                    className="rounded-lg p-2 text-gray-500 hover:bg-white transition-colors" aria-label="My orders">
-                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                    </svg>
-                  </Link>
-                  <Link href="/account" onClick={() => setMenuOpen(false)}
-                    className="rounded-lg p-2 text-gray-500 hover:bg-white transition-colors" aria-label="Account settings">
-                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                  </Link>
-                  <button onClick={handleSignOut} className="rounded-lg p-2 text-red-400 hover:bg-red-50 transition-colors" aria-label="Sign out">
-                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                    </svg>
-                  </button>
-                </div>
+      {/* Mobile Menu */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="md:hidden border-t border-stone-100 bg-white overflow-hidden shadow-2xl"
+          >
+            <div className="px-6 py-6 space-y-2">
+              {navLinks.map((link) => (
+                <Link 
+                  key={link.href} 
+                  href={link.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-3 rounded-2xl text-base font-bold transition-all",
+                    pathname === link.href 
+                      ? "bg-amber-50 text-amber-700" 
+                      : "text-stone-600 hover:bg-stone-50"
+                  )}
+                >
+                  <Icon name={link.icon} size={20} strokeWidth={2} className="opacity-70" />
+                  {link.label}
+                </Link>
+              ))}
+
+              <div className="pt-4 mt-4 border-t border-stone-50">
+                {profile ? (
+                  <div className="space-y-2">
+                    <div className="px-4 py-4 flex items-center gap-3 bg-stone-50 rounded-[2rem] mb-4">
+                      <UserAvatar avatarUrl={avatarUrl} name={profile.name} size="md" />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-black text-stone-900 text-sm truncate">{profile.name}</p>
+                        <p className="text-[11px] font-bold text-stone-400 truncate tracking-wide">{profile.email}</p>
+                      </div>
+                    </div>
+                    {menuItems.map(item => (
+                      <button
+                        key={item.id}
+                        onClick={() => {
+                          item.onClick()
+                          setMobileMenuOpen(false)
+                        }}
+                        className={cn(
+                          "flex w-full items-center gap-3 px-4 py-3 rounded-2xl text-base font-bold transition-all",
+                          item.variant === 'danger' ? "text-red-600 hover:bg-red-50" : "text-stone-600 hover:bg-stone-50 shadow-sm"
+                        )}
+                      >
+                        {item.icon && <Icon name={item.icon} size={20} strokeWidth={2} />}
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    <Button href="/login" variant="outline" size="md" className="w-full" onClick={() => setMobileMenuOpen(false)}>Log In</Button>
+                    <Button href="/signup" size="md" className="w-full" onClick={() => setMobileMenuOpen(false)}>Join Now</Button>
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="flex flex-col gap-2">
-                <Button href="/login" variant="secondary" size="sm" className="w-full justify-center" onClick={() => setMenuOpen(false)}>Log in</Button>
-                <Button href="/signup" size="sm" className="w-full justify-center" onClick={() => setMenuOpen(false)}>Sign up</Button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </header>
   )
 }

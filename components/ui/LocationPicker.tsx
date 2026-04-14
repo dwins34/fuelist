@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { MapPin, Navigation, Loader2, Search, X } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { usePlacesAutocomplete, PlacePrediction, PlaceDetails } from '@/hooks/usePlacesAutocomplete'
 import { useLocation } from '@/hooks/useLocation'
+import { Icon } from '@/lib/icons'
+import { cn } from '@/lib/utils'
 
 interface LocationPickerProps {
   onLocationSelect: (data: PlaceDetails) => void
@@ -43,7 +45,6 @@ export default function LocationPicker({ onLocationSelect }: LocationPickerProps
       setIsOpen(false)
       onLocationSelect(details)
     } catch (error) {
-      // Error is handled by the hook and displayed below
       console.error(error)
     }
   }
@@ -59,13 +60,18 @@ export default function LocationPicker({ onLocationSelect }: LocationPickerProps
     }
   }
 
+  const isLocating = locationLoading || detailsLoading
+
   return (
     <div className="relative w-full" ref={wrapperRef}>
       
       {/* ── Search Input ── */}
-      <div className="relative flex items-center">
-        <div className="absolute left-3 text-gray-400">
-          <Search size={18} />
+      <div className="group relative flex items-center">
+        <div className={cn(
+          "absolute left-4 transition-colors duration-200",
+          isOpen ? "text-amber-500" : "text-stone-400"
+        )}>
+          <Icon name="search" size={18} />
         </div>
         <input
           type="text"
@@ -76,16 +82,16 @@ export default function LocationPicker({ onLocationSelect }: LocationPickerProps
           }}
           onFocus={() => setIsOpen(true)}
           placeholder="Search your area or apartment..."
-          className="w-full rounded-xl border border-gray-200 bg-white py-3 pl-10 pr-10 text-sm shadow-sm outline-none transition ring-green-500/20 focus:border-green-500 focus:ring-4"
+          className="w-full rounded-2xl border-2 border-stone-100 bg-stone-50/50 py-3.5 pl-12 pr-12 text-sm font-medium shadow-sm outline-none transition-all focus:border-amber-500 focus:bg-white focus:ring-4 focus:ring-amber-500/5 placeholder:text-stone-300"
           autoComplete="off"
         />
         {query && (
           <button
             type="button"
             onClick={clear}
-            className="absolute right-3 text-gray-400 hover:text-gray-600 transition-colors"
+            className="absolute right-4 text-stone-300 hover:text-stone-900 transition-colors bg-stone-100/50 p-1 rounded-lg"
           >
-            <X size={16} />
+            <Icon name="close" size={14} strokeWidth={3} />
           </button>
         )}
       </div>
@@ -94,48 +100,63 @@ export default function LocationPicker({ onLocationSelect }: LocationPickerProps
       <button
         type="button"
         onClick={handleGetCurrentLocation}
-        disabled={locationLoading || detailsLoading}
-        className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-green-50 px-4 py-3 text-sm font-semibold text-green-700 transition hover:bg-green-100 disabled:opacity-50"
-      >
-        {locationLoading || detailsLoading ? (
-          <Loader2 size={18} className="animate-spin" />
-        ) : (
-          <Navigation size={18} />
+        disabled={isLocating}
+        className={cn(
+          "mt-4 flex w-full items-center justify-center gap-3 rounded-2xl px-4 py-4 text-[11px] font-black capitalize tracking-widest transition-all shadow-sm active:scale-[0.98]",
+          isLocating 
+            ? "bg-stone-100 text-stone-400 cursor-not-allowed opacity-70"
+            : "bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-100/50"
         )}
-        <span>{locationLoading ? 'Locating...' : 'Use My Current Location'}</span>
+      >
+        {isLocating ? (
+          <Icon name="spinner" size={16} className="animate-spin" />
+        ) : (
+          <Icon name="compass" size={16} strokeWidth={2.5} />
+        )}
+        <span>{locationLoading ? 'Locating Protocol...' : 'Identify Current Position'}</span>
       </button>
 
       {locationError && (
-        <p className="mt-2 text-xs font-medium text-red-500">{locationError}</p>
+        <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-xl bg-rose-50 border border-rose-100 text-[10px] font-bold text-rose-500 capitalize tracking-tight">
+          <Icon name="error" size={12} strokeWidth={3} />
+          {locationError}
+        </div>
       )}
 
-      {/* ── Dropdown Predictions ── */}
+      {/* ── Dropdown Predictions (Premium Glass Style) ── */}
       {isOpen && predictions.length > 0 && (
-        <div className="absolute left-0 right-0 top-[3.25rem] z-50 mt-2 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-xl">
-          <ul className="max-h-60 overflow-y-auto py-1">
-            {predictions.map((prediction) => (
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-3xl border border-stone-100 bg-white/95 backdrop-blur-xl shadow-premium animate-in fade-in slide-in-from-top-2 duration-300"
+        >
+          <ul className="max-h-64 overflow-y-auto py-2 no-scrollbar">
+            {predictions.map((prediction, idx) => (
               <li key={prediction.place_id}>
                 <button
                   type="button"
                   onClick={() => handleSelectPrediction(prediction)}
-                  className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 focus:bg-gray-50 outline-none transition-colors"
+                  className="flex w-full items-center gap-4 px-5 py-4 text-left hover:bg-amber-50/50 focus:bg-amber-50 outline-none transition-all group"
                 >
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-400">
-                    <MapPin size={16} />
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-stone-50 text-stone-300 group-hover:bg-amber-100 group-hover:text-amber-500 transition-colors duration-300">
+                    <Icon name="location" size={18} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-gray-900">
+                    <p className="truncate text-sm font-black text-stone-900 leading-tight tracking-tight capitalize">
                       {prediction.structured_formatting.main_text}
                     </p>
-                    <p className="truncate text-xs text-gray-500">
+                    <p className="truncate text-[10px] font-bold text-stone-400 mt-1 capitalize tracking-tight">
                       {prediction.structured_formatting.secondary_text}
                     </p>
+                  </div>
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity translate-x-1 group-hover:translate-x-0 duration-300 text-amber-500">
+                    <Icon name="arrowRight" size={16} strokeWidth={2.5} />
                   </div>
                 </button>
               </li>
             ))}
           </ul>
-        </div>
+        </motion.div>
       )}
     </div>
   )

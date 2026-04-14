@@ -23,20 +23,35 @@ html {
      3. Re-enable ThemeContext + ThemeSwitcher
    ─────────────────────────────────────────────────────────────────────────── */
 :root {
-  --theme-bg:           #ffffff;
+  /* ── Core Palette (Premium Gold / Ivory) ── */
+  --theme-bg:           #fdfbf7;
   --theme-surface:      #ffffff;
-  --theme-surface-alt:  #f9fafb;
-  --theme-border:       #f3f4f6;
-  --theme-text-primary: #111827;
-  --theme-text-muted:   #6b7280;
-  --theme-accent:       #22c55e;
-  --theme-accent-hover: #16a34a;
-  --theme-overlay-bg:   transparent;
+  --theme-surface-alt:  #f8f5f0;
+  --theme-border:       #f1ece4;
+  
+  --theme-text-primary: #1c1917; /* Stone 900 */
+  --theme-text-muted:   #78716c; /* Stone 500 */
+  
+  --theme-accent:       #d97706; /* Amber 600 (Gold) */
+  --theme-accent-hover: #b45309; /* Amber 700 */
+  --theme-accent-soft:  #fef3c7; /* Amber 100 */
+  
+  --theme-overlay-bg:   rgba(28, 25, 23, 0.4);
+  
   --theme-card-bg:      #ffffff;
-  --theme-card-border:  #f3f4f6;
-  --theme-card-blur:    0px;
-  --theme-nav-bg:       rgba(255,255,255,0.90);
-  --theme-nav-border:   #f3f4f6;
+  --theme-card-border:  #f1ece4;
+  --theme-card-blur:    12px;
+  
+  --theme-nav-bg:       rgba(253, 251, 247, 0.85);
+  --theme-nav-border:   #f1ece4;
+
+  /* ── Spacing (8px system) ── */
+  --spacing-unit:       8px;
+  
+  /* ── Shadows (Premium Soft) ── */
+  --shadow-sm:          0 2px 4px rgba(28, 25, 23, 0.04);
+  --shadow-md:          0 4px 12px rgba(28, 25, 23, 0.06);
+  --shadow-lg:          0 12px 24px rgba(28, 25, 23, 0.08);
 }
 
 /*
@@ -90,24 +105,30 @@ nav {
 
 /* ── Utility classes ────────────────────────────────────────────────────────── */
 .glass {
-  background: var(--theme-card-bg);
-  border: 1px solid var(--theme-card-border);
-  backdrop-filter: blur(var(--theme-card-blur, 0px));
-  -webkit-backdrop-filter: blur(var(--theme-card-blur, 0px));
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(241, 236, 228, 1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 4px 12px rgba(28, 25, 23, 0.03);
 }
 
-.glass-strong {
-  background: rgba(255, 255, 255, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.50);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+.glass-dark {
+  background: rgba(28, 25, 23, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: white;
 }
 
-/* ── Text contrast helper ───────────────────────────────────────────────────── */
-/* Adds subtle text-shadow for legibility over busy backgrounds */
-[data-theme="fruit-3d"] h1,
-[data-theme="fruit-3d"] h2 {
-  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.06);
+.glass-gold {
+  background: rgba(254, 243, 199, 0.4);
+  border: 1px solid rgba(217, 119, 6, 0.2);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.shadow-premium {
+  box-shadow: 0 12px 32px -4px rgba(28, 25, 23, 0.1), 0 4px 12px -2px rgba(28, 25, 23, 0.05);
 }
 
 /* ── Page transition fade ───────────────────────────────────────────────────── */

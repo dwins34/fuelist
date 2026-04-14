@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
+import { motion, AnimatePresence } from 'framer-motion'
 import { MenuItem } from '@/types'
 import { formatPrice, getImageUrl, categoryLabel } from '@/lib/utils'
 import { useAuthContext } from '@/context/AuthContext'
@@ -9,6 +10,11 @@ import { useServiceStatus } from '@/context/ServiceStatusContext'
 import { useRouter } from 'next/navigation'
 import AddressManager from '@/components/account/AddressManager'
 import { UserAddress } from '@/hooks/useAddresses'
+import { Icon, IconName } from '@/lib/icons'
+import { Badge } from '@/components/ui/badge'
+import Button from '@/components/ui/Button'
+import { Card } from '@/components/ui/card'
+import { cn } from '@/lib/utils'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -17,23 +23,18 @@ type Frequency    = 'daily' | 'weekdays' | 'weekends'
 type Step         = 'items' | 'schedule' | 'confirm' | 'login' | 'address' | 'paying' | 'success'
 
 interface SubscriptionModalProps {
-  /** Pre-selected item (from MenuCard). If omitted, user starts with empty selection. */
   initialItem?: MenuItem
   onClose: () => void
   onSuccess?: () => void
-  /** Restored config from localStorage after login redirect */
   restoredConfig?: PendingSubscriptionConfig | null
 }
 
-// Extend Window for Razorpay
 declare global {
   interface Window {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     Razorpay: new (options: Record<string, unknown>) => { open(): void; on?(event: string, handler: () => void): void }
   }
 }
-
-// ── Pending subscription config (saved to localStorage) ──────────────────────
 
 export interface PendingSubscriptionConfig {
   selectedItemIds: string[]
@@ -62,27 +63,26 @@ export function clearPendingSubscription() {
 
 // ── Config ───────────────────────────────────────────────────────────────────
 
-const SLOTS: { value: DeliverySlot; label: string; time: string; icon: string }[] = [
-  { value: 'morning',   label: 'Morning',   time: '8 – 10 AM', icon: '🌅' },
-  { value: 'afternoon', label: 'Afternoon', time: '12 – 2 PM', icon: '☀️' },
-  { value: 'evening',   label: 'Evening',   time: '6 – 8 PM',  icon: '🌆' },
+const SLOTS: { value: DeliverySlot; label: string; time: string; icon: IconName }[] = [
+  { value: 'morning',   label: 'Morning',   time: '8 – 10 AM', icon: 'points' },
+  { value: 'afternoon', label: 'Afternoon', time: '12 – 2 PM', icon: 'zap' },
+  { value: 'evening',   label: 'Evening',   time: '6 – 8 PM',  icon: 'time' },
 ]
 
 const FREQS: { value: Frequency; label: string; desc: string }[] = [
-  { value: 'daily',    label: 'Every day', desc: '7 days/week' },
-  { value: 'weekdays', label: 'Weekdays',  desc: 'Mon – Fri'   },
-  { value: 'weekends', label: 'Weekends',  desc: 'Sat & Sun'   },
+  { value: 'daily',    label: 'Daily',    desc: '7 Days/Week' },
+  { value: 'weekdays', label: 'Weekdays', desc: 'Mon – Fri'   },
+  { value: 'weekends', label: 'Weekends', desc: 'Sat & Sun'   },
 ]
 
 const DURATIONS: { value: number; label: string; badge: string }[] = [
-  { value: 7,  label: '7 days',  badge: ''        },
-  { value: 14, label: '14 days', badge: '5% off'  },
-  { value: 30, label: '30 days', badge: '10% off' },
+  { value: 7,  label: '7 Days',  badge: ''        },
+  { value: 14, label: '14 Days', badge: '5% OFF'  },
+  { value: 30, label: '30 Days', badge: '10% OFF' },
 ]
 
 const DISCOUNT: Record<number, number> = { 7: 0, 14: 0.05, 30: 0.10 }
 
-/** Load Razorpay checkout.js */
 function loadRazorpayScript(): Promise<boolean> {
   return new Promise((resolve) => {
     if (typeof window !== 'undefined' && window.Razorpay) {
@@ -97,14 +97,11 @@ function loadRazorpayScript(): Promise<boolean> {
   })
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
 function deliveriesCount(freq: Frequency, duration: number) {
   const perWeek = freq === 'daily' ? 7 : freq === 'weekdays' ? 5 : 2
   return Math.round((perWeek * duration) / 7)
 }
 
-/** Check if a user's profile is complete enough for billing */
 function isProfileComplete(profile: { name: string; phone: string } | null): boolean {
   if (!profile) return false
   return !!(profile.name?.trim() && profile.phone?.trim())
@@ -114,10 +111,9 @@ function isProfileComplete(profile: { name: string; phone: string } | null): boo
 
 export default function SubscriptionModal({ initialItem, onClose, onSuccess, restoredConfig }: SubscriptionModalProps) {
   const { profile } = useAuthContext()
-  const { isEnabled, message: serviceMessage } = useServiceStatus()
+  const { isEnabled } = useServiceStatus()
   const router = useRouter()
 
-  // ── Schedule state ────────────────────────────────────────────────────────
   const [slot,     setSlot]     = useState<DeliverySlot>(restoredConfig?.slot ?? 'morning')
   const [freq,     setFreq]     = useState<Frequency>(restoredConfig?.freq ?? 'daily')
   const [duration, setDuration] = useState<number>(restoredConfig?.duration ?? 7)
@@ -126,7 +122,6 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
   const onFreqChange = (f: Frequency) => { setFreq(f); setError(null) }
   const onDurationChange = (d: number) => { setDuration(d); setError(null) }
 
-  // ── Item picker state ─────────────────────────────────────────────────────
   const [allItems,  setAllItems]  = useState<MenuItem[]>([])
   const [itemsLoading, setItemsLoading] = useState(true)
   const [selected, setSelected]  = useState<Set<string>>(
@@ -136,13 +131,18 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
   )
   const [search, setSearch] = useState('')
 
-  // ── Flow state ────────────────────────────────────────────────────────────
   const [step,    setStep]    = useState<Step>(restoredConfig ? 'confirm' : 'items')
   const [loading, setLoading] = useState(false)
   const [error,   setError]   = useState<string | null>(null)
   const [selectedAddress, setSelectedAddress] = useState<UserAddress | null>(null)
 
-  // ── Fetch all available menu items ────────────────────────────────────────
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [])
+
   useEffect(() => {
     const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -156,7 +156,6 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
       .finally(() => setItemsLoading(false))
   }, [])
 
-  // ── If user just logged in and has a restored config, advance step ─────
   useEffect(() => {
     if (restoredConfig && profile && step === 'confirm') {
       clearPendingSubscription()
@@ -166,7 +165,6 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
     }
   }, [restoredConfig, profile, step])
 
-  // ── Derived values ────────────────────────────────────────────────────────
   const selectedItems  = allItems.filter((i) => selected.has(i.id))
   const filteredItems  = allItems.filter((i) =>
     i.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -191,7 +189,6 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
     })
   }
 
-  // ── Advance to confirm — checks auth & profile ──────────────────────────
   const handleAdvanceToConfirm = useCallback(() => {
     if (!profile) {
       savePendingSubscription({
@@ -217,7 +214,6 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
     setStep('confirm')
   }, [])
 
-  // ── Submit ────────────────────────────────────────────────────────────────
   async function handleSubscribe() {
     if (!profile) { router.push('/login'); return }
     if (!selectedAddress) { setStep('address'); return }
@@ -226,7 +222,6 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
     setError(null)
 
     try {
-      // 1. Create sub order on server
       const res = await fetch('/api/subscriptions', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -251,14 +246,12 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
       if (!res.ok) {
         setError(data.error ?? 'Failed to subscribe')
         setLoading(false)
-        // If it's the duplicate subscription error, send them back to pick a different slot
         if (data.error?.toLowerCase().includes('already have active subscriptions')) {
           setStep('schedule')
         }
         return
       }
 
-      // 2. Load Razorpay
       const loaded = await loadRazorpayScript()
       if (!loaded) {
         setError('Could not load payment gateway. Check your connection.')
@@ -266,7 +259,6 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
         return
       }
 
-      // 3. Open Razorpay Checkout
       const options = {
         key:         process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount:      data.amount,
@@ -279,12 +271,8 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
           contact: profile.phone,
           email:   profile.email,
         },
-        theme: { color: '#16a34a' },
-        handler: async (response: {
-          razorpay_order_id:   string
-          razorpay_payment_id: string
-          razorpay_signature:  string
-        }) => {
+        theme: { color: '#f59e0b' },
+        handler: async (response: any) => {
           setStep('paying')
           try {
             const verifyRes = await fetch('/api/subscriptions/verify', {
@@ -305,11 +293,7 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
             setStep('confirm')
           }
         },
-        modal: {
-          ondismiss: () => {
-            setLoading(false)
-          },
-        },
+        modal: { ondismiss: () => { setLoading(false) } },
       }
 
       const rzp = new (window as any).Razorpay(options)
@@ -321,469 +305,489 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
     }
   }
 
-  // ── Step header labels ────────────────────────────────────────────────────
   const FLOW_STEPS: Step[] = ['items', 'schedule', 'address', 'confirm']
-  const stepIdx = FLOW_STEPS.indexOf(step === 'login' ? 'confirm' : step)
-
   const headerTitle =
-    step === 'items'    ? 'Choose items'       :
-    step === 'schedule' ? 'Set your schedule'  :
-    step === 'address'  ? 'Delivery address'   :
-    step === 'confirm'  ? 'Confirm subscription' :
-    step === 'login'    ? 'Login Required'     :
-    step === 'paying'   ? 'Processing payment' :
-                          'Subscribed!'
+    step === 'items'    ? 'Personalize Your Plan' :
+    step === 'schedule' ? 'Delivery Logistics'   :
+    step === 'address'  ? 'Shipping Details'     :
+    step === 'confirm'  ? 'Finalize Subscription' :
+    step === 'login'    ? 'Identify Yourself'    :
+    step === 'paying'   ? 'Processing Payment'  :
+                          'Success!'
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-4 bg-black/50 transition-all"
-      style={{ paddingTop: isEnabled ? '1rem' : 'calc(1rem + var(--banner-height, 0px))' }}
+      className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm transition-all animate-in fade-in duration-300"
       onClick={(e) => { if (e.target === e.currentTarget && step !== 'paying') onClose() }}
     >
-      <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl overflow-hidden max-h-[92vh] flex flex-col">
-
+      <motion.div 
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        className="w-full max-w-xl rounded-[2.5rem] bg-white shadow-premium overflow-hidden max-h-[92vh] flex flex-col border border-stone-100"
+      >
         {/* ── Header ── */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-stone-50 shrink-0">
           <div>
-            <h2 className="font-bold text-gray-900">{headerTitle}</h2>
-            {step !== 'success' && step !== 'paying' && step !== 'login' && (
-              <p className="text-xs text-gray-400 mt-0.5">
-                {selected.size === 0 ? 'Select items below' :
-                 `${selected.size} item${selected.size !== 1 ? 's' : ''} selected`}
-              </p>
-            )}
+            <h2 className="text-xl font-black text-stone-900 tracking-tight">{headerTitle}</h2>
+            <div className="flex items-center gap-2 mt-1.5">
+              {step !== 'success' && step !== 'paying' && step !== 'login' && (
+                <p className="text-[11px] font-black uppercase tracking-widest text-stone-400">
+                  {selected.size === 0 ? 'Pick your bowls' :
+                   `${selected.size} Item${selected.size !== 1 ? 's' : ''} Selected`}
+                </p>
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            {/* Step dots */}
+          <div className="flex items-center gap-6">
             {step !== 'success' && step !== 'paying' && step !== 'login' && (
-              <div className="flex gap-1.5">
-                {['items', 'schedule', 'address', 'confirm'].map((s, i) => (
-                  <div key={s} className={`h-1.5 rounded-full transition-all ${
-                    (step === s || FLOW_STEPS.indexOf(step as any) > i) ? 'w-4 bg-green-500' : 'w-1.5 bg-gray-200'
-                  }`} />
+              <div className="hidden sm:flex gap-1.5">
+                {FLOW_STEPS.map((s, i) => (
+                  <div key={s} className={cn(
+                    "h-1.5 rounded-full transition-all duration-500",
+                    (step === s || FLOW_STEPS.indexOf(step as any) > i) ? "w-6 bg-amber-500" : "w-1.5 bg-stone-100"
+                  )} />
                 ))}
               </div>
             )}
             {step !== 'paying' && (
-              <button onClick={onClose} className="rounded-full p-1.5 text-gray-400 hover:bg-gray-100">
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+              <button onClick={onClose} className="rounded-2xl p-2.5 text-stone-300 hover:text-stone-900 hover:bg-stone-50 transition-all">
+                <Icon name="close" size={20} strokeWidth={3} />
               </button>
             )}
           </div>
         </div>
 
-        {/* ── Scrollable body ── */}
-        <div className="overflow-y-auto flex-1 min-h-0">
-
-          {/* ═══ STEP: Login Required ═══ */}
-          {step === 'login' && (
-            <div className="px-5 py-10 text-center space-y-4">
-              <div className="text-5xl">🔒</div>
-              <div>
-                <h3 className="text-lg font-extrabold text-gray-900">Create an Account to Subscribe</h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  Your meal selection is saved! Sign in or create an account to complete your subscription.
-                </p>
-              </div>
-
-              {/* Summary of what they configured */}
-              <div className="rounded-xl bg-green-50 border border-green-100 px-4 py-3 text-left space-y-1">
-                <p className="text-xs font-semibold text-gray-600">Your plan:</p>
-                <p className="text-xs text-gray-500">
-                  {selected.size} item{selected.size !== 1 ? 's' : ''} · {slotLabel.icon} {slotLabel.label} · {freqLabel.label} · {durationLabel.label}
-                </p>
-                <p className="text-sm font-bold text-gray-900">{formatPrice(finalTotal)}</p>
-              </div>
-
-              <div className="pt-2 space-y-2">
-                <button
-                  onClick={() => {
-                    savePendingSubscription({
-                      selectedItemIds: Array.from(selected),
-                      slot,
-                      freq,
-                      duration,
-                    })
-                    router.push('/login?redirect=/menu')
-                  }}
-                  className="w-full rounded-full bg-green-600 px-5 py-3 text-sm font-bold text-white hover:bg-green-700 transition-colors"
-                >
-                  Sign In
-                </button>
-                <button
-                  onClick={() => {
-                    savePendingSubscription({
-                      selectedItemIds: Array.from(selected),
-                      slot,
-                      freq,
-                      duration,
-                    })
-                    router.push('/signup?redirect=/menu')
-                  }}
-                  className="w-full rounded-full border border-green-500 px-5 py-3 text-sm font-bold text-green-600 hover:bg-green-50 transition-colors"
-                >
-                  Create Account
-                </button>
-              </div>
-              <button
-                onClick={() => setStep('schedule')}
-                className="text-xs text-gray-400 hover:text-gray-600"
+        {/* ── Body ── */}
+        <div className="overflow-y-auto flex-1 min-h-0 custom-scrollbar">
+          <AnimatePresence mode="wait">
+            
+            {/* Login / Auth Required */}
+            {step === 'login' && (
+              <motion.div 
+                key="login-step"
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                className="px-10 py-12 text-center"
               >
-                ← Go back to schedule
-              </button>
-            </div>
-          )}
+                <div className="mx-auto w-20 h-20 bg-amber-50 rounded-3xl flex items-center justify-center text-amber-500 mb-8 shadow-inner">
+                   <Icon name="security" size={40} />
+                </div>
+                <h3 className="text-2xl font-black text-stone-900 tracking-tight">Access Required</h3>
+                <p className="mt-3 text-sm font-medium text-stone-400 max-w-xs mx-auto leading-relaxed">
+                  Your premium selection is secured. Sign in to finalize your high-performance meal plan.
+                </p>
 
-          {/* ═══ STEP: Address Selection ═══ */}
-          {step === 'address' && (
-            <div className="px-5 py-6">
-              <div className="mb-6">
-                <h3 className="text-lg font-extrabold text-gray-900">Delivery Location</h3>
-                <p className="text-sm text-gray-500">Select where you&apos;d like your meals delivered.</p>
-              </div>
-              
-              <AddressManager 
-                hideHeader 
-                selectedId={selectedAddress?.id} 
-                onSelect={handleSelectAddress} 
-              />
+                <div className="mt-8 rounded-3xl bg-stone-50 border border-stone-100 p-6 text-left space-y-4">
+                  <p className="text-xs font-black uppercase tracking-widest text-stone-400 ml-1">Your Configured Plan</p>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="premium">{selected.size} Items</Badge>
+                    <Badge variant="secondary" className="bg-white border-none shadow-sm">{slotLabel.label}</Badge>
+                    <Badge variant="secondary" className="bg-white border-none shadow-sm">{freqLabel.label}</Badge>
+                    <Badge variant="secondary" className="bg-white border-none shadow-sm">{durationLabel.label}</Badge>
+                  </div>
+                  <div className="pt-2 border-t border-stone-100 flex items-center justify-between">
+                     <span className="text-xs font-bold text-stone-400">Subtotal</span>
+                     <span className="text-xl font-black text-stone-900 tracking-tighter">{formatPrice(finalTotal)}</span>
+                  </div>
+                </div>
 
-              <div className="mt-6 flex flex-col gap-4">
-                <button
-                  onClick={() => setStep('schedule')}
-                  className="text-center text-sm text-gray-400 hover:text-gray-600"
-                >
-                  ← Back to schedule
+                <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Button
+                    onClick={() => {
+                      savePendingSubscription({ selectedItemIds: Array.from(selected), slot, freq, duration })
+                      router.push('/login?redirect=/menu')
+                    }}
+                    className="py-6 shadow-premium"
+                  >
+                    Identify
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      savePendingSubscription({ selectedItemIds: Array.from(selected), slot, freq, duration })
+                      router.push('/signup?redirect=/menu')
+                    }}
+                    className="py-6"
+                  >
+                    Join
+                  </Button>
+                </div>
+                <button onClick={() => setStep('schedule')} className="mt-8 text-[10px] font-black capitalize tracking-widest text-stone-300 hover:text-stone-900 transition-colors">
+                  Modify Logistics
                 </button>
-              </div>
-            </div>
-          )}
+              </motion.div>
+            )}
 
-          {/* ═══ STEP 1: Item picker ═══ */}
-          {step === 'items' && (
-            <div className="px-5 py-4 space-y-3">
-              {/* Search */}
-              <div className="relative">
-                <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search items…"
-                  className="w-full rounded-xl border border-gray-200 pl-9 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
-                />
-              </div>
-
-              {/* Selected chips */}
-              {selected.size > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {selectedItems.map((item) => (
-                    <span
-                      key={item.id}
-                      className="flex items-center gap-1 rounded-full bg-green-100 border border-green-300 px-2.5 py-1 text-xs font-medium text-green-800"
-                    >
-                      {item.name}
-                      <button onClick={() => toggleItem(item.id)} className="ml-0.5 text-green-500 hover:text-green-800">×</button>
-                    </span>
-                  ))}
+            {/* Address step */}
+            {step === 'address' && (
+              <motion.div 
+                key="address-step"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="px-6 py-6"
+              >
+                <div className="mb-8">
+                  <h3 className="text-lg font-black text-stone-900 tracking-tight">Deployment Location</h3>
+                  <p className="text-sm font-medium text-stone-400 mt-1">Where should we deliver your power bowls?</p>
                 </div>
-              )}
+                
+                <AddressManager hideHeader selectedId={selectedAddress?.id} onSelect={handleSelectAddress} />
 
-              {/* Item list */}
-              {itemsLoading ? (
-                <div className="space-y-2 animate-pulse">
-                  {[...Array(5)].map((_, i) => <div key={i} className="h-16 bg-gray-100 rounded-xl" />)}
+                <button onClick={() => setStep('schedule')} className="mt-8 w-full text-[10px] font-black capitalize tracking-widest text-stone-300 hover:text-stone-900 transition-colors">
+                  Back to Logistics
+                </button>
+              </motion.div>
+            )}
+
+            {/* Items Picker */}
+            {step === 'items' && (
+              <motion.div 
+                key="items-step"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="px-6 py-6 space-y-5"
+              >
+                <div className="relative group">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-300 group-focus-within:text-amber-500 transition-colors">
+                    <Icon name="search" size={18} strokeWidth={3} />
+                  </div>
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Find your favorite bowls..."
+                    className="w-full rounded-2xl border-2 border-stone-50 bg-stone-50/50 pl-12 pr-6 py-4 text-sm font-bold text-stone-900 placeholder:text-stone-300 focus:outline-none focus:border-amber-200 focus:bg-white transition-all shadow-inner"
+                  />
                 </div>
-              ) : (
-                <div className="space-y-2">
-                  {filteredItems.map((item) => {
-                    const isSelected = selected.has(item.id)
-                    return (
-                      <button
-                        key={item.id}
-                        onClick={() => toggleItem(item.id)}
-                        className={`w-full flex items-center gap-3 rounded-xl border-2 p-3 text-left transition-all ${
-                          isSelected
-                            ? 'border-green-500 bg-green-50'
-                            : 'border-gray-100 bg-white hover:border-gray-200'
-                        }`}
-                      >
-                        <div className="relative h-12 w-12 shrink-0 rounded-lg overflow-hidden bg-green-50">
-                          {item.image_url ? (
-                            <Image src={getImageUrl(item.image_url)} alt={item.name} fill className="object-cover" />
-                          ) : (
-                            <div className="flex h-full items-center justify-center text-xl">🥗</div>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-gray-900 truncate">{item.name}</p>
-                          <p className="text-xs text-gray-400">
-                            {categoryLabel(item.category)} · {formatPrice(item.price)}/delivery
-                          </p>
-                        </div>
-                        {/* Checkbox */}
-                        <div className={`h-5 w-5 shrink-0 rounded-full border-2 flex items-center justify-center transition-all ${
-                          isSelected ? 'border-green-500 bg-green-500' : 'border-gray-300'
-                        }`}>
-                          {isSelected && (
-                            <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                            </svg>
-                          )}
-                        </div>
-                      </button>
-                    )
-                  })}
-                  {filteredItems.length === 0 && (
-                    <p className="text-center text-sm text-gray-400 py-6">No items found.</p>
+
+                <div className="space-y-3">
+                  {itemsLoading ? (
+                    <div className="space-y-3 animate-pulse">
+                      {[1, 2, 3].map(i => <div key={i} className="h-24 bg-stone-50 rounded-3xl" />)}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-3">
+                      {filteredItems.map((item) => {
+                        const isSelected = selected.has(item.id)
+                        return (
+                          <button
+                            key={item.id}
+                            onClick={() => toggleItem(item.id)}
+                            className={cn(
+                              "relative w-full flex items-center gap-4 rounded-3xl border-2 p-4 text-left transition-all duration-300 group",
+                              isSelected
+                                ? "border-amber-500 bg-white shadow-lg shadow-amber-100 -translate-y-0.5"
+                                : "border-stone-50 bg-stone-50/30 hover:border-stone-100 hover:bg-white"
+                            )}
+                          >
+                            <div className="relative h-14 w-14 shrink-0 rounded-2xl overflow-hidden bg-white shadow-sm">
+                              {item.image_url ? (
+                                <Image src={getImageUrl(item.image_url)} alt={item.name} fill className="object-cover" />
+                              ) : <Icon name="bowl" size={24} className="m-auto" />}
+                            </div>
+                             <div className="flex-1 min-w-0">
+                               <p className="text-sm font-black text-stone-900 truncate leading-tight capitalize tracking-tight">{item.name}</p>
+                               <div className="flex items-center gap-1.5 mt-1">
+                                 <span className="text-[9px] font-black text-stone-700">{item.calories} kCal</span>
+                                 <span className="text-[9px] font-black text-blue-700">P {item.protein}g</span>
+                                 <span className="text-[9px] font-black text-emerald-700">C {item.carbs}g</span>
+                                 <span className="text-[9px] font-black text-amber-700">F {item.fats}g</span>
+                               </div>
+                               <p className="text-[9px] font-bold text-stone-300 mt-1 capitalize tracking-widest">{formatPrice(item.price)} Per Delivery</p>
+                             </div>
+                            <div className={cn(
+                              "h-6 w-6 rounded-xl border-2 flex items-center justify-center transition-all",
+                              isSelected ? "bg-amber-500 border-amber-500 shadow-sm" : "border-stone-100"
+                            )}>
+                              {isSelected && <Icon name="success" size={14} strokeWidth={4} className="text-white" />}
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
                   )}
                 </div>
-              )}
-            </div>
-          )}
+              </motion.div>
+            )}
 
-          {/* ═══ STEP 2: Schedule ═══ */}
-          {step === 'schedule' && (
-            <div className="px-5 py-5 space-y-5">
-              {/* Delivery slot */}
-              <div>
-                <p className="text-sm font-semibold text-gray-700 mb-2">Delivery time</p>
-                <div className="grid grid-cols-3 gap-2">
-                  {SLOTS.map((s) => (
-                    <button key={s.value} onClick={() => onSlotChange(s.value)}
-                      className={`rounded-xl border-2 p-3 text-center transition-all ${
-                        slot === s.value ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <div className="text-xl mb-0.5">{s.icon}</div>
-                      <p className="text-xs font-semibold text-gray-800">{s.label}</p>
-                      <p className="text-[10px] text-gray-400">{s.time}</p>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Frequency */}
-              <div>
-                <p className="text-sm font-semibold text-gray-700 mb-2">Frequency</p>
-                <div className="space-y-2">
-                  {FREQS.map((f) => (
-                    <button key={f.value} onClick={() => onFreqChange(f.value)}
-                      className={`w-full flex items-center justify-between rounded-xl border-2 px-4 py-2.5 transition-all ${
-                        freq === f.value ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <div>
-                        <p className="text-sm font-semibold text-gray-800 text-left">{f.label}</p>
-                        <p className="text-xs text-gray-400">{f.desc}</p>
-                      </div>
-                      {freq === f.value && (
-                        <div className="h-4 w-4 rounded-full bg-green-500 flex items-center justify-center shrink-0">
-                          <svg className="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                          </svg>
+            {/* Schedule Step */}
+            {step === 'schedule' && (
+              <motion.div 
+                key="schedule-step"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="px-6 py-6 space-y-7"
+              >
+                <div>
+                  <p className="text-[11px] font-black uppercase tracking-widest text-stone-300 mb-4 ml-1">Arrival Window</p>
+                  <div className="grid grid-cols-3 gap-3">
+                    {SLOTS.map((s) => (
+                      <button key={s.value} onClick={() => onSlotChange(s.value)}
+                        className={cn(
+                          "rounded-3xl border-2 p-5 text-center transition-all duration-300",
+                          slot === s.value ? "border-amber-500 bg-white shadow-lg shadow-amber-100 -translate-y-1" : "border-stone-50 bg-stone-50/30 hover:border-stone-100 hover:bg-white"
+                        )}
+                      >
+                        <div className={cn("text-amber-500 mb-3 flex justify-center", slot === s.value ? "animate-bounce" : "")}>
+                          <Icon name={s.icon} size={24} strokeWidth={2.5} />
                         </div>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Duration */}
-              <div>
-                <p className="text-sm font-semibold text-gray-700 mb-2">Duration</p>
-                <div className="grid grid-cols-3 gap-2">
-                  {DURATIONS.map((d) => (
-                    <button key={d.value} onClick={() => onDurationChange(d.value)}
-                      className={`rounded-xl border-2 p-3 text-center transition-all ${
-                        duration === d.value ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <p className="text-sm font-bold text-gray-800">{d.label}</p>
-                      <p className={`text-[10px] mt-0.5 ${d.badge ? 'font-semibold text-green-600' : 'text-gray-400'}`}>
-                        {d.badge || 'standard'}
-                      </p>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Price preview */}
-              <div className="rounded-xl bg-green-50 border border-green-100 px-4 py-3 space-y-1">
-                {selectedItems.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between text-xs text-gray-500">
-                    <span className="truncate max-w-[200px]">{item.name} ×{deliveries}</span>
-                    <span>{formatPrice(item.price * deliveries)}</span>
+                        <p className="text-xs font-black text-stone-900 capitalize tracking-tight">{s.label}</p>
+                        <p className="text-[10px] font-bold text-stone-400 mt-1 opacity-60 leading-none">{s.time}</p>
+                      </button>
+                    ))}
                   </div>
-                ))}
-                {discountAmt > 0 && (
-                  <div className="flex items-center justify-between text-xs text-green-600 border-t border-green-200 pt-1 mt-1">
-                    <span>Duration discount</span>
-                    <span>−{formatPrice(discountAmt)}</span>
-                  </div>
-                )}
-                <div className="flex items-center justify-between text-sm font-bold text-gray-900 border-t border-green-200 pt-1 mt-1">
-                  <span>Total</span>
-                  <span>{formatPrice(finalTotal)}</span>
                 </div>
-              </div>
-            </div>
-          )}
 
-          {/* ═══ STEP 3: Confirm ═══ */}
-          {step === 'confirm' && (
-            <div className="px-5 py-5 space-y-4">
-              {/* Items - Compact Thumbnail Grid */}
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">Items ({selectedItems.length})</p>
-                <div className="flex flex-wrap gap-2">
-                  {selectedItems.map((item) => (
-                    <div key={item.id} className="flex items-center gap-2 rounded-lg bg-gray-50 border border-gray-100 p-1.5 pr-3 transition-colors hover:bg-gray-100">
-                      <div className="relative h-8 w-8 shrink-0 rounded-md overflow-hidden bg-white">
-                        {item.image_url ? (
-                          <Image src={getImageUrl(item.image_url)} alt={item.name} fill className="object-cover" />
-                        ) : <div className="flex h-full items-center justify-center text-xs">🥗</div>}
+                <div>
+                  <p className="text-[11px] font-black uppercase tracking-widest text-stone-300 mb-4 ml-1">Subscription Rhythm</p>
+                  <div className="grid grid-cols-1 gap-3">
+                    {FREQS.map((f) => (
+                      <button key={f.value} onClick={() => onFreqChange(f.value)}
+                        className={cn(
+                          "w-full flex items-center justify-between rounded-3xl border-2 px-6 py-4 transition-all duration-300",
+                          freq === f.value ? "border-amber-500 bg-white shadow-lg shadow-amber-100" : "border-stone-50 bg-stone-50/30 hover:border-stone-100 hover:bg-white"
+                        )}
+                      >
+                        <div className="text-left">
+                          <p className="text-sm font-black text-stone-900 capitalize tracking-tight">{f.label}</p>
+                          <p className="text-[10px] font-bold text-stone-400 mt-0.5 tracking-wide">{f.desc}</p>
+                        </div>
+                        {freq === f.value && (
+                           <div className="h-6 w-6 rounded-full bg-amber-500 flex items-center justify-center shadow-sm">
+                             <Icon name="success" size={14} strokeWidth={4} className="text-white" />
+                           </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-[11px] font-black uppercase tracking-widest text-stone-300 mb-4 ml-1">Program Duration</p>
+                  <div className="grid grid-cols-3 gap-3">
+                    {DURATIONS.map((d) => (
+                      <button key={d.value} onClick={() => onDurationChange(d.value)}
+                        className={cn(
+                          "relative rounded-3xl border-2 p-5 text-center transition-all duration-300",
+                          duration === d.value ? "border-amber-500 bg-white shadow-lg shadow-amber-100 -translate-y-1" : "border-stone-50 bg-stone-50/30 hover:border-stone-100 hover:bg-white"
+                        )}
+                      >
+                        <p className="text-sm font-black text-stone-900 capitalize tracking-tight">{d.label}</p>
+                        {d.badge && (
+                          <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-sm">
+                            {d.badge}
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Summary + Price Card */}
+                <div className="rounded-[2rem] bg-stone-900 text-white overflow-hidden shadow-premium border border-white/5">
+                  <div className="flex">
+                    {/* Left: Plan Summary */}
+                    <div className="flex-1 min-w-0 p-5 border-r border-white/10 space-y-3">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-amber-400">Your Plan</p>
+                      {/* Items */}
+                      <div className="space-y-2">
+                        {selectedItems.slice(0, 3).map((item) => (
+                          <div key={item.id} className="flex items-center gap-2">
+                            <div className="relative h-7 w-7 rounded-lg overflow-hidden shrink-0 bg-white/10">
+                              {item.image_url ? (
+                                <Image src={getImageUrl(item.image_url)} alt={item.name} fill className="object-cover" />
+                              ) : (
+                                <Icon name="bowl" size={12} className="m-auto text-white/40" />
+                              )}
+                            </div>
+                            <p className="text-[11px] font-black capitalize tracking-tight text-white/80 truncate">{item.name}</p>
+                          </div>
+                        ))}
+                        {selectedItems.length === 0 && (
+                          <p className="text-[10px] text-white/30 font-bold">No items selected</p>
+                        )}
+                        {selectedItems.length > 3 && (
+                          <p className="text-[10px] font-black text-white/40">+{selectedItems.length - 3} more</p>
+                        )}
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold text-gray-900 truncate max-w-[120px]">{item.name}</p>
+                      {/* Logistics pills */}
+                      <div className="pt-2 border-t border-white/10 flex flex-wrap gap-1.5">
+                        <span className="text-[10px] font-black uppercase tracking-widest bg-white/10 text-white/60 rounded-full px-2.5 py-0.5">{slotLabel.label}</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest bg-white/10 text-white/60 rounded-full px-2.5 py-0.5">{freqLabel.label}</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest bg-amber-500/20 text-amber-400 rounded-full px-2.5 py-0.5">{duration}d</span>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Schedule summary - 2 Column Grid */}
-              <div className="rounded-xl border border-gray-100 bg-gray-50 p-3 grid grid-cols-2 gap-x-4 gap-y-2.5">
-                {[
-                  { label: 'Time',     value: `${slotLabel.icon} ${slotLabel.label}` },
-                  { label: 'Freq',     value: freqLabel.label },
-                  { label: 'Plan',     value: durationLabel.label },
-                  { label: 'Deliveries',value: deliveries },
-                  { label: 'Address',  value: selectedAddress ? [selectedAddress.house_number, selectedAddress.street_address, selectedAddress.landmark, selectedAddress.city, selectedAddress.pincode].filter(Boolean).join(', ') : 'None', fullWidth: true },
-                  { label: 'Total',    value: formatPrice(finalTotal), isTotal: true },
-                ].map(({ label, value, fullWidth, isTotal }) => (
-                  <div key={label} className={`flex flex-col ${fullWidth ? 'col-span-2' : ''} ${isTotal ? 'border-t border-gray-200 mt-1 pt-2 col-span-2' : ''}`}>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{label}</span>
-                    <span className={`text-sm ${isTotal ? 'text-lg font-black text-green-600' : 'font-semibold text-gray-800'} truncate`}>
-                      {value}
-                    </span>
+                    {/* Right: Price Breakdown */}
+                    <div className="w-36 shrink-0 p-5 space-y-3 relative overflow-hidden">
+                      <div className="absolute -top-4 -right-4 h-20 w-20 bg-amber-500/10 blur-2xl rounded-full" />
+                      <p className="text-[10px] font-black uppercase tracking-widest text-amber-400 relative z-10">Total Cost</p>
+                      <div className="space-y-2 relative z-10">
+                        <div className="flex justify-between items-baseline opacity-40">
+                          <span className="text-[10px] font-black uppercase tracking-widest">Base</span>
+                          <span className="text-xs font-bold">{formatPrice(baseTotal)}</span>
+                        </div>
+                        {discountAmt > 0 && (
+                          <div className="flex justify-between items-baseline text-amber-400">
+                            <span className="text-[10px] font-black uppercase tracking-widest">Off</span>
+                            <span className="text-xs font-bold">−{formatPrice(discountAmt)}</span>
+                          </div>
+                        )}
+                        <div className="pt-2 border-t border-white/10">
+                          <span className="text-xl font-black tracking-tighter text-amber-500">{formatPrice(finalTotal)}</span>
+                          <p className="text-[10px] font-bold text-white/30 mt-1">{deliveries} deliveries</p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
+                </div>
+              </motion.div>
+            )}
 
-          {/* ═══ STEP: Paying ═══ */}
-          {step === 'paying' && (
-            <div className="flex flex-col items-center justify-center py-16 px-5 gap-4 text-center">
-              <svg className="h-12 w-12 animate-spin text-green-500" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-              </svg>
-              <div>
-                <p className="text-lg font-bold text-gray-900">Activating subscription…</p>
-                <p className="text-sm text-gray-400 mt-1">Please do not close this window.</p>
-              </div>
-            </div>
-          )}
+            {/* Confirm Step */}
+            {step === 'confirm' && (
+              <motion.div 
+                key="confirm-step"
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                className="px-8 py-8 space-y-6"
+              >
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2 sm:col-span-1 p-5 rounded-3xl bg-stone-50 border border-stone-100">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-stone-300 mb-2">Delivery Window</p>
+                    <div className="flex items-center gap-3">
+                       <Icon name={slotLabel.icon} size={18} className="text-amber-500" />
+                       <span className="text-sm font-black capitalize tracking-tight text-stone-900">{slotLabel.label}</span>
+                    </div>
+                  </div>
+                  <div className="col-span-2 sm:col-span-1 p-5 rounded-3xl bg-stone-50 border border-stone-100">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-stone-300 mb-2">Frequency</p>
+                    <span className="text-sm font-black capitalize tracking-tight text-stone-900">{freqLabel.label}</span>
+                  </div>
+                  <div className="col-span-2 p-5 rounded-3xl bg-stone-50 border border-stone-100">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-stone-300 mb-2">Destination</p>
+                    <p className="text-xs font-bold text-stone-600 truncate capitalize tracking-tight">
+                        {selectedAddress ? [selectedAddress.house_number, selectedAddress.street_address, selectedAddress.city].filter(Boolean).join(', ') : 'No Address'}
+                    </p>
+                  </div>
+                </div>
 
-          {/* ═══ STEP 4: Success ═══ */}
-          {step === 'success' && (
-            <div className="px-5 py-8 text-center space-y-4">
-              <div className="text-5xl">🎉</div>
-              <div>
-                <h3 className="text-lg font-extrabold text-gray-900">All subscriptions created!</h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  {selectedItems.length} item{selectedItems.length !== 1 ? 's' : ''} will be delivered{' '}
-                  {freqLabel.desc.toLowerCase()} at {slotLabel.time} for {durationLabel.label}.
+                <div className="space-y-4">
+                  <p className="text-xs font-black uppercase tracking-widest text-stone-300 ml-1">Selected Meals ({selectedItems.length})</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {selectedItems.map((item) => (
+                      <div key={item.id} className="flex items-center gap-3 p-2 pr-4 bg-white border border-stone-50 rounded-2xl shadow-sm">
+                        <div className="relative h-10 w-10 shrink-0 rounded-xl overflow-hidden bg-stone-50 shadow-inner">
+                          {item.image_url ? (
+                            <Image src={getImageUrl(item.image_url)} alt={item.name} fill className="object-cover" />
+                          ) : <Icon name="bowl" size={16} className="m-auto" />}
+                        </div>
+                        <p className="text-xs font-black capitalize tracking-tight text-stone-900 truncate">{item.name}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* State: Paying */}
+            {step === 'paying' && (
+              <motion.div key="paying-state" className="flex flex-col items-center justify-center py-20 px-8 text-center space-y-8">
+                 <div className="relative">
+                    <div className="h-20 w-20 border-4 border-amber-500/20 rounded-full" />
+                    <motion.div 
+                      className="absolute inset-0 h-20 w-20 border-4 border-amber-500 border-t-transparent rounded-full"
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    />
+                 </div>
+                 <div className="space-y-2">
+                   <h3 className="text-xl font-black capitalize tracking-tighter text-stone-900">Activating Program</h3>
+                   <p className="text-[11px] font-black capitalize tracking-widest text-stone-300">Synchronizing with gateway</p>
+                 </div>
+              </motion.div>
+            )}
+
+            {/* Success */}
+            {step === 'success' && (
+              <motion.div key="success-state" className="px-10 py-16 text-center">
+                <div className="mx-auto w-24 h-24 bg-emerald-50 rounded-[2.5rem] flex items-center justify-center text-emerald-500 mb-8 shadow-inner shadow-emerald-100 scale-110">
+                   <Icon name="success" size={48} strokeWidth={3} />
+                </div>
+                <h3 className="text-3xl font-black text-stone-900 tracking-tighter">Plan Activated</h3>
+                <p className="mt-4 text-sm font-medium text-stone-400 max-w-xs mx-auto leading-relaxed">
+                  Your nutrient-dense journey begins. Your bowls will arrive during the <span className="text-stone-900 font-black">{slotLabel.label}</span> window.
                 </p>
-              </div>
-              <div className="rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700">
-                Manage your subscriptions in{' '}
-                <a href="/account" className="font-semibold underline">Account settings</a>.
-              </div>
-              <button onClick={onClose}
-                className="w-full rounded-full bg-green-600 px-5 py-3 text-sm font-bold text-white hover:bg-green-700 transition-colors">
-                Done
-              </button>
-            </div>
-          )}
+                <div className="mt-10 p-6 rounded-3xl bg-emerald-50/50 border border-emerald-100 text-xs font-bold text-emerald-700 capitalize tracking-widest">
+                  View tracking details in your account dashboard.
+                </div>
+                <Button onClick={onClose} size="lg" className="mt-10 w-full py-5 shadow-premium capitalize tracking-widest font-black text-xs">
+                  Begin Journey
+                </Button>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* ── Footer CTA ── */}
-        {step === 'items' && (
-          <div className="px-5 py-4 border-t border-gray-100 shrink-0 bg-white">
-            <button
-              onClick={() => setStep('schedule')}
-              disabled={selected.size === 0}
-              className="flex w-full items-center justify-center gap-2 rounded-full bg-green-600 px-6 py-3.5 text-white font-bold text-base hover:bg-green-700 active:scale-95 transition-all shadow-md shadow-green-100 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {selected.size === 0 ? 'Select at least 1 item' : `Continue with ${selected.size} item${selected.size !== 1 ? 's' : ''}`}
+        <AnimatePresence>
+          {step === 'items' && (
+            <motion.div initial={{ y: 20 }} animate={{ y: 0 }} className="px-6 py-5 border-t border-stone-800 bg-stone-900">
               {selected.size > 0 && (
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
+                <p className="text-[10px] font-black uppercase tracking-widest text-stone-500 text-center mb-3">
+                  {selected.size} item{selected.size !== 1 ? 's' : ''} selected
+                </p>
               )}
-            </button>
-          </div>
-        )}
+              <Button
+                size="lg"
+                onClick={() => setStep('schedule')}
+                disabled={selected.size === 0}
+                className="w-full py-5 !rounded-3xl shadow-premium capitalize tracking-widest font-black text-xs gap-3"
+              >
+                Proceed to Logistics
+                <Icon name="arrowRight" size={16} strokeWidth={4} />
+              </Button>
+            </motion.div>
+          )}
 
-        {step === 'schedule' && (
-          <div className="px-5 py-4 border-t border-gray-100 shrink-0 bg-white space-y-2">
-            {error && (
-              <p className="text-center text-xs font-semibold text-red-500 pb-1 animate-in fade-in slide-in-from-bottom-1 duration-300">
-                {error}
-              </p>
-            )}
-            <button onClick={handleAdvanceToConfirm}
-              className="flex w-full items-center justify-center gap-2 rounded-full bg-green-600 px-6 py-3.5 text-white font-bold text-base hover:bg-green-700 active:scale-95 transition-all shadow-md shadow-green-100">
-              Continue to delivery
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-            <button onClick={() => setStep('items')} className="w-full text-center text-sm text-gray-400 hover:text-gray-600 py-1">Back</button>
-          </div>
-        )}
+          {step === 'schedule' && (
+            <motion.div initial={{ y: 20 }} animate={{ y: 0 }} className="px-6 py-5 border-t border-stone-800 bg-stone-900 space-y-3">
+              {error && <p className="text-center text-xs font-black uppercase tracking-widest text-red-400 mb-2">{error}</p>}
+              <Button size="lg" onClick={handleAdvanceToConfirm} className="w-full py-5 !rounded-3xl shadow-premium capitalize tracking-widest font-black text-xs gap-3">
+                Continue to Deployment
+                <Icon name="arrowRight" size={16} strokeWidth={4} />
+              </Button>
+              <button onClick={() => setStep('items')} className="w-full text-xs font-black uppercase tracking-widest text-stone-500 hover:text-white transition-colors">Configure Items</button>
+            </motion.div>
+          )}
 
-        {step === 'address' && (
-          <div className="px-5 py-4 border-t border-gray-100 shrink-0 bg-white space-y-2">
-             <p className="text-center text-xs text-gray-400 pb-2">Select an address above to continue</p>
-             <button onClick={() => setStep('schedule')} className="w-full text-center text-sm text-gray-400 hover:text-gray-600 py-1">Back</button>
-          </div>
-        )}
+          {step === 'address' && (
+            <motion.div initial={{ y: 20 }} animate={{ y: 0 }} className="px-6 py-5 border-t border-stone-800 bg-stone-900">
+               <p className="text-center text-xs font-black uppercase tracking-widest text-stone-500">Select address to continue</p>
+            </motion.div>
+          )}
 
-        {step === 'confirm' && (
-          <div className="px-5 py-4 border-t border-gray-100 shrink-0 bg-white space-y-2">
-            {error && (
-              <p className="text-center text-xs font-semibold text-red-500 pb-1 animate-in fade-in slide-in-from-bottom-1 duration-300">
-                {error}
-              </p>
-            )}
-            <button
-              onClick={handleSubscribe}
-              disabled={loading || !isEnabled}
-              className="flex w-full items-center justify-center gap-2 rounded-full bg-green-600 px-6 py-3.5 text-white font-bold text-base hover:bg-green-700 active:scale-95 transition-all shadow-md shadow-green-100 disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-gray-400"
-            >
-              {loading ? (
-                <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                </svg>
-              ) : isEnabled ? (
-                `Pay & Subscribe — ${formatPrice(finalTotal)}`
-              ) : (
-                'Service Paused'
-              )}
-            </button>
-            <button onClick={() => setStep('address')} className="w-full text-center text-sm text-gray-400 hover:text-gray-600 py-1">Change address</button>
-          </div>
-        )}
-      </div>
+          {step === 'confirm' && (
+            <motion.div initial={{ y: 20 }} animate={{ y: 0 }} className="px-6 py-5 border-t border-stone-800 bg-stone-900 space-y-3">
+              {error && <p className="text-center text-xs font-black uppercase tracking-widest text-red-400 mb-2">{error}</p>}
+              <Button
+                size="lg"
+                onClick={handleSubscribe}
+                disabled={loading || !isEnabled}
+                className="w-full py-5 !rounded-3xl shadow-premium capitalize tracking-widest font-black text-xs gap-3"
+              >
+                {loading ? <div className="h-5 w-5 border-2 border-white/20 border-t-white rounded-full animate-spin" /> : 
+                 isEnabled ? `Initialize Plan • ${formatPrice(finalTotal)}` : 'Gateway Paused'}
+              </Button>
+              <button onClick={() => setStep('address')} className="w-full text-xs font-black uppercase tracking-widest text-stone-500 hover:text-white transition-colors">Adjust Location</button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
     </div>
   )
 }
