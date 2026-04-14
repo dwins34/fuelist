@@ -336,7 +336,8 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-4 bg-black/50"
+      className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-4 bg-black/50 transition-all"
+      style={{ paddingTop: isEnabled ? '1rem' : 'calc(1rem + var(--banner-height, 0px))' }}
       onClick={(e) => { if (e.target === e.currentTarget && step !== 'paying') onClose() }}
     >
       <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl overflow-hidden max-h-[92vh] flex flex-col">

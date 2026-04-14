@@ -354,9 +354,13 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
 
       <div
         ref={drawerRef}
-        className={`fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col bg-white shadow-2xl transition-transform duration-300 ease-out ${
+        className={`fixed right-0 z-50 flex w-full max-w-md flex-col bg-white shadow-2xl transition-all duration-300 ease-out ${
           open ? 'translate-x-0' : 'translate-x-full'
         }`}
+        style={{ 
+          top: isEnabled ? '0px' : 'var(--banner-height, 0px)',
+          height: isEnabled ? '100%' : 'calc(100% - var(--banner-height, 0px))'
+        }}
         role="dialog"
         aria-modal="true"
       >

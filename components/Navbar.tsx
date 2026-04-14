@@ -7,6 +7,7 @@ import { usePathname } from 'next/navigation'
 import { useAuthContext } from '@/context/AuthContext'
 import Button from './ui/Button'
 import Logo from "@/components/Logo"
+import { useServiceStatus } from '@/context/ServiceStatusContext'
 // import ThemeSwitcher from '@/components/ui/ThemeSwitcher'  // re-enable when themes are active
 
 // ── Avatar ───────────────────────────────────────────────────────────────────
@@ -27,10 +28,11 @@ function UserAvatar({ avatarUrl, name, large = false }: { avatarUrl: string | nu
 // ── Navbar ────────────────────────────────────────────────────────────────────
 export default function Navbar() {
   const { profile, avatarUrl, loading } = useAuthContext()
-  const [menuOpen,     setMenuOpen]     = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
-  const pathname    = usePathname()
+  const pathname = usePathname()
+  const { isEnabled } = useServiceStatus()
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -46,19 +48,22 @@ export default function Navbar() {
   async function handleSignOut() {
     setDropdownOpen(false)
     setMenuOpen(false)
-    try { await fetch('/api/auth/signout', { method: 'POST', redirect: 'manual' }) } catch {}
+    try { await fetch('/api/auth/signout', { method: 'POST', redirect: 'manual' }) } catch { }
     window.location.href = '/'
   }
 
   const navLinks = [
-    { href: '/',        label: 'Home' },
-    { href: '/menu',    label: 'Menu' },
-    { href: '/about',   label: 'About' },
+    { href: '/', label: 'Home' },
+    { href: '/menu', label: 'Menu' },
+    { href: '/about', label: 'About' },
     { href: '/contact', label: 'Contact' },
   ]
 
   return (
-    <header className="fuelist-nav sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-100">
+    <header 
+      className="fuelist-nav sticky z-40 bg-white/90 backdrop-blur border-b border-gray-100 transition-all"
+      style={{ top: isEnabled ? '0px' : 'var(--banner-height, 0px)' }}
+    >
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
 
         {/* Logo */}

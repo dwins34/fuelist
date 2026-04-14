@@ -72,12 +72,12 @@ export default async function HomePage() {
   return (
     <>
       {/* Hero */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-green-50 via-white to-emerald-50 px-4 py-24 sm:py-32">
+      <section className="relative overflow-x-hidden bg-gradient-to-br from-green-50 via-white to-emerald-50 px-4 py-24 sm:py-32">
         <div className="mx-auto max-w-4xl text-center">
           <span className="inline-block rounded-full bg-green-100 px-4 py-1.5 text-sm font-semibold text-green-700 mb-6">
             Healthy. Clean. Delicious.
           </span>
-          <h1 className="text-5xl sm:text-6xl font-extrabold tracking-tight text-gray-900 leading-tight mb-6">
+          <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-gray-900 leading-tight mb-6">
             Fuel Your Body<br />
             <span className="text-green-500">Love Your Food</span>
           </h1>
