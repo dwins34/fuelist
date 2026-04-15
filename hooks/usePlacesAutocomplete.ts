@@ -24,20 +24,13 @@ export interface PlaceDetails {
 
 export function usePlacesAutocomplete() {
   const { isLoaded, loadError } = useGoogleMapsScript()
-  
+
   const [query, setQuery] = useState('')
   const [predictions, setPredictions] = useState<PlacePrediction[]>([])
   const [loading, setLoading] = useState(false)
   const [detailsLoading, setDetailsLoading] = useState(false)
-  
-  const autocompleteService = useRef<google.maps.places.AutocompleteService | null>(null)
 
-  // Initialize services when script is loaded
-  useEffect(() => {
-    if (isLoaded && !loadError && window.google) {
-      autocompleteService.current = new window.google.maps.places.AutocompleteService()
-    }
-  }, [isLoaded, loadError])
+  // Modern API handles fetching via static methods, no instance needed.
 
   const fetchPredictions = useCallback(async (input: string) => {
     setQuery(input)
@@ -52,7 +45,7 @@ export function usePlacesAutocomplete() {
         input,
         includedRegionCodes: ['in'],
       } as any)
-      
+
       const mappedResults: PlacePrediction[] = suggestions
         .filter(s => !!s.placePrediction)
         .map(s => {
@@ -66,13 +59,12 @@ export function usePlacesAutocomplete() {
             }
           }
         })
-      
+
       setPredictions(mappedResults)
     } catch (err) {
       console.error('fetchPredictions error:', err)
       setPredictions([])
     } finally {
-      setLoading(true) // match original logic
       setLoading(false)
     }
   }, [])
@@ -85,7 +77,7 @@ export function usePlacesAutocomplete() {
     setDetailsLoading(true)
     try {
       const place = new window.google.maps.places.Place({ id: placeId })
-      
+
       // The fetchFields promise resolves to an object containing the updated 'place'
       const { place: p } = await (place as any).fetchFields({
         fields: ['addressComponents', 'location', 'formattedAddress']
@@ -94,7 +86,7 @@ export function usePlacesAutocomplete() {
       const lat = p.location?.lat() || 0
       const lng = p.location?.lng() || 0
       const address = p.formattedAddress || ''
-      
+
       let city = ''
       let state = ''
       let pincode = ''

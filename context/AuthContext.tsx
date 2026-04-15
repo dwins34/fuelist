@@ -45,7 +45,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const accessTokenRef = useRef<string | null>(null)
 
   // One stable client for the entire app
-  const supabase = useMemo(() => createClient(), [])
+  const supabase = useMemo(() => {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    console.info('AuthContext: Supabase creds check:', { 
+      url: url ? '✅ detected' : '❌ MISSING', 
+      key: key ? '✅ detected' : '❌ MISSING' 
+    })
+    return createClient()
+  }, [])
 
   // Fetch profile via direct REST fetch with explicit Authorization header.
   // This avoids relying on cookie state and works reliably on localhost and prod.

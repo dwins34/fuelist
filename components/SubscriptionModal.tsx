@@ -140,6 +140,7 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
   const [selectedAddress, setSelectedAddress] = useState<UserAddress | null>(null)
   const [outOfArea,    setOutOfArea]    = useState(false)
   const [checkingArea, setCheckingArea] = useState(false)
+  const [showAllSummaryItems, setShowAllSummaryItems] = useState(false)
 
   useEffect(() => {
     document.body.style.overflow = 'hidden'
@@ -536,7 +537,7 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
                       {[1, 2, 3].map(i => <div key={i} className="h-24 bg-stone-50 rounded-3xl" />)}
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {filteredItems.map((item) => {
                         const isSelected = selected.has(item.id)
                         return (
@@ -556,20 +557,28 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
                               ) : <Icon name="bowl" size={24} className="m-auto" />}
                             </div>
                              <div className="flex-1 min-w-0">
-                               <p className="text-sm font-black text-stone-900 truncate leading-tight capitalize tracking-tight">{item.name}</p>
-                               <div className="flex items-center gap-1.5 mt-1">
-                                 <span className="text-[9px] font-black text-stone-700">{item.calories} kCal</span>
-                                 <span className="text-[9px] font-black text-blue-700">P {item.protein}g</span>
-                                 <span className="text-[9px] font-black text-emerald-700">C {item.carbs}g</span>
-                                 <span className="text-[9px] font-black text-amber-700">F {item.fats}g</span>
+                               <div className="flex items-start justify-between gap-2">
+                                 <p className="text-xs font-black text-stone-900 leading-tight capitalize tracking-tight whitespace-normal">{item.name}</p>
+                                 <p className="text-[10px] font-black text-amber-600 shrink-0">{formatPrice(item.price)}</p>
                                </div>
-                               <p className="text-[9px] font-bold text-stone-300 mt-1 capitalize tracking-widest">{formatPrice(item.price)} Per Delivery</p>
+                               
+                               <div className="flex items-center gap-1.5 mt-2">
+                                 <span className="px-1.5 py-0.5 rounded-lg bg-stone-100 text-[8px] font-black text-stone-500 uppercase tracking-tighter">
+                                   {item.calories} kcal
+                                 </span>
+                                 <span className="px-1.5 py-0.5 rounded-lg bg-blue-50 text-[8px] font-black text-blue-600 uppercase tracking-tighter">
+                                   P {item.protein}g
+                                 </span>
+                                 <span className="px-1.5 py-0.5 rounded-lg bg-emerald-50 text-[8px] font-black text-emerald-600 uppercase tracking-tighter">
+                                   C {item.carbs}g
+                                 </span>
+                               </div>
                              </div>
                             <div className={cn(
-                              "h-6 w-6 rounded-xl border-2 flex items-center justify-center transition-all",
+                              "h-5 w-5 rounded-lg border-2 flex items-center justify-center transition-all shrink-0",
                               isSelected ? "bg-amber-500 border-amber-500 shadow-sm" : "border-stone-100"
                             )}>
-                              {isSelected && <Icon name="success" size={14} strokeWidth={4} className="text-white" />}
+                              {isSelected && <Icon name="success" size={10} strokeWidth={4} className="text-white" />}
                             </div>
                           </button>
                         )
@@ -656,13 +665,13 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
 
                 {/* Summary + Price Card */}
                 <div className="rounded-[2rem] bg-stone-900 text-white overflow-hidden shadow-premium border border-white/5">
-                  <div className="flex">
+                  <div className="flex flex-col sm:flex-row">
                     {/* Left: Plan Summary */}
-                    <div className="flex-1 min-w-0 p-5 border-r border-white/10 space-y-3">
+                    <div className="flex-1 min-w-0 p-5 border-b sm:border-b-0 sm:border-r border-white/10 space-y-3">
                       <p className="text-[10px] font-black uppercase tracking-widest text-amber-400">Your Plan</p>
                       {/* Items */}
-                      <div className="space-y-2">
-                        {selectedItems.slice(0, 3).map((item) => (
+                      <div className={cn("space-y-2", showAllSummaryItems && "max-h-48 overflow-y-auto custom-scrollbar pr-2")}>
+                        {(showAllSummaryItems ? selectedItems : selectedItems.slice(0, 3)).map((item) => (
                           <div key={item.id} className="flex items-center gap-2">
                             <div className="relative h-7 w-7 rounded-lg overflow-hidden shrink-0 bg-white/10">
                               {item.image_url ? (
@@ -671,18 +680,31 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
                                 <Icon name="bowl" size={12} className="m-auto text-white/40" />
                               )}
                             </div>
-                            <p className="text-[11px] font-black capitalize tracking-tight text-white/80 truncate">{item.name}</p>
+                            <p className="text-[11px] font-black capitalize tracking-tight text-white/80 whitespace-normal">{item.name}</p>
                           </div>
                         ))}
                         {selectedItems.length === 0 && (
                           <p className="text-[10px] text-white/30 font-bold">No items selected</p>
                         )}
-                        {selectedItems.length > 3 && (
-                          <p className="text-[10px] font-black text-white/40">+{selectedItems.length - 3} more</p>
+                        {!showAllSummaryItems && selectedItems.length > 3 && (
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); setShowAllSummaryItems(true) }}
+                            className="w-full text-center py-2 mt-1 rounded-xl bg-white/5 border border-white/10 text-[10px] font-black text-amber-400 hover:bg-white/10 transition-all uppercase tracking-widest"
+                          >
+                            +{selectedItems.length - 3} More Items
+                          </button>
+                        )}
+                        {showAllSummaryItems && selectedItems.length > 3 && (
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); setShowAllSummaryItems(false) }}
+                            className="w-full text-center py-2 mt-1 rounded-xl bg-white/5 border border-white/10 text-[10px] font-black text-stone-400 hover:bg-white/10 transition-all uppercase tracking-widest"
+                          >
+                            Show Less
+                          </button>
                         )}
                       </div>
                       {/* Schedule pills */}
-                      <div className="pt-2 border-t border-white/10 flex flex-wrap gap-1.5">
+                      <div className="pt-3 border-t border-white/10 flex flex-wrap gap-1.5">
                         <span className="text-[10px] font-black uppercase tracking-widest bg-white/10 text-white/60 rounded-full px-2.5 py-0.5">{slotLabel.label}</span>
                         <span className="text-[10px] font-black uppercase tracking-widest bg-white/10 text-white/60 rounded-full px-2.5 py-0.5">{freqLabel.label}</span>
                         <span className="text-[10px] font-black uppercase tracking-widest bg-amber-500/20 text-amber-400 rounded-full px-2.5 py-0.5">{duration}d</span>
@@ -703,9 +725,9 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
                             <span className="text-xs font-bold">−{formatPrice(discountAmt)}</span>
                           </div>
                         )}
-                        <div className="pt-2 border-t border-white/10">
-                          <span className="text-xl font-black tracking-tighter text-amber-500">{formatPrice(finalTotal)}</span>
-                          <p className="text-[10px] font-bold text-white/30 mt-1">{deliveries} deliveries</p>
+                        <div className="pt-3 border-t border-white/10 mt-2">
+                          <span className="text-3xl font-black tracking-tighter text-amber-500">{formatPrice(finalTotal)}</span>
+                          <p className="text-[10px] font-bold text-white/40 mt-1">{deliveries} deliveries</p>
                         </div>
                       </div>
                     </div>
@@ -753,7 +775,7 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
                             <Image src={getImageUrl(item.image_url)} alt={item.name} fill className="object-cover" />
                           ) : <Icon name="bowl" size={16} className="m-auto" />}
                         </div>
-                        <p className="text-xs font-black capitalize tracking-tight text-stone-900 truncate">{item.name}</p>
+                        <p className="text-xs font-black capitalize tracking-tight text-stone-900 whitespace-normal">{item.name}</p>
                       </div>
                     ))}
                   </div>
@@ -815,7 +837,10 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
                 disabled={selected.size === 0}
                 className="w-full"
               >
-                Next: Set Schedule
+                {selected.size === 0 
+                  ? 'Next: Set Schedule' 
+                  : `Next: Set Schedule • ${formatPrice(selectedItems.reduce((s, i) => s + i.price, 0))}`
+                }
               </Button>
             </motion.div>
           )}

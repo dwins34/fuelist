@@ -12,7 +12,7 @@ export function useLocation() {
   const geocoder = useRef<google.maps.Geocoder | null>(null)
 
   useEffect(() => {
-    if (isLoaded && !loadError && window.google) {
+    if (isLoaded && !loadError && window.google?.maps?.Geocoder) {
       geocoder.current = new window.google.maps.Geocoder()
     }
   }, [isLoaded, loadError])

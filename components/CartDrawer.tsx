@@ -301,7 +301,7 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 32, stiffness: 320 }}
-            className="fixed right-0 z-50 flex h-full w-full max-w-xs flex-col bg-white shadow-2xl"
+            className="fixed right-0 z-50 flex h-full w-full max-w-md flex-col bg-white shadow-2xl"
             style={{
               top: isEnabled ? '0px' : 'var(--banner-height, 0px)',
               height: isEnabled ? '100%' : 'calc(100% - var(--banner-height, 0px))'
@@ -366,7 +366,7 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
                                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
                               </span>
                               <div className="min-w-0">
-                                <p className="text-[13px] font-black text-stone-900 leading-tight truncate">{item.name}</p>
+                                <p className="text-[13px] font-black text-stone-900 leading-tight whitespace-normal">{item.name}</p>
                                 <p className="text-[10px] font-bold text-amber-600 mt-0.5">{formatPrice(item.price)}</p>
                               </div>
                             </div>

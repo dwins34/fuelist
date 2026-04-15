@@ -89,10 +89,6 @@ export function AddressProvider({ children }: { children: React.ReactNode }) {
     console.log('AddressContext: addAddress starting...', { profileId: profile.id, input })
 
     try {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-      if (sessionError) throw sessionError
-      if (!session) return { data: null, error: 'Not authenticated. Session missing.' }
-
       const isFirst = addresses.length === 0
       const payload = {
         user_id: profile.id,
@@ -101,11 +97,18 @@ export function AddressProvider({ children }: { children: React.ReactNode }) {
       }
 
       console.log('AddressContext: calling insert...', payload)
+      
+      // Add a timeout to prevent infinite hangs
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 15000)
+
       const { data, error: sbError } = await supabase
         .from('user_addresses')
         .insert([payload])
         .select()
+        .abortSignal(controller.signal as any)
       
+      clearTimeout(timeoutId)
       console.log('AddressContext: insert returned', { data, sbError })
 
       if (sbError) {

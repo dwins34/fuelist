@@ -45,7 +45,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
 
           {/* Floating cart button */}
           {!isAccountPage && (
-            <div className="fixed bottom-6 right-6 z-40">
+            <div className="fixed bottom-24 right-6 z-40">
               <CartButton onClick={() => setCartOpen(true)} />
             </div>
           )}

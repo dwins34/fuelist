@@ -33,12 +33,15 @@ const FOOTER_LINKS = [
   }
 ]
 
+import { useServiceStatus } from '@/context/ServiceStatusContext'
+
 export default function Footer() {
+  const { isEnabled } = useServiceStatus()
+
   return (
     <footer className="bg-white border-t border-stone-50 pt-12 pb-12">
       <div className="max-w-7xl mx-auto px-6 sm:px-8">
         <div className="grid grid-cols-1 md:grid-cols-2 mb-4 lg:grid-cols-5 gap-16">
-
           {/* Brand Focus */}
           <div className="lg:col-span-2 space-y-10">
             <Link href="/" className="flex items-center gap-3 group">
@@ -105,11 +108,17 @@ export default function Footer() {
 
           <div className="flex items-center gap-3 py-2 px-5 rounded-full bg-stone-50 border border-stone-100 shadow-inner">
             <span className="text-[10px] font-black uppercase tracking-wider text-stone-400">Status</span>
-            <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-200 animate-pulse" />
-            <span className="text-[10px] font-black capitalize tracking-wider text-stone-900">All Operations Green</span>
+            <div className={cn(
+              "h-1.5 w-1.5 rounded-full shadow-sm animate-pulse",
+              isEnabled ? "bg-emerald-500 shadow-emerald-200" : "bg-rose-500 shadow-rose-200"
+            )} />
+            <span className="text-[10px] font-black capitalize tracking-wider text-stone-900">
+              {isEnabled ? 'All Operations Green' : 'Currently Out Of Service'}
+            </span>
           </div>
         </div>
       </div>
     </footer>
   )
 }
+
