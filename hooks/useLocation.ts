@@ -127,15 +127,23 @@ export function useLocation() {
         (error) => {
           cleanup()
           let errorMsg = 'Failed to get current location.'
+          
+          // Check for common mobile/browser restriction patterns
+          const isSecureOrigin = window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+          
           switch (error.code) {
             case error.PERMISSION_DENIED:
-              errorMsg = 'Location permission denied. Please allow access or search manually.'
+              if (!isSecureOrigin) {
+                errorMsg = 'Location access is restricted to secure (HTTPS) connections. Please use a secure link or search manually.'
+              } else {
+                errorMsg = 'Location permission denied. Please enable location access in your browser settings (tap the lock icon in the address bar) or search manually.'
+              }
               break
             case error.POSITION_UNAVAILABLE:
-              errorMsg = 'Location information is unavailable.'
+              errorMsg = 'Location information is unavailable. This can happen in private browsing or poor signal areas.'
               break
             case error.TIMEOUT:
-              errorMsg = 'The request to get user location timed out.'
+              errorMsg = 'The request to get user location timed out. Please try again or search manually.'
               break
           }
           setError(errorMsg)
