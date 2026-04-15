@@ -22,6 +22,13 @@ export function useLocation() {
       setError(null)
       setLoading(true)
 
+      let safetyTimeout: NodeJS.Timeout
+
+      const cleanup = () => {
+        if (safetyTimeout) clearTimeout(safetyTimeout)
+        setLoading(false)
+      }
+
       if (!navigator.geolocation) {
         const errorMsg = 'Geolocation is not supported by your browser.'
         setError(errorMsg)
@@ -30,21 +37,34 @@ export function useLocation() {
         return
       }
 
+      // Safety timeout in case the browser geolocation API hangs (common on some mobile browsers)
+      safetyTimeout = setTimeout(() => {
+        const errorMsg = 'Location request timed out. Please try again or search manually.'
+        setError(errorMsg)
+        cleanup()
+        reject(new Error(errorMsg))
+      }, 12000)
+
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const lat = position.coords.latitude
           const lng = position.coords.longitude
 
+          // Lazy initialization of geocoder if not already ready
+          if (!geocoder.current && window.google?.maps?.Geocoder) {
+            geocoder.current = new window.google.maps.Geocoder()
+          }
+
           if (!geocoder.current) {
-            const errorMsg = 'Google Maps Geocoder not initialized.'
+            const errorMsg = 'Google Maps service not ready. Please refresh.'
             setError(errorMsg)
-            setLoading(false)
+            cleanup()
             reject(new Error(errorMsg))
             return
           }
 
           geocoder.current.geocode({ location: { lat, lng } }, (results, status) => {
-            setLoading(false)
+            cleanup()
             if (status === window.google.maps.GeocoderStatus.OK && results && results[0]) {
               const place = results[0]
               const address = place.formatted_address || ''
@@ -57,24 +77,20 @@ export function useLocation() {
               place.address_components?.forEach(component => {
                 const types = component.types
                 
-                // City extraction (more robust)
                 if (types.includes('locality')) {
                   city = component.long_name
                 } else if (!city && (types.includes('administrative_area_level_2') || types.includes('sublocality_level_1') || types.includes('sublocality'))) {
                   city = component.long_name
                 }
                 
-                // State extraction
                 if (types.includes('administrative_area_level_1')) {
                   state = component.long_name
                 } 
                 
-                // Pincode extraction
                 if (types.includes('postal_code')) {
                   pincode = component.long_name
                 } 
                 
-                // Street parts extraction
                 if (
                   types.includes('premise') ||
                   types.includes('subpremise') ||
@@ -86,17 +102,14 @@ export function useLocation() {
                   types.includes('sublocality_level_2') ||
                   types.includes('sublocality_level_3')
                 ) {
-                  // Avoid duplicates if we used it for city
                   if (component.long_name !== city) {
                     streetParts.push(component.long_name)
                   }
                 }
               })
 
-              // Fallback for city if still empty
               if (!city && state) city = state
 
-              // Unique street parts in order
               const uniqueStreetParts = Array.from(new Set(streetParts))
               const streetAddress = uniqueStreetParts.join(', ')
 
@@ -112,7 +125,7 @@ export function useLocation() {
           })
         },
         (error) => {
-          setLoading(false)
+          cleanup()
           let errorMsg = 'Failed to get current location.'
           switch (error.code) {
             case error.PERMISSION_DENIED:
@@ -128,7 +141,8 @@ export function useLocation() {
           setError(errorMsg)
           reject(new Error(errorMsg))
         },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        // enableHighAccuracy: false is more reliable on mobile/indoors
+        { enableHighAccuracy: false, timeout: 10000, maximumAge: 30000 }
       )
     })
   }, [])
