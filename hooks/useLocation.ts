@@ -56,13 +56,26 @@ export function useLocation() {
 
               place.address_components?.forEach(component => {
                 const types = component.types
-                if (types.includes('locality') || types.includes('administrative_area_level_2')) {
+                
+                // City extraction (more robust)
+                if (types.includes('locality')) {
                   city = component.long_name
-                } else if (types.includes('administrative_area_level_1')) {
+                } else if (!city && (types.includes('administrative_area_level_2') || types.includes('sublocality_level_1') || types.includes('sublocality'))) {
+                  city = component.long_name
+                }
+                
+                // State extraction
+                if (types.includes('administrative_area_level_1')) {
                   state = component.long_name
-                } else if (types.includes('postal_code')) {
+                } 
+                
+                // Pincode extraction
+                if (types.includes('postal_code')) {
                   pincode = component.long_name
-                } else if (
+                } 
+                
+                // Street parts extraction
+                if (
                   types.includes('premise') ||
                   types.includes('subpremise') ||
                   types.includes('street_number') ||
@@ -73,16 +86,26 @@ export function useLocation() {
                   types.includes('sublocality_level_2') ||
                   types.includes('sublocality_level_3')
                 ) {
-                  streetParts.push(component.long_name)
+                  // Avoid duplicates if we used it for city
+                  if (component.long_name !== city) {
+                    streetParts.push(component.long_name)
+                  }
                 }
               })
 
-              const streetAddress = streetParts.join(', ')
+              // Fallback for city if still empty
+              if (!city && state) city = state
+
+              // Unique street parts in order
+              const uniqueStreetParts = Array.from(new Set(streetParts))
+              const streetAddress = uniqueStreetParts.join(', ')
 
               const details: PlaceDetails = { lat, lng, address, streetAddress, city, state, pincode }
               resolve(details)
             } else {
-              const errorMsg = 'Failed to reverse geocode location.'
+              const errorMsg = status === 'ZERO_RESULTS' 
+                ? 'No address found for this location.' 
+                : 'Failed to reverse geocode location. Status: ' + status
               setError(errorMsg)
               reject(new Error(errorMsg))
             }

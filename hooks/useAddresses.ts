@@ -31,39 +31,30 @@ export function useAddresses() {
   const [error, setError] = useState<string | null>(null)
 
   const fetchAddresses = useCallback(async () => {
-    if (!profile?.id || !accessToken) return
-    
-    const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    if (!sbUrl || !sbKey) return
+    if (!profile?.id) return
 
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`${sbUrl}/rest/v1/user_addresses?user_id=eq.${profile.id}&order=is_default.desc,created_at.desc`, {
-        headers: {
-          apikey: sbKey,
-          Authorization: `Bearer ${accessToken}`,
-        },
-      })
-      if (!res.ok) throw new Error('Failed to fetch addresses.')
-      const data = await res.json()
-      setAddresses(data)
+      const { data, error: sbError } = await supabase
+        .from('user_addresses')
+        .select('*')
+        .eq('user_id', profile.id)
+        .order('is_default', { ascending: false })
+        .order('created_at', { ascending: false })
+
+      if (sbError) throw sbError
+      setAddresses(data || [])
     } catch (err: any) {
+      console.error('Error fetching addresses:', err)
       setError(err.message || 'Error fetching addresses')
     } finally {
       setLoading(false)
     }
-  }, [profile?.id, accessToken])
+  }, [profile?.id, supabase])
 
   const addAddress = async (input: CreateAddressInput) => {
-    if (!profile?.id) return { error: 'Not authenticated' }
-
-    if (!accessToken) return { error: 'Session expired. Please refresh.' }
-
-    const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    if (!sbUrl || !sbKey) return { error: 'Supabase not configured' }
+    if (!profile?.id) return { error: 'Authentication required. Please sign in again.' }
 
     try {
       // If no addresses exist, make this default
@@ -75,53 +66,40 @@ export function useAddresses() {
         is_default: isFirst
       }
 
-      const res = await fetch(`${sbUrl}/rest/v1/user_addresses`, {
-        method: 'POST',
-        headers: {
-          apikey: sbKey,
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=representation'
-        },
-        body: JSON.stringify(payload)
-      })
+      const { data, error: sbError } = await supabase
+        .from('user_addresses')
+        .insert([payload])
+        .select()
 
-      if (!res.ok) throw new Error('Failed to add address')
-      const newAddress = await res.json()
+      if (sbError) {
+        // Handle race condition: check if user exists in public.users
+        if (sbError.code === '23503') { // Foreign key violation
+          return { data: null, error: 'Your profile is being initialized. Please wait a moment and try again.' }
+        }
+        throw sbError
+      }
       
+      const newAddress = data[0]
       setAddresses(prev => {
-        const next = [newAddress[0], ...prev]
+        const next = [newAddress, ...prev]
         return next.sort((a, b) => Number(b.is_default) - Number(a.is_default))
       })
       
-      return { data: newAddress[0], error: null }
+      return { data: newAddress, error: null }
     } catch (err: any) {
-      return { data: null, error: err.message }
+      console.error('Error adding address:', err)
+      return { data: null, error: err.message || 'Failed to add address' }
     }
   }
 
   const setDefaultAddress = async (addressId: string) => {
-    if (!accessToken) return { error: 'Not authenticated' }
-
-    const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    if (!sbUrl || !sbKey) return { error: 'Supabase not configured' }
-
     try {
-      // Use our custom RPC function securely
-      const res = await fetch(`${sbUrl}/rest/v1/rpc/set_default_address`, {
-        method: 'POST',
-        headers: {
-          apikey: sbKey,
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ target_address_id: addressId })
+      const { error: sbError } = await supabase.rpc('set_default_address', {
+        target_address_id: addressId
       })
 
-      if (!res.ok) throw new Error('Failed to set default address')
+      if (sbError) throw sbError
       
-      // Update local state optimizingly instead of full refetch
       setAddresses(prev => 
         prev
           .map(addr => ({ ...addr, is_default: addr.id === addressId }))
@@ -129,31 +107,22 @@ export function useAddresses() {
       )
       return { error: null }
     } catch (err: any) {
-      return { error: err.message }
+      console.error('Error setting default address:', err)
+      return { error: err.message || 'Failed to set default address' }
     }
   }
 
   const deleteAddress = async (addressId: string) => {
-    if (!accessToken) return { error: 'Not authenticated' }
-
-    const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    if (!sbUrl || !sbKey) return { error: 'Supabase not configured' }
-
     try {
-      const res = await fetch(`${sbUrl}/rest/v1/user_addresses?id=eq.${addressId}`, {
-        method: 'DELETE',
-        headers: {
-          apikey: sbKey,
-          Authorization: `Bearer ${accessToken}`,
-        }
-      })
+      const { error: sbError } = await supabase
+        .from('user_addresses')
+        .delete()
+        .eq('id', addressId)
 
-      if (!res.ok) throw new Error('Failed to delete address')
+      if (sbError) throw sbError
       
       setAddresses(prev => {
         const next = prev.filter(a => a.id !== addressId)
-        // Auto default if we deleted the default one
         const oldDeleted = prev.find(a => a.id === addressId)
         if (oldDeleted?.is_default && next.length > 0) {
           setDefaultAddress(next[0].id)
@@ -163,7 +132,8 @@ export function useAddresses() {
       })
       return { error: null }
     } catch (err: any) {
-      return { error: err.message }
+      console.error('Error deleting address:', err)
+      return { error: err.message || 'Failed to delete address' }
     }
   }
 

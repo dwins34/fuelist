@@ -40,7 +40,9 @@ export default function AddressManager({ onSelect, selectedId, hideHeader }: Add
   }, [fetchAddresses])
 
   const handleLocationSelect = (details: PlaceDetails) => {
-    setStreetAddress(details.streetAddress ? `${details.streetAddress}, ${details.address}` : details.address)
+    // If we have a structured street address from our robust extraction, use it.
+    // Otherwise fallback to the formatted address.
+    setStreetAddress(details.streetAddress || details.address)
     setCity(details.city)
     setStateName(details.state)
     setPincode(details.pincode)
