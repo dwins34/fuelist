@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import ServiceSettings from '@/components/admin/ServiceSettings'
+import DeliveryZoneSettings from '@/components/admin/DeliveryZoneSettings'
 import { Icon, IconName } from '@/lib/icons'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
@@ -56,8 +57,9 @@ export default async function AdminDashboard() {
         </div>
       </div>
 
-      <div className="max-w-4xl">
+      <div className="max-w-4xl space-y-6">
         <ServiceSettings />
+        <DeliveryZoneSettings />
       </div>
 
       {/* ── High-Density Stats ── */}

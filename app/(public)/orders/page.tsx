@@ -143,7 +143,7 @@ function OrderCard({ order, onReorder }: { order: Order; onReorder: (items: Cart
         <div className="flex items-center gap-4">
           <span className="text-lg font-black text-stone-900 tracking-tighter">{formatPrice(order.total_amount)}</span>
           {active && (
-            <Button size="sm" href={`/orders/${order.id}`} className="px-5 shadow-premium">
+            <Button size="sm" href={`/orders/${order.id}`}>
               Track Status
             </Button>
           )}
@@ -204,10 +204,10 @@ function OrderCard({ order, onReorder }: { order: Order; onReorder: (items: Cart
         {delivered && (
           <Button
             onClick={() => onReorder(order.items)}
-            variant="outline"
-            className="w-full font-black uppercase tracking-widest text-[10px] gap-2"
+            variant="secondary"
+            leftIcon={<Icon name="subscriptions" size={14} strokeWidth={2.5} />}
+            className="w-full"
           >
-            <Icon name="subscriptions" size={14} strokeWidth={3} className="opacity-70" />
             Reorder Now
           </Button>
         )}

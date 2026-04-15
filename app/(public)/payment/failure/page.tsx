@@ -38,20 +38,11 @@ export default function PaymentFailurePage() {
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-        <Button
-          href="/menu"
-          size="md"
-          className="px-10 py-5 text-[11px] uppercase tracking-widest !rounded-2xl shadow-premium"
-        >
+        <Button href="/menu" size="lg">
           Re-Attempt Checkout
         </Button>
-        <Button
-          href="/"
-          variant="outline"
-          size="md"
-          className="px-10 py-5 text-[11px] uppercase tracking-widest !rounded-2xl"
-        >
-          Return to Dashboard
+        <Button href="/" variant="secondary" size="lg">
+          Return to Home
         </Button>
       </div>
 

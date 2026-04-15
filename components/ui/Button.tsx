@@ -1,19 +1,37 @@
 'use client'
 
-import React, { ButtonHTMLAttributes, forwardRef } from 'react'
+import React, { ButtonHTMLAttributes, ReactNode, forwardRef } from 'react'
 import Link from 'next/link'
-import { motion, HTMLMotionProps } from 'framer-motion'
+import { motion } from 'framer-motion'
+import { ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-type Variant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger'
-type Size = 'sm' | 'md' | 'lg' | 'icon'
+/**
+ * Fuelist Design System — Button
+ *
+ * Three canonical variants (per Figma):
+ *  primary   → Charcoal pill, white text, optional amber icon left
+ *  secondary → White pill with soft border, amber text, optional amber icon left
+ *  ghost     → No background/border, amber-brown text + chevron right (explore/nav links)
+ *
+ * Legacy aliases kept for backward-compat:
+ *  outline   → maps to secondary
+ *  danger    → retains rose styling (destructive actions only)
+ */
 
-interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onAnimationStart' | 'onDragStart' | 'onDragEnd' | 'onDrag' | 'ref'> {
-  variant?: Variant
-  size?: Size
+export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger'
+export type ButtonSize = 'sm' | 'md' | 'lg' | 'icon'
+
+interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>,
+  | 'onAnimationStart' | 'onDragStart' | 'onDragEnd' | 'onDrag' | 'ref'
+> {
+  variant?: ButtonVariant
+  size?: ButtonSize
   loading?: boolean
   href?: string
-  // Allow motion props
+  leftIcon?: ReactNode    // renders at amber-500 colour inside button
+  showArrow?: boolean     // append ChevronRight — default true for ghost variant
+  // Framer Motion passthrough
   whileHover?: any
   whileTap?: any
   initial?: any
@@ -21,30 +39,79 @@ interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onA
   transition?: any
 }
 
-const base = 'inline-flex items-center justify-center font-black capitalize tracking-wide transition-all focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed select-none active:scale-95'
+// ─── Base ────────────────────────────────────────────────────────────────────
+const base = [
+  'inline-flex items-center justify-center gap-2.5',
+  'font-black tracking-tight',
+  'transition-all duration-200',
+  'focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2',
+  'disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none',
+  'select-none',
+].join(' ')
 
-const variants: Record<Variant, string> = {
-  primary:   'bg-stone-900 text-amber-500 hover:bg-stone-800 shadow-xl border border-stone-800',
-  secondary: 'bg-stone-100 text-stone-900 hover:bg-stone-200 border border-stone-200',
-  outline:   'bg-white border-2 border-stone-100 text-stone-900 hover:border-amber-500 hover:bg-amber-50/10 hover:border-amber-500',
-  ghost:     'bg-transparent text-stone-400 hover:text-stone-900 hover:bg-stone-50',
-  danger:    'bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100 hover:border-rose-200',
+// ─── Variants ────────────────────────────────────────────────────────────────
+const variants: Record<ButtonVariant, string> = {
+  // ① Dark pill — "Add to cart", "Sign in", primary CTA
+  primary: [
+    'bg-stone-900 text-white',
+    'hover:bg-stone-800',
+    'shadow-md shadow-stone-900/10',
+    '[&_[data-icon]]:text-amber-500',          // icon slot rendered amber
+  ].join(' '),
+
+  // ② Light pill — "Plan", "Secondary action"
+  secondary: [
+    'bg-white text-amber-700',
+    'border border-stone-200',
+    'hover:bg-amber-50 hover:border-amber-200',
+    'shadow-sm',
+    '[&_[data-icon]]:text-amber-500',
+  ].join(' '),
+
+  // ③ outline → alias to secondary (legacy compat)
+  outline: [
+    'bg-white text-amber-700',
+    'border border-stone-200',
+    'hover:bg-amber-50 hover:border-amber-200',
+    'shadow-sm',
+    '[&_[data-icon]]:text-amber-500',
+  ].join(' '),
+
+  // ④ Ghost / explore — text link with chevron, no bg
+  ghost: [
+    'bg-transparent text-amber-800',
+    'hover:text-amber-600',
+    '[&_[data-icon]]:text-amber-500',
+  ].join(' '),
+
+  // ⑤ Danger — destructive actions only
+  danger: [
+    'bg-rose-50 text-rose-600',
+    'border border-rose-100',
+    'hover:bg-rose-100 hover:border-rose-200',
+    'shadow-sm',
+  ].join(' '),
 }
 
-const sizes: Record<Size, string> = {
-  sm:   'px-3 py-1.5 text-xs rounded-lg',
-  md:   'px-5 py-2.5 text-sm rounded-xl',
-  lg:   'px-8 py-3.5 text-base rounded-2xl',
-  icon: 'p-2 rounded-lg',
+// ─── Sizes ───────────────────────────────────────────────────────────────────
+const sizes: Record<ButtonSize, string> = {
+  sm:   'px-4 py-1.5 text-xs    rounded-full',
+  md:   'px-5 py-2.5 text-sm   rounded-full',
+  lg:   'px-7 py-3.5 text-sm   rounded-full',
+  icon: 'p-2 rounded-full',
 }
 
-const Spinner = () => (
-  <svg className="animate-spin h-3.5 w-3.5 mr-2" viewBox="0 0 24 24" fill="none">
-    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-  </svg>
-)
+// ─── Spinner ─────────────────────────────────────────────────────────────────
+function Spinner() {
+  return (
+    <svg className="animate-spin h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+    </svg>
+  )
+}
 
+// ─── Component ───────────────────────────────────────────────────────────────
 const Button = forwardRef<any, ButtonProps>(({
   children,
   variant = 'primary',
@@ -54,6 +121,8 @@ const Button = forwardRef<any, ButtonProps>(({
   className,
   disabled,
   type = 'button',
+  leftIcon,
+  showArrow,
   whileHover,
   whileTap,
   initial,
@@ -63,10 +132,20 @@ const Button = forwardRef<any, ButtonProps>(({
 }, ref) => {
   const cls = cn(base, variants[variant], sizes[size], className)
 
+  // Ghost buttons default to showing the right chevron
+  const renderArrow = showArrow ?? (variant === 'ghost')
+
   const content = (
     <>
-      {loading && <Spinner />}
+      {loading ? (
+        <Spinner />
+      ) : leftIcon ? (
+        <span data-icon className="shrink-0 text-amber-500">{leftIcon}</span>
+      ) : null}
       {children}
+      {renderArrow && !loading && (
+        <ChevronRight className="shrink-0 text-amber-500" size={15} strokeWidth={2.5} />
+      )}
     </>
   )
 
@@ -75,10 +154,7 @@ const Button = forwardRef<any, ButtonProps>(({
       <motion.div
         ref={ref}
         whileHover={whileHover}
-        whileTap={whileTap || { scale: 0.98 }}
-        initial={initial}
-        animate={animate}
-        transition={transition}
+        whileTap={whileTap ?? { scale: 0.97 }}
         className="inline-block"
       >
         <Link href={href} className={cls} {...(props as any)}>
@@ -95,11 +171,11 @@ const Button = forwardRef<any, ButtonProps>(({
       className={cls}
       disabled={disabled || loading}
       whileHover={whileHover}
-      whileTap={whileTap || { scale: 0.98 }}
+      whileTap={whileTap ?? { scale: 0.97 }}
       initial={initial}
       animate={animate}
-      transition={transition || { type: 'spring', stiffness: 500, damping: 30 }}
-      {...props}
+      transition={transition ?? { type: 'spring', stiffness: 500, damping: 30 }}
+      {...(props as any)}
     >
       {content}
     </motion.button>
@@ -107,5 +183,4 @@ const Button = forwardRef<any, ButtonProps>(({
 })
 
 Button.displayName = 'Button'
-
 export default Button

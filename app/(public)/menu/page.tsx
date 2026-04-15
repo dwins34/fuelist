@@ -186,7 +186,7 @@ function MenuContent() {
             <h3 className="text-xl font-black text-stone-900">No matches found</h3>
             <p className="text-sm font-medium text-stone-400 mt-2 max-w-xs mx-auto">Try adjusting your filters to explore our full selection.</p>
             <Button
-              variant="outline"
+              variant="ghost"
               className="mt-8"
               onClick={() => { setSelected('all'); setHighProtein(false); setLowCalorie(false); setBestsellersOnly(false) }}
             >

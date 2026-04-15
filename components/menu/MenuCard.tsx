@@ -166,16 +166,18 @@ export default function MenuCard({ item }: MenuCardProps) {
                   <Button
                     onClick={() => addItem(item)}
                     variant="primary"
-                    className="flex-[2] !rounded-xl py-2.5"
+                    leftIcon={<Icon name="cart" size={14} strokeWidth={2.5} />}
+                    className="flex-[2]"
                   >
                     Add to Cart
                   </Button>
                   <Button
                     onClick={() => setShowSubscribe(true)}
-                    variant="outline"
-                    className="flex-1 !rounded-xl py-2.5"
+                    variant="secondary"
+                    leftIcon={<Icon name="subscriptions" size={14} strokeWidth={2.5} />}
+                    className="flex-1"
                   >
-                    Plan
+                    Subscribe
                   </Button>
               </>
             ) : (

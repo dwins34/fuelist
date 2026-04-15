@@ -326,7 +326,7 @@ export default function AddressManager({ onSelect, selectedId, hideHeader }: Add
               )}
 
               <div className="flex gap-3 pt-6">
-                <Button onClick={handleSave} loading={saving} size="md" className="flex-1">Deploy Zone</Button>
+                <Button onClick={handleSave} loading={saving} size="md" className="flex-1">Save Address</Button>
                 <Button onClick={() => setIsAdding(false)} variant="ghost" size="md" className="shrink-0">Cancel</Button>
               </div>
             </div>

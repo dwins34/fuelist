@@ -12,6 +12,8 @@ export interface DeliveryAddress {
   state?: string
   pincode: string
   landmark?: string
+  lat?: number
+  lng?: number
 }
 
 export function buildWhatsAppMessage(items: CartItem[], total: number, address?: DeliveryAddress): string {

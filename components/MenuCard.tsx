@@ -7,6 +7,7 @@ import { formatPrice, categoryLabel, getImageUrl } from '@/lib/utils'
 // import { whatsAppSingleItemUrl } from '@/lib/whatsapp'
 import { useCart } from '@/context/CartContext'
 import Button from '@/components/ui/Button'
+import { Icon } from '@/lib/icons'
 import SubscriptionModal, {
   loadPendingSubscription,
   clearPendingSubscription,
@@ -125,7 +126,8 @@ export default function MenuCard({ item }: MenuCardProps) {
                 <Button
                   onClick={() => addItem(item)}
                   variant="primary"
-                  className="w-full !rounded-xl py-2 shadow-md"
+                  leftIcon={<Icon name="cart" size={14} strokeWidth={2.5} />}
+                  className="w-full"
                 >
                   Add to Cart
                 </Button>

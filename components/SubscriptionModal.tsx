@@ -7,6 +7,7 @@ import { MenuItem } from '@/types'
 import { formatPrice, getImageUrl, categoryLabel } from '@/lib/utils'
 import { useAuthContext } from '@/context/AuthContext'
 import { useServiceStatus } from '@/context/ServiceStatusContext'
+import { useDeliveryCheck } from '@/hooks/useDeliveryCheck'
 import { useRouter } from 'next/navigation'
 import AddressManager from '@/components/account/AddressManager'
 import { UserAddress } from '@/hooks/useAddresses'
@@ -112,7 +113,8 @@ function isProfileComplete(profile: { name: string; phone: string } | null): boo
 
 export default function SubscriptionModal({ initialItem, onClose, onSuccess, restoredConfig }: SubscriptionModalProps) {
   const { profile } = useAuthContext()
-  const { isEnabled } = useServiceStatus()
+  const { isEnabled, serviceAreaLabel } = useServiceStatus()
+  const { check: checkDelivery } = useDeliveryCheck()
   const router = useRouter()
 
   const [slot,     setSlot]     = useState<DeliverySlot>(restoredConfig?.slot ?? 'morning')
@@ -132,10 +134,12 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
   )
   const [search, setSearch] = useState('')
 
-  const [step,    setStep]    = useState<Step>(restoredConfig?.step ?? (restoredConfig ? 'confirm' : 'items'))
-  const [loading, setLoading] = useState(false)
-  const [error,   setError]   = useState<string | null>(null)
+  const [step,         setStep]         = useState<Step>(restoredConfig?.step ?? (restoredConfig ? 'confirm' : 'items'))
+  const [loading,      setLoading]      = useState(false)
+  const [error,        setError]        = useState<string | null>(null)
   const [selectedAddress, setSelectedAddress] = useState<UserAddress | null>(null)
+  const [outOfArea,    setOutOfArea]    = useState(false)
+  const [checkingArea, setCheckingArea] = useState(false)
 
   useEffect(() => {
     document.body.style.overflow = 'hidden'
@@ -203,6 +207,7 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
     }
 
     if (!isProfileComplete(profile) || !selectedAddress) {
+      setOutOfArea(false)
       setStep('address')
       return
     }
@@ -210,10 +215,25 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
     setStep('confirm')
   }, [profile, selected, slot, freq, duration, selectedAddress])
 
-  const handleSelectAddress = useCallback((addr: UserAddress) => {
-    setSelectedAddress(addr)
+  const handleSelectAddress = useCallback(async (addr: UserAddress) => {
+    setOutOfArea(false)
+    setCheckingArea(true)
+
+    const coords = (addr.lat && addr.lng) ? { lat: addr.lat, lng: addr.lng } : null
+    const result = await checkDelivery(coords, addr.pincode)
+
+    setCheckingArea(false)
+
+    if (!result.eligible) {
+      // Do NOT commit the address — keeps selectedAddress null so
+      // handleAdvanceToConfirm correctly routes back here next time.
+      setOutOfArea(true)
+      return
+    }
+
+    setSelectedAddress(addr)   // only set after eligibility confirmed
     setStep('confirm')
-  }, [])
+  }, [checkDelivery])
 
   async function handleSubscribe() {
     if (!profile) { router.push('/login'); return }
@@ -308,13 +328,13 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
 
   const FLOW_STEPS: Step[] = ['items', 'schedule', 'address', 'confirm']
   const headerTitle =
-    step === 'items'    ? 'Personalize Your Plan' :
-    step === 'schedule' ? 'Delivery Logistics'   :
-    step === 'address'  ? 'Shipping Details'     :
-    step === 'confirm'  ? 'Finalize Subscription' :
-    step === 'login'    ? 'Identify Yourself'    :
-    step === 'paying'   ? 'Processing Payment'  :
-                          'Success!'
+    step === 'items'    ? 'Choose Your Meals'    :
+    step === 'schedule' ? 'Set Your Schedule'    :
+    step === 'address'  ? 'Delivery Address'     :
+    step === 'confirm'  ? 'Review & Confirm'     :
+    step === 'login'    ? 'Sign In to Continue'  :
+    step === 'paying'   ? 'Processing Payment'   :
+                          "You're All Set!"
 
   return (
     <div
@@ -374,13 +394,13 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
                 <div className="mx-auto w-20 h-20 bg-amber-50 rounded-3xl flex items-center justify-center text-amber-500 mb-8 shadow-inner">
                    <Icon name="security" size={40} />
                 </div>
-                <h3 className="text-2xl font-black text-stone-900 tracking-tight">Access Required</h3>
+                <h3 className="text-2xl font-black text-stone-900 tracking-tight">Sign In to Continue</h3>
                 <p className="mt-3 text-sm font-medium text-stone-400 max-w-xs mx-auto leading-relaxed">
-                  Your premium selection is secured. Sign in to finalize your high-performance meal plan.
+                  Your meal plan is ready. Sign in or create an account to confirm your subscription.
                 </p>
 
                 <div className="mt-8 rounded-3xl bg-stone-50 border border-stone-100 p-6 text-left space-y-4">
-                  <p className="text-xs font-black uppercase tracking-widest text-stone-400 ml-1">Your Configured Plan</p>
+                  <p className="text-xs font-black uppercase tracking-widest text-stone-400 ml-1">Your Plan Summary</p>
                   <div className="flex flex-wrap gap-2">
                     <Badge variant="premium">{selected.size} Items</Badge>
                     <Badge variant="secondary" className="bg-white border-none shadow-sm">{slotLabel.label}</Badge>
@@ -399,30 +419,76 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
                       savePendingSubscription({ selectedItemIds: Array.from(selected), slot, freq, duration })
                       router.push('/login?redirect=/menu')
                     }}
+                    leftIcon={<Icon name="security" size={14} strokeWidth={2.5} />}
                     className="py-6 shadow-premium"
                   >
-                    Identify
+                    Sign In
                   </Button>
                   <Button
-                    variant="outline"
+                    variant="secondary"
                     onClick={() => {
                       savePendingSubscription({ selectedItemIds: Array.from(selected), slot, freq, duration })
                       router.push('/signup?redirect=/menu')
                     }}
                     className="py-6"
                   >
-                    Join
+                    Create Account
                   </Button>
                 </div>
                 <button onClick={() => setStep('schedule')} className="mt-8 text-[10px] font-black capitalize tracking-widest text-stone-300 hover:text-stone-900 transition-colors">
-                  Modify Logistics
+                  Edit Schedule
                 </button>
               </motion.div>
             )}
 
-            {/* Address step */}
-            {step === 'address' && (
-              <motion.div 
+            {/* Address step — out of area fallback */}
+            {step === 'address' && outOfArea && (
+              <motion.div
+                key="address-outofarea"
+                initial={{ opacity: 0, scale: 0.96 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.96 }}
+                className="flex flex-col items-center justify-center py-16 text-center px-10"
+              >
+                <div className="w-20 h-20 bg-red-50 rounded-[2rem] flex items-center justify-center text-red-400 mb-6 border border-red-100 shadow-sm shadow-red-100">
+                  <Icon name="error" size={40} strokeWidth={2} />
+                </div>
+                <h3 className="text-xl font-black text-stone-900 tracking-tight">Outside Delivery Area</h3>
+                <p className="text-sm font-medium text-stone-400 mt-2 max-w-[260px] leading-relaxed">
+                  We currently deliver within <span className="text-stone-700 font-black">{serviceAreaLabel}</span>. The selected address is outside our delivery zone.
+                </p>
+                <Button
+                  variant="secondary"
+                  className="mt-8"
+                  onClick={() => setOutOfArea(false)}
+                >
+                  Try Another Address
+                </Button>
+                <button
+                  onClick={() => setStep('schedule')}
+                  className="mt-4 text-[10px] font-black capitalize tracking-widest text-stone-300 hover:text-stone-900 transition-colors"
+                >
+                  Back to Schedule
+                </button>
+              </motion.div>
+            )}
+
+            {/* Address step — checking loader */}
+            {step === 'address' && checkingArea && !outOfArea && (
+              <motion.div
+                key="address-checking"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex flex-col items-center justify-center py-20 gap-4"
+              >
+                <div className="h-10 w-10 border-[3px] border-amber-100 border-t-amber-500 rounded-full animate-spin" />
+                <p className="text-xs font-black uppercase tracking-widest text-stone-400">Checking delivery coverage…</p>
+              </motion.div>
+            )}
+
+            {/* Address step — picker */}
+            {step === 'address' && !outOfArea && !checkingArea && (
+              <motion.div
                 key="address-step"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -430,14 +496,14 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
                 className="px-6 py-6"
               >
                 <div className="mb-8">
-                  <h3 className="text-lg font-black text-stone-900 tracking-tight">Deployment Location</h3>
-                  <p className="text-sm font-medium text-stone-400 mt-1">Where should we deliver your power bowls?</p>
+                  <h3 className="text-lg font-black text-stone-900 tracking-tight">Where should we deliver?</h3>
+                  <p className="text-sm font-medium text-stone-400 mt-1">Select or add the address for your daily deliveries.</p>
                 </div>
-                
+
                 <AddressManager hideHeader selectedId={selectedAddress?.id} onSelect={handleSelectAddress} />
 
                 <button onClick={() => setStep('schedule')} className="mt-8 w-full text-[10px] font-black capitalize tracking-widest text-stone-300 hover:text-stone-900 transition-colors">
-                  Back to Logistics
+                  Back to Schedule
                 </button>
               </motion.div>
             )}
@@ -524,7 +590,7 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
                 className="px-6 py-6 space-y-7"
               >
                 <div>
-                  <p className="text-[11px] font-black uppercase tracking-widest text-stone-300 mb-4 ml-1">Arrival Window</p>
+                  <p className="text-[11px] font-black uppercase tracking-widest text-stone-300 mb-4 ml-1">Delivery Time</p>
                   <div className="grid grid-cols-3 gap-3">
                     {SLOTS.map((s) => (
                       <button key={s.value} onClick={() => onSlotChange(s.value)}
@@ -544,7 +610,7 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
                 </div>
 
                 <div>
-                  <p className="text-[11px] font-black uppercase tracking-widest text-stone-300 mb-4 ml-1">Subscription Rhythm</p>
+                  <p className="text-[11px] font-black uppercase tracking-widest text-stone-300 mb-4 ml-1">Delivery Frequency</p>
                   <div className="grid grid-cols-1 gap-3">
                     {FREQS.map((f) => (
                       <button key={f.value} onClick={() => onFreqChange(f.value)}
@@ -568,7 +634,7 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
                 </div>
 
                 <div>
-                  <p className="text-[11px] font-black uppercase tracking-widest text-stone-300 mb-4 ml-1">Program Duration</p>
+                  <p className="text-[11px] font-black uppercase tracking-widest text-stone-300 mb-4 ml-1">Plan Duration</p>
                   <div className="grid grid-cols-3 gap-3">
                     {DURATIONS.map((d) => (
                       <button key={d.value} onClick={() => onDurationChange(d.value)}
@@ -615,7 +681,7 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
                           <p className="text-[10px] font-black text-white/40">+{selectedItems.length - 3} more</p>
                         )}
                       </div>
-                      {/* Logistics pills */}
+                      {/* Schedule pills */}
                       <div className="pt-2 border-t border-white/10 flex flex-wrap gap-1.5">
                         <span className="text-[10px] font-black uppercase tracking-widest bg-white/10 text-white/60 rounded-full px-2.5 py-0.5">{slotLabel.label}</span>
                         <span className="text-[10px] font-black uppercase tracking-widest bg-white/10 text-white/60 rounded-full px-2.5 py-0.5">{freqLabel.label}</span>
@@ -659,7 +725,7 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
               >
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2 sm:col-span-1 p-5 rounded-3xl bg-stone-50 border border-stone-100">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-stone-300 mb-2">Delivery Window</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-stone-300 mb-2">Delivery Time</p>
                     <div className="flex items-center gap-3">
                        <Icon name={slotLabel.icon} size={18} className="text-amber-500" />
                        <span className="text-sm font-black capitalize tracking-tight text-stone-900">{slotLabel.label}</span>
@@ -670,7 +736,7 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
                     <span className="text-sm font-black capitalize tracking-tight text-stone-900">{freqLabel.label}</span>
                   </div>
                   <div className="col-span-2 p-5 rounded-3xl bg-stone-50 border border-stone-100">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-stone-300 mb-2">Destination</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-stone-300 mb-2">Deliver To</p>
                     <p className="text-xs font-bold text-stone-600 truncate capitalize tracking-tight">
                         {selectedAddress ? [selectedAddress.house_number, selectedAddress.street_address, selectedAddress.city].filter(Boolean).join(', ') : 'No Address'}
                     </p>
@@ -678,7 +744,7 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
                 </div>
 
                 <div className="space-y-4">
-                  <p className="text-xs font-black uppercase tracking-widest text-stone-300 ml-1">Selected Meals ({selectedItems.length})</p>
+                  <p className="text-xs font-black uppercase tracking-widest text-stone-300 ml-1">Your Meals ({selectedItems.length})</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {selectedItems.map((item) => (
                       <div key={item.id} className="flex items-center gap-3 p-2 pr-4 bg-white border border-stone-50 rounded-2xl shadow-sm">
@@ -707,8 +773,8 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
                     />
                  </div>
                  <div className="space-y-2">
-                   <h3 className="text-xl font-black capitalize tracking-tighter text-stone-900">Activating Program</h3>
-                   <p className="text-[11px] font-black capitalize tracking-widest text-stone-300">Synchronizing with gateway</p>
+                   <h3 className="text-xl font-black capitalize tracking-tighter text-stone-900">Activating Your Plan</h3>
+                   <p className="text-[11px] font-black capitalize tracking-widest text-stone-300">Processing payment…</p>
                  </div>
               </motion.div>
             )}
@@ -719,15 +785,15 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
                 <div className="mx-auto w-24 h-24 bg-emerald-50 rounded-[2.5rem] flex items-center justify-center text-emerald-500 mb-8 shadow-inner shadow-emerald-100 scale-110">
                    <Icon name="success" size={48} strokeWidth={3} />
                 </div>
-                <h3 className="text-3xl font-black text-stone-900 tracking-tighter">Plan Activated</h3>
+                <h3 className="text-3xl font-black text-stone-900 tracking-tighter">You're All Set!</h3>
                 <p className="mt-4 text-sm font-medium text-stone-400 max-w-xs mx-auto leading-relaxed">
-                  Your nutrient-dense journey begins. Your bowls will arrive during the <span className="text-stone-900 font-black">{slotLabel.label}</span> window.
+                  Your subscription is active. Your first delivery will arrive during the <span className="text-stone-900 font-black">{slotLabel.label}</span> slot.
                 </p>
                 <div className="mt-10 p-6 rounded-3xl bg-emerald-50/50 border border-emerald-100 text-xs font-bold text-emerald-700 capitalize tracking-widest">
-                  View tracking details in your account dashboard.
+                  Track your deliveries in your account dashboard.
                 </div>
-                <Button onClick={onClose} size="lg" className="mt-10 w-full py-5 shadow-premium capitalize tracking-widest font-black text-xs">
-                  Begin Journey
+                <Button onClick={onClose} size="lg" leftIcon={<Icon name="checkCircle" size={16} strokeWidth={2.5} />} className="mt-10 w-full">
+                  Done
                 </Button>
               </motion.div>
             )}
@@ -747,10 +813,9 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
                 size="lg"
                 onClick={() => setStep('schedule')}
                 disabled={selected.size === 0}
-                className="w-full py-5 !rounded-3xl shadow-premium capitalize tracking-widest font-black text-xs gap-3"
+                className="w-full"
               >
-                Proceed to Logistics
-                <Icon name="arrowRight" size={16} strokeWidth={4} />
+                Next: Set Schedule
               </Button>
             </motion.div>
           )}
@@ -758,17 +823,19 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
           {step === 'schedule' && (
             <motion.div initial={{ y: 20 }} animate={{ y: 0 }} className="px-6 py-5 border-t border-stone-800 bg-stone-900 space-y-3">
               {error && <p className="text-center text-xs font-black uppercase tracking-widest text-red-400 mb-2">{error}</p>}
-              <Button size="lg" onClick={handleAdvanceToConfirm} className="w-full py-5 !rounded-3xl shadow-premium capitalize tracking-widest font-black text-xs gap-3">
-                Continue to Deployment
-                <Icon name="arrowRight" size={16} strokeWidth={4} />
+              <Button size="lg" onClick={handleAdvanceToConfirm} className="w-full">
+                Next: Confirm Address
               </Button>
-              <button onClick={() => setStep('items')} className="w-full text-xs font-black uppercase tracking-widest text-stone-500 hover:text-white transition-colors">Configure Items</button>
+              <button onClick={() => setStep('items')} className="w-full text-xs font-black uppercase tracking-widest text-stone-500 hover:text-white transition-colors">Back to Meals</button>
             </motion.div>
           )}
 
           {step === 'address' && (
             <motion.div initial={{ y: 20 }} animate={{ y: 0 }} className="px-6 py-5 border-t border-stone-800 bg-stone-900">
-               <p className="text-center text-xs font-black uppercase tracking-widest text-stone-500">Select address to continue</p>
+              <p className="text-center text-xs font-black uppercase tracking-widest text-stone-500 flex items-center justify-center gap-2">
+                {checkingArea && <span className="h-3 w-3 border-2 border-stone-600 border-t-amber-500 rounded-full animate-spin inline-block" />}
+                {checkingArea ? 'Checking coverage…' : outOfArea ? 'Address outside delivery area' : 'Select a delivery address to continue'}
+              </p>
             </motion.div>
           )}
 
@@ -779,12 +846,15 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
                 size="lg"
                 onClick={handleSubscribe}
                 disabled={loading || !isEnabled}
-                className="w-full py-5 !rounded-3xl shadow-premium capitalize tracking-widest font-black text-xs gap-3"
+                className="w-full"
               >
-                {loading ? <div className="h-5 w-5 border-2 border-white/20 border-t-white rounded-full animate-spin" /> : 
-                 isEnabled ? `Initialize Plan • ${formatPrice(finalTotal)}` : 'Gateway Paused'}
+                {loading
+                  ? <div className="h-5 w-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                  : isEnabled
+                    ? `Confirm & Pay • ${formatPrice(finalTotal)}`
+                    : 'Store Currently Closed'}
               </Button>
-              <button onClick={() => setStep('address')} className="w-full text-xs font-black uppercase tracking-widest text-stone-500 hover:text-white transition-colors">Adjust Location</button>
+              <button onClick={() => { setOutOfArea(false); setStep('address') }} className="w-full text-xs font-black uppercase tracking-widest text-stone-500 hover:text-white transition-colors">Change Address</button>
             </motion.div>
           )}
         </AnimatePresence>

@@ -166,12 +166,12 @@ function SuccessContent() {
            {/* ── Actions ── */}
            <div className="flex flex-col gap-4">
               {orderId && (
-                <Button 
-                  href={`/orders/${orderId}`} 
-                  size="lg" 
-                  className="w-full !rounded-[2rem] py-8 text-lg shadow-premium"
+                <Button
+                  href={`/orders/${orderId}`}
+                  size="lg"
+                  className="w-full"
                 >
-                  Global Order Tracking
+                  Track Your Order
                 </Button>
               )}
               <div className="flex gap-4">

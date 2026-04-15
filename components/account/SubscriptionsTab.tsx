@@ -83,7 +83,7 @@ export default function SubscriptionsTab({ subscriptions, loading, actionId, onA
               Explore our curated daily bowls and start your subscription today.
             </p>
           </div>
-          <Button href="/menu" variant="primary" size="md" className="mt-8 shadow-premium">
+          <Button href="/menu" variant="ghost" size="md" className="mt-8">
             Explore Menu
           </Button>
         </motion.div>

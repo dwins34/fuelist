@@ -191,7 +191,7 @@ export default function HomePage() {
               <p className="text-lg text-stone-400 font-medium leading-relaxed">
                 We believe your fuel should be as exceptional as your goals. Every bowl is a precision-engineered nutrition system.
               </p>
-              <Button href="/about" variant="outline" size="lg" className="shadow-sm">Learn Our Story</Button>
+              <Button href="/about" variant="ghost" size="lg">Learn Our Story</Button>
             </div>
 
             <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-6 w-full">
@@ -230,14 +230,15 @@ export default function HomePage() {
               Join thousands of peak-performers who trust Fuelist for their daily nutrition.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Button href="/menu" size="lg" className="w-full sm:w-auto shadow-amber-500/10 !rounded-2xl">
+              <Button href="/menu" size="lg" className="w-full sm:w-auto">
                 Browse Full Menu
               </Button>
               {!profile && (
                 <Button
                   href="/signup"
                   size="lg"
-                  className="w-full sm:w-auto !rounded-2xl bg-white text-stone-900 hover:bg-stone-50 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-premium"
+                  variant="secondary"
+                  className="w-full sm:w-auto"
                 >
                   Join Community
                 </Button>

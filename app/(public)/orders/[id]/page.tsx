@@ -330,11 +330,15 @@ export default function OrderTrackingPage() {
 
       {/* Bottom Actions */}
       <div className="flex flex-col sm:flex-row gap-4 pt-10 border-t border-stone-100">
-        <Button href="/orders" variant="secondary" className="flex-1 !rounded-3xl py-7 font-black tracking-widest uppercase text-[11px]">
-           All Order History
+        <Button href="/orders" variant="secondary" className="flex-1">
+          All Orders
         </Button>
-        <Button onClick={handleReorder} size="lg" className="flex-[2] !rounded-3xl py-7 shadow-premium font-black tracking-widest uppercase text-xs gap-3">
-          <Icon name="subscriptions" size={18} strokeWidth={3} />
+        <Button
+          onClick={handleReorder}
+          size="lg"
+          leftIcon={<Icon name="subscriptions" size={16} strokeWidth={2.5} />}
+          className="flex-[2]"
+        >
           Reorder This Meal
         </Button>
       </div>

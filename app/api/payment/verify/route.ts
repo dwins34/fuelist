@@ -15,6 +15,7 @@ export async function POST(req: NextRequest) {
       razorpay_signature,
       items,
       total_amount,
+      delivery_fee: clientDeliveryFee,
       address,
       coupon_code,
       reward_points_to_use,
@@ -118,18 +119,28 @@ export async function POST(req: NextRequest) {
       resolvedPointsUsed = Math.min(requested, available, maxByFraction)
     }
 
-    // ── 7. Compute earned points on final paid amount ─────────────────────────
+    // ── 7. Fetch delivery fee from DB (server-authoritative) ──────────────────
+    let deliveryFee = 0
+    try {
+      const { data: feeRow } = await supabase
+        .from('app_config').select('value').eq('key', 'delivery_fee').maybeSingle()
+      const dbFee = (feeRow?.value as any)?.fee
+      deliveryFee = typeof dbFee === 'number' ? Math.max(0, dbFee) : 0
+    } catch { /* use 0 if unavailable */ }
+
+    // ── 8. Compute earned points on final paid amount ─────────────────────────
     const baseAmount    = Number(total_amount)
-    const finalAmount   = Math.max(0, baseAmount - discountAmount - resolvedPointsUsed)
+    const finalAmount   = Math.max(0, baseAmount - discountAmount - resolvedPointsUsed) + deliveryFee
     const earnedPoints  = Math.floor(finalAmount * POINTS_PER_RUPEE)
 
-    // ── 8. Insert order ───────────────────────────────────────────────────────
+    // ── 9. Insert order ───────────────────────────────────────────────────────
     const { data: order, error: insertError } = await supabase
       .from('orders')
       .insert({
         user_id:               user?.id ?? null,
         items:                 items ?? [],
         total_amount:          baseAmount,
+        delivery_fee:          deliveryFee,
         payment_status:        'paid',
         payment_id:            razorpay_payment_id,
         razorpay_order_id,
@@ -149,7 +160,7 @@ export async function POST(req: NextRequest) {
 
     const orderId = order.id
 
-    // ── 8b. Add to delivery_log for real-time visibility ───────────────────────
+    // ── 9b. Add to delivery_log for real-time visibility ──────────────────────
     void Promise.resolve(
       supabase.from('delivery_log').insert({
         order_id:      orderId,
@@ -163,7 +174,7 @@ export async function POST(req: NextRequest) {
       })
     ).catch(err => console.error('Failed to create initial delivery_log entry:', err))
 
-    // ── 9. Post-order side effects (non-blocking) ─────────────────────────────
+    // ── 10. Post-order side effects (non-blocking) ────────────────────────────
     if (user) {
       // 9a. Record coupon usage + increment used_count
       if (resolvedCouponId) {

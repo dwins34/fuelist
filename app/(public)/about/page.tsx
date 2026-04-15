@@ -175,7 +175,7 @@ export default function AboutPage() {
             <p className="text-gray-400 text-lg">Your journey to a healthier, more energized version of yourself starts with your next meal.</p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Button size="lg" href="/menu">Explore Our Menu</Button>
-                <Button size="lg" variant="ghost" className="text-white border-white/20 hover:bg-white/10" href="/contact">Get in Touch</Button>
+                <Button size="lg" variant="ghost" href="/contact">Get in Touch</Button>
             </div>
         </div>
       </Section>
