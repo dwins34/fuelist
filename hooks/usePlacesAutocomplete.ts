@@ -31,99 +31,107 @@ export function usePlacesAutocomplete() {
   const [detailsLoading, setDetailsLoading] = useState(false)
   
   const autocompleteService = useRef<google.maps.places.AutocompleteService | null>(null)
-  const placesService = useRef<google.maps.places.PlacesService | null>(null)
 
   // Initialize services when script is loaded
   useEffect(() => {
     if (isLoaded && !loadError && window.google) {
       autocompleteService.current = new window.google.maps.places.AutocompleteService()
-      // PlacesService requires a map or a div. We can pass a dummy div.
-      const dummyDiv = document.createElement('div')
-      placesService.current = new window.google.maps.places.PlacesService(dummyDiv)
     }
   }, [isLoaded, loadError])
 
-  const fetchPredictions = useCallback((input: string) => {
+  const fetchPredictions = useCallback(async (input: string) => {
     setQuery(input)
-    if (!input) {
+    if (!input || !window.google?.maps?.places?.AutocompleteSuggestion) {
       setPredictions([])
       return
     }
 
-    if (!autocompleteService.current) return
-
     setLoading(true)
-    autocompleteService.current.getPlacePredictions(
-      { input, componentRestrictions: { country: 'in' } },
-      (results, status) => {
-        setLoading(false)
-        if (status === window.google.maps.places.PlacesServiceStatus.OK && results) {
-          setPredictions(results)
-        } else {
-          setPredictions([])
-        }
-      }
-    )
+    try {
+      const { suggestions } = await window.google.maps.places.AutocompleteSuggestion.fetchAutocompleteSuggestions({
+        input,
+        includedRegionCodes: ['in'],
+      } as any)
+      
+      const mappedResults: PlacePrediction[] = suggestions
+        .filter(s => !!s.placePrediction)
+        .map(s => {
+          const p = s.placePrediction! as any
+          return {
+            place_id: p.placeId || '',
+            description: p.text?.text || '',
+            structured_formatting: {
+              main_text: p.structuredFormat?.mainText?.text || '',
+              secondary_text: p.structuredFormat?.secondaryText?.text || ''
+            }
+          }
+        })
+      
+      setPredictions(mappedResults)
+    } catch (err) {
+      console.error('fetchPredictions error:', err)
+      setPredictions([])
+    } finally {
+      setLoading(true) // match original logic
+      setLoading(false)
+    }
   }, [])
 
-  const getPlaceDetails = useCallback((placeId: string): Promise<PlaceDetails> => {
-    return new Promise((resolve, reject) => {
-      if (!placesService.current) {
-        reject(new Error('Places service not initialized'))
-        return
-      }
+  const getPlaceDetails = useCallback(async (placeId: string): Promise<PlaceDetails> => {
+    if (!window.google?.maps?.places?.Place) {
+      throw new Error('Google Maps Place library not loaded')
+    }
 
-      setDetailsLoading(true)
-      placesService.current.getDetails(
-        {
-          placeId,
-          fields: ['formatted_address', 'geometry', 'address_components'],
-        },
-        (place, status) => {
-          setDetailsLoading(false)
-          if (status === window.google.maps.places.PlacesServiceStatus.OK && place) {
-            
-            const lat = place.geometry?.location?.lat() || 0
-            const lng = place.geometry?.location?.lng() || 0
-            const address = place.formatted_address || ''
-            
-            let city = ''
-            let state = ''
-            let pincode = ''
-            const streetParts: string[] = []
+    setDetailsLoading(true)
+    try {
+      const place = new window.google.maps.places.Place({ id: placeId })
+      
+      // The fetchFields promise resolves to an object containing the updated 'place'
+      const { place: p } = await (place as any).fetchFields({
+        fields: ['addressComponents', 'location', 'formattedAddress']
+      })
 
-            place.address_components?.forEach(component => {
-              const types = component.types
-              if (types.includes('locality') || types.includes('administrative_area_level_2')) {
-                city = component.long_name
-              } else if (types.includes('administrative_area_level_1')) {
-                state = component.long_name
-              } else if (types.includes('postal_code')) {
-                pincode = component.long_name
-              } else if (
-                types.includes('premise') ||
-                types.includes('subpremise') ||
-                types.includes('street_number') ||
-                types.includes('route') ||
-                types.includes('neighborhood') ||
-                types.includes('sublocality') ||
-                types.includes('sublocality_level_1') ||
-                types.includes('sublocality_level_2') ||
-                types.includes('sublocality_level_3')
-              ) {
-                streetParts.push(component.long_name)
-              }
-            })
+      const lat = p.location?.lat() || 0
+      const lng = p.location?.lng() || 0
+      const address = p.formattedAddress || ''
+      
+      let city = ''
+      let state = ''
+      let pincode = ''
+      const streetParts: string[] = []
 
-            const streetAddress = streetParts.join(', ')
-
-            resolve({ lat, lng, address, streetAddress, city, state, pincode })
-          } else {
-            reject(new Error('Failed to fetch place details'))
-          }
+      p.addressComponents?.forEach((component: any) => {
+        const types = component.types
+        if (types.includes('locality') || types.includes('administrative_area_level_2')) {
+          city = component.longText
+        } else if (types.includes('administrative_area_level_1')) {
+          state = component.longText
+        } else if (types.includes('postal_code')) {
+          pincode = component.longText
+        } else if (
+          types.includes('premise') ||
+          types.includes('subpremise') ||
+          types.includes('street_number') ||
+          types.includes('route') ||
+          types.includes('neighborhood') ||
+          types.includes('sublocality') ||
+          types.includes('sublocality_level_1') ||
+          types.includes('sublocality_level_2') ||
+          types.includes('sublocality_level_3')
+        ) {
+          streetParts.push(component.longText)
         }
-      )
-    })
+      })
+
+      const streetAddress = streetParts.join(', ')
+
+      return { lat, lng, address, streetAddress, city, state, pincode }
+    } catch (err) {
+      console.error('getPlaceDetails error:', err)
+      throw new Error('Failed to fetch place details')
+    } finally {
+      setDetailsLoading(false)
+    }
   }, [])
 
   const clear = useCallback(() => {
