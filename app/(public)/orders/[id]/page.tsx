@@ -283,7 +283,7 @@ export default function OrderTrackingPage() {
                 <div key={`${item.id}-${idx}`} className="flex items-center gap-4 group">
                   <div className="relative h-12 w-12 shrink-0 rounded-2xl overflow-hidden bg-stone-50 shadow-inner">
                     {item.image_url
-                      ? <Image src={getImageUrl(item.image_url)} alt={item.name} fill className="object-cover group-hover:scale-110 transition-transform" />
+                      ? <Image src={getImageUrl(item.image_url)} alt={item.name} fill className="object-cover group-hover:scale-110 transition-transform" sizes="48px" />
                       : <div className="flex h-full items-center justify-center text-stone-200"><Icon name="bowl" size={24} /></div>
                     }
                   </div>

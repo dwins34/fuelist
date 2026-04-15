@@ -220,6 +220,7 @@ export default async function AdminSubscriptionsPage() {
                               alt={sub.menu_items.name}
                               fill
                               className="object-cover"
+                              sizes="40px"
                             />
                           ) : (
                             <div className="flex h-full items-center justify-center text-lg">🥗</div>
@@ -285,6 +286,7 @@ export default async function AdminSubscriptionsPage() {
                                 alt={sub.menu_items.name}
                                 fill
                                 className="object-cover"
+                                sizes="36px"
                               />
                             ) : (
                               <div className="flex h-full items-center justify-center text-base">🥗</div>

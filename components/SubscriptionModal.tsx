@@ -553,7 +553,7 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
                           >
                             <div className="relative h-14 w-14 shrink-0 rounded-2xl overflow-hidden bg-white shadow-sm">
                               {item.image_url ? (
-                                <Image src={getImageUrl(item.image_url)} alt={item.name} fill className="object-cover" />
+                                <Image src={getImageUrl(item.image_url)} alt={item.name} fill className="object-cover" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />
                               ) : <Icon name="bowl" size={24} className="m-auto" />}
                             </div>
                              <div className="flex-1 min-w-0">
@@ -675,7 +675,7 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
                           <div key={item.id} className="flex items-center gap-2">
                             <div className="relative h-7 w-7 rounded-lg overflow-hidden shrink-0 bg-white/10">
                               {item.image_url ? (
-                                <Image src={getImageUrl(item.image_url)} alt={item.name} fill className="object-cover" />
+                                <Image src={getImageUrl(item.image_url)} alt={item.name} fill className="object-cover" sizes="(max-width: 768px) 100vw, 150px" />
                               ) : (
                                 <Icon name="bowl" size={12} className="m-auto text-white/40" />
                               )}
@@ -772,7 +772,7 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
                       <div key={item.id} className="flex items-center gap-3 p-2 pr-4 bg-white border border-stone-50 rounded-2xl shadow-sm">
                         <div className="relative h-10 w-10 shrink-0 rounded-xl overflow-hidden bg-stone-50 shadow-inner">
                           {item.image_url ? (
-                            <Image src={getImageUrl(item.image_url)} alt={item.name} fill className="object-cover" />
+                            <Image src={getImageUrl(item.image_url)} alt={item.name} fill className="object-cover" sizes="(max-width: 768px) 100vw, 150px" />
                           ) : <Icon name="bowl" size={16} className="m-auto" />}
                         </div>
                         <p className="text-xs font-black capitalize tracking-tight text-stone-900 whitespace-normal">{item.name}</p>

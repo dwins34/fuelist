@@ -86,6 +86,7 @@ export default function HomeClient() {
               alt="Fuelist Premium Fresh Fruit Delivery Delhi"
               fill
               className="object-cover object-right-top sm:object-right opacity-60 grayscale-[0.2] contrast-[1.1]"
+              sizes="100vw"
               priority
             />
           </motion.div>

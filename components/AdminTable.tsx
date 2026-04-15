@@ -354,7 +354,7 @@ export default function AdminTable({ items, onRefresh }: AdminTableProps) {
                       <div className="flex items-center gap-4">
                         <div className="relative h-12 w-12 rounded-2xl overflow-hidden bg-white shadow-sm border border-stone-100 shrink-0 group-hover:scale-110 transition-transform">
                           {item.image_url ? (
-                            <Image src={getImageUrl(item.image_url)} alt={item.name} fill className="object-cover" />
+                            <Image src={getImageUrl(item.image_url)} alt={item.name} fill className="object-cover" sizes="48px" />
                           ) : (
                             <div className="flex h-full w-full items-center justify-center text-stone-200"><Icon name="bowl" size={24} /></div>
                           )}
