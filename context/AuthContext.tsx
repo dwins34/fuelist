@@ -13,6 +13,7 @@ interface AuthContextValue {
   loading:       boolean
   error:         string | null
   accessToken:   string | null
+  supabase:      ReturnType<typeof createClient>
   reloadProfile: () => Promise<void>
 }
 
@@ -134,7 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [supabase, loadProfile])
 
   return (
-    <AuthContext.Provider value={{ user, profile, avatarUrl, loading, error, accessToken, reloadProfile }}>
+    <AuthContext.Provider value={{ user, profile, avatarUrl, loading, error, accessToken, supabase, reloadProfile }}>
       {children}
     </AuthContext.Provider>
   )

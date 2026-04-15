@@ -1,8 +1,7 @@
 'use client'
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useRef } from 'react'
 import { useAuthContext } from '@/context/AuthContext'
-import { createClient } from '@/lib/supabase/client'
 
 export interface UserAddress {
   id: string
@@ -23,18 +22,36 @@ export interface UserAddress {
 export type CreateAddressInput = Omit<UserAddress, 'id' | 'user_id' | 'is_default' | 'created_at'>
 
 export function useAddresses() {
-  const { profile, accessToken } = useAuthContext()
-  const supabase = useMemo(() => createClient(), [])
+  const { profile, supabase } = useAuthContext()
   
   const [addresses, setAddresses] = useState<UserAddress[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const loadingRef = useRef(false)
+  const hasInitialFetched = useRef(false)
 
-  const fetchAddresses = useCallback(async () => {
-    if (!profile?.id) return
+  const fetchAddresses = useCallback(async (force = false) => {
+    // If no profile, we can't fetch. Ensure loading is false.
+    if (!profile?.id) {
+      setLoading(false)
+      loadingRef.current = false
+      return
+    }
+    
+    // Prevent redundant fetches or concurrent loads
+    if (loadingRef.current) return
+    if (hasInitialFetched.current && !force) return
 
     setLoading(true)
+    loadingRef.current = true
     setError(null)
+    
+    // Safety timeout to prevent infinite "Hydrating logistics" spinner
+    const timer = setTimeout(() => {
+      setLoading(false)
+      loadingRef.current = false
+    }, 8000)
+
     try {
       const { data, error: sbError } = await supabase
         .from('user_addresses')
@@ -45,11 +62,14 @@ export function useAddresses() {
 
       if (sbError) throw sbError
       setAddresses(data || [])
+      hasInitialFetched.current = true
     } catch (err: any) {
       console.error('Error fetching addresses:', err)
       setError(err.message || 'Error fetching addresses')
     } finally {
+      clearTimeout(timer)
       setLoading(false)
+      loadingRef.current = false
     }
   }, [profile?.id, supabase])
 
