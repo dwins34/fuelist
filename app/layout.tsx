@@ -8,58 +8,65 @@ import { ThemeProvider }   from '@/context/ThemeContext'
 import { ServiceStatusProvider } from '@/context/ServiceStatusContext'
 import FruitBackground     from '@/components/background/FruitBackground'
 import ServiceBanner       from '@/components/ServiceBanner'
+import JsonLd              from '@/components/seo/JsonLd'
+import { SEO_CONFIG, SITE_CONFIG, getLocalBusinessSchema } from '@/lib/seo'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
   subsets: ['latin'],
 })
 
-const SITE_URL = 'https://fuelist.in'
-const SITE_NAME = 'Fuelist'
-const DEFAULT_TITLE = 'Fuelist — Healthy Bowls Delivered'
-const DEFAULT_DESCRIPTION =
-  'Order handcrafted fruit bowls, breakfast bowls, and power bowls made with fresh, real ingredients. Full macro transparency. Delivered fast.'
-
 const organizationSchema = {
   '@context': 'https://schema.org',
   '@type': 'Organization',
-  name: SITE_NAME,
-  url: SITE_URL,
-  logo: `${SITE_URL}/android-chrome-512x512.png`,
-  sameAs: [],
+  '@id': `${SITE_CONFIG.url}/#organization`,
+  'name': SITE_CONFIG.name,
+  'url': SITE_CONFIG.url,
+  'logo': {
+    '@type': 'ImageObject',
+    'url': `${SITE_CONFIG.url}/android-chrome-512x512.png`,
+    'width': 512,
+    'height': 512,
+  },
+  'sameAs': [],
 }
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_CONFIG.url),
   title: {
-    default: DEFAULT_TITLE,
-    template: `%s | ${SITE_NAME}`,
+    default: SEO_CONFIG.home.title,
+    template: `%s | ${SITE_CONFIG.name}`,
   },
-  description: DEFAULT_DESCRIPTION,
-  keywords: [
-    'healthy food delivery',
-    'fruit bowl',
-    'power bowl',
-    'breakfast bowl',
-    'clean eating',
-    'macro friendly',
-    'healthy bowls near me',
-  ],
-  alternates: { canonical: SITE_URL },
+  description: SEO_CONFIG.home.description,
+  keywords: SITE_CONFIG.keywords,
+  alternates: { canonical: '/' },
   openGraph: {
     type: 'website',
-    siteName: SITE_NAME,
-    title: DEFAULT_TITLE,
-    description: DEFAULT_DESCRIPTION,
-    url: SITE_URL,
-    images: [{ url: `${SITE_URL}/android-chrome-512x512.png`, width: 512, height: 512, alt: 'Fuelist' }],
+    siteName: SITE_CONFIG.name,
+    title: SEO_CONFIG.home.title,
+    description: SEO_CONFIG.home.description,
+    url: SITE_CONFIG.url,
+    locale: 'en_IN',
+    images: [{ url: '/android-chrome-512x512.png', width: 512, height: 512, alt: SITE_CONFIG.name }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: DEFAULT_TITLE,
-    description: DEFAULT_DESCRIPTION,
-    images: [`${SITE_URL}/android-chrome-512x512.png`],
+    site: SITE_CONFIG.social.twitter,
+    title: SEO_CONFIG.home.title,
+    description: SEO_CONFIG.home.description,
+    images: ['/android-chrome-512x512.png'],
   },
-  robots: { index: true, follow: true },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
   manifest: '/site.webmanifest',
   icons: {
     icon: [
@@ -75,26 +82,17 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en" className={`${geistSans.variable} h-full`} data-scroll-behavior="smooth">
       <head>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
-        />
+        <JsonLd data={organizationSchema} />
+        <JsonLd data={getLocalBusinessSchema()} />
       </head>
       <body className="min-h-full">
-        {/*
-          ThemeProvider must wrap everything so useTheme() works anywhere.
-          FruitBackground is inside ThemeProvider so it can read the active theme.
-        */}
         <ServiceStatusProvider>
           <ThemeProvider>
-            {/* 3D canvas (fixed, behind all content, only mounts for fruit-3d theme) */}
             <FruitBackground />
-
             <ServiceBanner />
             {children}
           </ThemeProvider>
         </ServiceStatusProvider>
-
         <Analytics />
         <SpeedInsights />
       </body>

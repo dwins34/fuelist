@@ -1,23 +1,22 @@
 import type { MetadataRoute } from 'next'
-
-const BASE_URL = 'https://fuelist.in'
+import { SITE_CONFIG } from '@/lib/seo'
 
 // Static public routes that should be crawled and indexed.
-// Private/auth pages (orders, account, admin) are excluded — they carry
-// robots: {index: false} in their segment layouts anyway.
 export default function sitemap(): MetadataRoute.Sitemap {
-  return [
-    {
-      url: BASE_URL,
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 1.0,
-    },
-    {
-      url: `${BASE_URL}/menu`,
-      lastModified: new Date(),
-      changeFrequency: 'daily',
-      priority: 0.9,
-    },
+  const routes = [
+    '',
+    '/menu',
+    '/about',
+    '/contact',
+    '/fresh-fruit-bowls-delhi',
+    '/cut-fruits-near-me',
+    '/fruit-delivery-delhi',
   ]
+
+  return routes.map((route) => ({
+    url: `${SITE_CONFIG.url}${route}`,
+    lastModified: new Date(),
+    changeFrequency: route === '' || route === '/menu' ? 'daily' : 'weekly',
+    priority: route === '' ? 1.0 : route === '/menu' ? 0.9 : 0.7,
+  }))
 }

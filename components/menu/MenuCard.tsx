@@ -97,7 +97,7 @@ export default function MenuCard({ item }: MenuCardProps) {
           {item.image_url ? (
             <Image
               src={getImageUrl(item.image_url)}
-              alt={item.name}
+              alt={`Fresh ${item.name} Bowl Delhi`}
               fill
               className="object-cover transition-transform duration-700 group-hover:scale-110"
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
