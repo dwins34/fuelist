@@ -261,7 +261,7 @@ export default function AccountPage() {
         <div className="h-full flex flex-col lg:flex-row gap-8 lg:gap-12">
           
           {/* Sidebar Section */}
-          <div className="h-full no-scrollbar py-2 px-1 shrink-0 w-full lg:w-80">
+          <div className="h-auto lg:h-full no-scrollbar py-2 px-1 shrink-0 w-full lg:w-80">
             <AccountSidebar 
               activeTab={activeTab} 
               onTabChange={setActiveTab} 
@@ -274,7 +274,7 @@ export default function AccountPage() {
           </div>
 
           {/* Main Workspace Section */}
-          <main className="flex-1 h-full overflow-y-auto pr-4 pb-20 custom-scrollbar scroll-smooth">
+          <main className="flex-1 min-h-0 overflow-y-auto pr-4 pb-20 custom-scrollbar scroll-smooth">
             <div className="max-w-4xl py-4">
               {activeTab === 'personal' && (
                 <PersonalInfoTab 
