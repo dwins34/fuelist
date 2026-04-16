@@ -4,7 +4,7 @@ import * as XLSX from 'xlsx'
 
 export const dynamic = 'force-dynamic'
 
-const VALID_CATEGORIES = ['fruit', 'breakfast', 'power'] as const
+const VALID_CATEGORIES = ['fruit', 'breakfast', 'power', 'shakes', 'craft_juices'] as const
 type Category = typeof VALID_CATEGORIES[number]
 
 interface RowInput {

@@ -468,6 +468,7 @@ export default function AdminTable({ items, onRefresh }: AdminTableProps) {
               <option value="breakfast">Breakfast Bowls</option>
               <option value="power">Power Bowls</option>
               <option value="shakes">Muscle Blends</option>
+              <option value="craft_juices">Craft Juices</option>
             </select>
           </div>
 

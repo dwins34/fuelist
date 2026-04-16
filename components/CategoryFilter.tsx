@@ -5,7 +5,7 @@ import { Category } from '@/types'
 import { categoryLabel } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 
-const CATEGORIES: (Category | 'all')[] = ['all', 'fruit', 'breakfast', 'power', 'shakes']
+const CATEGORIES: (Category | 'all')[] = ['all', 'fruit', 'breakfast', 'power', 'shakes', 'craft_juices']
 
 interface CategoryFilterProps {
   selected: Category | 'all'

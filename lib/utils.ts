@@ -10,6 +10,7 @@ export function categoryLabel(category: Category): string {
     breakfast: 'Breakfast Bowls',
     power: 'Power Bowls',
     shakes: 'Muscle Blends',
+    craft_juices: 'Craft Juices',
   }
   return labels[category]
 }

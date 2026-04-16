@@ -6,6 +6,7 @@ import ContactForm from '@/components/contact/ContactForm'
 import FAQAccordion from '@/components/ui/FAQAccordion'
 import { Mail, MessageCircle, MapPin, Phone } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useAuthContext } from '@/context/AuthContext'
 
 // Fallback FAQs in case DB is empty or fetch fails
 const FALLBACK_FAQS = [
@@ -19,58 +20,76 @@ const FALLBACK_FAQS = [
   }
 ]
 
-const CONTACT_METHODS = [
+// Operating hours: 9 AM – 9 PM IST (UTC+5:30)
+const OPERATING_START_HOUR = 9
+const OPERATING_END_HOUR = 21
+
+function isWithinOperatingHours(): boolean {
+  const now = new Date()
+  const istOffset = 5.5 * 60 * 60 * 1000
+  const istDate = new Date(now.getTime() + istOffset)
+  const hour = istDate.getUTCHours()
+  return hour >= OPERATING_START_HOUR && hour < OPERATING_END_HOUR
+}
+
+function buildWhatsAppUrl(message?: string): string {
+  const raw = process.env.NEXT_PUBLIC_WHATSAPP_PHONE ?? ''
+  // Strip any non-digit characters (spaces, +, dashes)
+  const phone = raw.replace(/\D/g, '')
+  const encoded = message ? `?text=${encodeURIComponent(message)}` : ''
+  return `https://wa.me/${phone}${encoded}`
+}
+
+const STATIC_CONTACT_METHODS = [
   {
+    id: 'email',
     title: 'Email Us',
     value: 'support@fuelist.in',
     description: 'The best way to get a detailed response for orders or account issues.',
     icon: Mail,
     color: 'text-blue-600',
-    bg: 'bg-blue-50'
+    bg: 'bg-blue-50',
+    href: 'mailto:support@fuelist.in',
   },
   {
-    title: 'Chat Support',
-    value: 'In-App Chat',
-    description: 'Average response time: 5 minutes during operating hours.',
-    icon: MessageCircle,
-    color: 'text-green-600',
-    bg: 'bg-green-50'
-  },
-  {
+    id: 'phone',
     title: 'Phone',
     value: '+91 8882828922',
     description: 'For urgent delivery issues, give us a call.',
     icon: Phone,
     color: 'text-purple-600',
-    bg: 'bg-purple-50'
+    bg: 'bg-purple-50',
+    href: 'tel:+918882828922',
   },
   {
+    id: 'office',
     title: 'Head Office',
     value: 'Old Arya Nagar, Ghaziabad',
     description: 'Visit us for collaborations and administrative queries.',
     icon: MapPin,
     color: 'text-amber-600',
-    bg: 'bg-amber-50'
-  }
+    bg: 'bg-amber-50',
+    href: null,
+  },
 ]
 
 export default function ContactPage() {
   const [faqs, setFaqs] = useState<any[]>(FALLBACK_FAQS)
+  const [online, setOnline] = useState(false)
+  const { profile } = useAuthContext()
 
   useEffect(() => {
-    async function fetchFaqs() {
-      try {
-        const res = await fetch('/api/public/faqs')
-        const data = await res.json()
-        if (data.success && data.faqs && data.faqs.length > 0) {
-          setFaqs(data.faqs)
-        }
-      } catch (err) {
-        console.error('Failed to fetch FAQs:', err)
-      }
-    }
-    fetchFaqs()
+    setOnline(isWithinOperatingHours())
+    // re-check every minute so the indicator stays current
+    const id = setInterval(() => setOnline(isWithinOperatingHours()), 60_000)
+    return () => clearInterval(id)
   }, [])
+
+  const whatsappMessage = profile
+    ? `Hi! I need help with my Fuelist order.\n\n👤 Name: ${profile.name}\n📧 Email: ${profile.email}${profile.phone ? `\n📞 Phone: ${profile.phone}` : ''}`
+    : `Hi! I need help with my Fuelist order.`
+
+  const whatsappUrl = buildWhatsAppUrl(whatsappMessage)
 
   return (
     <div className="pt-20">
@@ -93,18 +112,67 @@ export default function ContactPage() {
           {/* Left Side: Info */}
           <div className="lg:col-span-2 space-y-12">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-8">
-              {CONTACT_METHODS.map((method) => (
-                <div key={method.title} className="flex gap-5 group">
-                  <div className={cn('h-14 w-14 shrink-0 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110', method.bg)}>
-                    <method.icon className={cn('h-7 w-7', method.color)} />
-                  </div>
-                  <div className="space-y-1">
-                    <h3 className="font-bold text-gray-900 text-lg">{method.title}</h3>
-                    <p className="text-green-600 font-bold">{method.value}</p>
-                    <p className="text-gray-400 text-sm leading-relaxed">{method.description}</p>
-                  </div>
+
+              {/* WhatsApp Chat Support — clickable card */}
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex gap-5 group cursor-pointer rounded-2xl -mx-3 px-3 py-3 hover:bg-green-50/60 transition-colors"
+              >
+                <div className="h-14 w-14 shrink-0 rounded-2xl bg-green-50 flex items-center justify-center transition-transform group-hover:scale-110">
+                  <MessageCircle className="h-7 w-7 text-green-600" />
                 </div>
-              ))}
+                <div className="space-y-1">
+                  <h3 className="font-bold text-gray-900 text-lg">Chat Support</h3>
+                  <div className="flex items-center gap-2">
+                    <span className="text-green-600 font-bold">WhatsApp Chat</span>
+                    {/* Live online/offline indicator */}
+                    <span className={cn(
+                      'inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full',
+                      online
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-gray-100 text-gray-400'
+                    )}>
+                      <span className={cn(
+                        'w-1.5 h-1.5 rounded-full',
+                        online ? 'bg-green-500 animate-pulse' : 'bg-gray-400'
+                      )} />
+                      {online ? 'Online' : 'Offline'}
+                    </span>
+                  </div>
+                  <p className="text-gray-400 text-sm leading-relaxed">
+                    {online
+                      ? 'We\'re online! Average response time: 5 minutes.'
+                      : 'Currently offline. Operating hours: 9 AM – 9 PM IST. Leave a message and we\'ll reply soon.'}
+                  </p>
+                </div>
+              </a>
+
+              {/* Other static contact methods */}
+              {STATIC_CONTACT_METHODS.map((method) => {
+                const inner = (
+                  <>
+                    <div className={cn('h-14 w-14 shrink-0 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110', method.bg)}>
+                      <method.icon className={cn('h-7 w-7', method.color)} />
+                    </div>
+                    <div className="space-y-1">
+                      <h3 className="font-bold text-gray-900 text-lg">{method.title}</h3>
+                      <p className="text-green-600 font-bold">{method.value}</p>
+                      <p className="text-gray-400 text-sm leading-relaxed">{method.description}</p>
+                    </div>
+                  </>
+                )
+                return method.href ? (
+                  <a key={method.id} href={method.href} className="flex gap-5 group">
+                    {inner}
+                  </a>
+                ) : (
+                  <div key={method.id} className="flex gap-5 group">
+                    {inner}
+                  </div>
+                )
+              })}
             </div>
 
             {/* Social links placeholder in contact info */}
