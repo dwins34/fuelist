@@ -1,7 +1,7 @@
 export type Role = 'admin' | 'kitchen' | 'delivery' | 'user'
 
 export type OrderStatus = 'new' | 'preparing' | 'ready' | 'out_for_delivery' | 'delivered' | 'cancelled'
-export type Category = 'fruit' | 'breakfast' | 'power'
+export type Category = 'fruit' | 'breakfast' | 'power' | 'shakes'
 
 export interface UserProfile {
   id: string

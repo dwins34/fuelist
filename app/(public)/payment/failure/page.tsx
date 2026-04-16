@@ -30,7 +30,7 @@ export default function PaymentFailurePage() {
         <Badge variant="secondary" className="px-4 py-1 text-[9px] tracking-[0.2em] font-black border-rose-100 text-rose-600 bg-rose-50/50">
           TRANSACTION INTERRUPTED
         </Badge>
-        <h1 className="text-4xl font-black text-stone-900 tracking-tighter uppercase leading-none">Protocol Error</h1>
+        <h1 className="text-4xl font-black text-stone-900 tracking-tighter uppercase leading-none">Payment Failed</h1>
         <p className="text-stone-400 font-medium text-sm max-w-sm mx-auto leading-relaxed">
           The payment gateway reported a verification failure. Any funds deducted from your account will be automatically 
           refunded within 5-7 operational days.
@@ -54,7 +54,7 @@ export default function PaymentFailurePage() {
         <div className="flex gap-6">
            <Link href="/contact" className="text-[9px] font-black uppercase tracking-widest text-stone-400 hover:text-amber-600 transition-colors">Help Center</Link>
            <div className="h-3 w-[1px] bg-stone-100" />
-           <Link href="/terms" className="text-[9px] font-black uppercase tracking-widest text-stone-400 hover:text-amber-600 transition-colors">System Protocol</Link>
+           <Link href="/terms" className="text-[9px] font-black uppercase tracking-widest text-stone-400 hover:text-amber-600 transition-colors">Terms of Service</Link>
         </div>
       </div>
     </div>

@@ -79,9 +79,9 @@ export default function AdminInquiriesPage() {
             <thead>
               <tr className="bg-stone-900 text-white font-black text-xs uppercase tracking-widest">
                 <th className="px-8 py-6">TIMESTAMP</th>
-                <th className="px-8 py-6">ORIGIN / SOURCE</th>
-                <th className="px-8 py-6">CONTENT STREAM</th>
-                <th className="px-8 py-6 text-right">PROTOCOL STATUS</th>
+                <th className="px-8 py-6">NAME / EMAIL</th>
+                <th className="px-8 py-6">MESSAGE</th>
+                <th className="px-8 py-6 text-right">STATUS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-50">
@@ -90,7 +90,7 @@ export default function AdminInquiriesPage() {
                   <td colSpan={4} className="px-8 py-20 text-center">
                     <div className="flex flex-col items-center gap-4">
                        <div className="h-10 w-10 border-4 border-amber-100 border-t-amber-500 rounded-full animate-spin" />
-                       <span className="text-xs font-black text-stone-400 uppercase tracking-widest">Hydrating data...</span>
+                       <span className="text-xs font-black text-stone-400 uppercase tracking-widest">Loading...</span>
                     </div>
                   </td>
                 </tr>

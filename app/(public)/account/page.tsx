@@ -290,8 +290,8 @@ export default function AccountPage() {
               {activeTab === 'address' && (
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-12">
                   <div className="border-b border-stone-100 pb-5">
-                    <h1 className="text-xl font-black text-stone-900 tracking-tighter uppercase">Deployment Locations</h1>
-                    <p className="text-xs font-medium text-stone-400 mt-1">Manage your high-performance delivery zones.</p>
+                    <h1 className="text-xl font-black text-stone-900 tracking-tighter uppercase">Saved Addresses</h1>
+                    <p className="text-xs font-medium text-stone-400 mt-1">Manage your delivery addresses.</p>
                   </div>
                   <AddressManager />
                 </motion.div>

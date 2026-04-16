@@ -46,16 +46,16 @@ export function usePlacesAutocomplete() {
         includedRegionCodes: ['in'],
       } as any)
 
-      const mappedResults: PlacePrediction[] = suggestions
-        .filter(s => !!s.placePrediction)
-        .map(s => {
-          const p = s.placePrediction! as any
+      const mappedResults: PlacePrediction[] = (suggestions as any[])
+        .filter((s: any) => !!s.placePrediction)
+        .map((s: any) => {
+          const p = s.placePrediction as any
           return {
             place_id: p.placeId || '',
             description: p.text?.text || '',
             structured_formatting: {
-              main_text: p.structuredFormat?.mainText?.text || '',
-              secondary_text: p.structuredFormat?.secondaryText?.text || ''
+              main_text: p.mainText?.text || '',
+              secondary_text: p.secondaryText?.text || ''
             }
           }
         })

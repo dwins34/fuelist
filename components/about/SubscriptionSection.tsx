@@ -13,7 +13,7 @@ const BENEFITS = [
     icon: 'points' as const,
   },
   {
-    title: 'Priority Logistics',
+    title: 'Priority Delivery',
     desc: 'Subscribers get the earliest delivery slots and zero surge pricing.',
     icon: 'zap' as const,
   },
@@ -53,7 +53,7 @@ export default function SubscriptionSection() {
           <div className="flex-1 space-y-10 opacity-40 grayscale-[0.3] pointer-events-none">
             <div>
               <Badge variant="premium" className="mb-6 px-4 py-1.5 uppercase tracking-widest text-[10px] bg-white/5 border-white/10 text-amber-500">
-                The Fuelist Protocol
+                Fuelist Subscriptions
               </Badge>
               <h2 className="text-4xl md:text-5xl font-black text-white leading-[1.1] tracking-tighter">
                 Elite Subscriptions <br />

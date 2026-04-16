@@ -108,8 +108,8 @@ export default function AddressManager({ onSelect, selectedId, hideHeader }: Add
       {!hideHeader && (
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-black text-stone-900 tracking-tight capitalize">Saved Deployments</h2>
-            <p className="text-[11px] font-medium text-stone-400 mt-1 capitalize tracking-widest leading-none">Manage delivery logistics.</p>
+            <h2 className="text-xl font-black text-stone-900 tracking-tight capitalize">Saved Addresses</h2>
+            <p className="text-[11px] font-medium text-stone-400 mt-1 capitalize tracking-widest leading-none">Manage your delivery addresses.</p>
           </div>
           {!isAdding && (
             <Button onClick={() => setIsAdding(true)} variant="outline" size="sm" className="shadow-sm">
@@ -133,7 +133,7 @@ export default function AddressManager({ onSelect, selectedId, hideHeader }: Add
       {loading && !isAdding && addresses.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16 gap-3 opacity-30">
           <div className="h-8 w-8 border-4 border-amber-500/20 border-t-amber-500 rounded-full animate-spin" />
-          <p className="text-[10px] font-black capitalize tracking-widest text-stone-500">Hydrating logistics...</p>
+          <p className="text-[10px] font-black capitalize tracking-widest text-stone-500">Loading addresses...</p>
         </div>
       )}
 
@@ -147,10 +147,10 @@ export default function AddressManager({ onSelect, selectedId, hideHeader }: Add
           <div className="mx-auto w-14 h-14 bg-stone-100 rounded-xl flex items-center justify-center text-stone-300 group-hover:bg-amber-50 group-hover:text-amber-400 transition-colors mb-4">
             <Icon name="location" size={28} />
           </div>
-          <h3 className="text-sm font-black text-stone-900 capitalize">Empty Deployment Log</h3>
-          <p className="text-[11px] text-stone-400 mt-1 max-w-[200px] mx-auto leading-relaxed">Add a delivery location to begin your fuelist experience.</p>
+          <h3 className="text-sm font-black text-stone-900 capitalize">No Saved Addresses</h3>
+          <p className="text-[11px] text-stone-400 mt-1 max-w-[200px] mx-auto leading-relaxed">Add a delivery address to get started.</p>
           <Button onClick={() => setIsAdding(true)} variant="primary" size="md" className="mt-6">
-            Log New Address
+            Add New Address
           </Button>
         </motion.div>
       )}
@@ -227,7 +227,7 @@ export default function AddressManager({ onSelect, selectedId, hideHeader }: Add
                             deleteAddress(addr.id)
                           }}
                           className="p-3 text-stone-200 hover:text-rose-500 hover:bg-rose-50 rounded-2xl transition-all duration-300 active:scale-90"
-                          title="Delete Protocol"
+                          title="Delete Address"
                         >
                           <Icon name="delete" size={18} strokeWidth={2.5} />
                         </button>
@@ -249,18 +249,18 @@ export default function AddressManager({ onSelect, selectedId, hideHeader }: Add
             className="rounded-[2.5rem] bg-white border border-stone-100 p-6 md:p-8 shadow-premium"
           >
             <div className="mb-8">
-              <h3 className="text-xl font-black text-stone-900 tracking-tighter capitalize">New Deployment Zone</h3>
-              <p className="text-[11px] font-bold text-stone-400 mt-1 capitalize tracking-widest">Specify logistics details below.</p>
+              <h3 className="text-xl font-black text-stone-900 tracking-tighter capitalize">Add New Address</h3>
+              <p className="text-[11px] font-bold text-stone-400 mt-1 capitalize tracking-widest">Enter your delivery details below.</p>
             </div>
             
             <div className="mb-6">
-              <div className="text-[9px] font-black capitalize tracking-widest text-stone-300 mb-2 ml-1">Search Terminal</div>
+              <div className="text-[9px] font-black capitalize tracking-widest text-stone-300 mb-2 ml-1">Search Address</div>
               <LocationPicker onLocationSelect={handleLocationSelect} />
             </div>
 
             <div className="space-y-5">
               <Input
-                label="Premise Identifier"
+                label="Flat / House No."
                 id="house_number"
                 type="text"
                 value={houseNumber}
@@ -270,7 +270,7 @@ export default function AddressManager({ onSelect, selectedId, hideHeader }: Add
               />
 
               <Input
-                label="Protocol Street"
+                label="Street Address"
                 id="street_address"
                 type="text"
                 value={streetAddress}
@@ -289,7 +289,7 @@ export default function AddressManager({ onSelect, selectedId, hideHeader }: Add
                   icon={<Icon name="location" size={16} />}
                 />
                 <Input 
-                  label="Protocol Pincode" 
+                  label="Pincode" 
                   id="pincode"
                   value={pincode} 
                   onChange={(e) => setPincode(e.target.value)}

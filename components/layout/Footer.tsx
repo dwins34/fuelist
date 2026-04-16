@@ -16,7 +16,7 @@ const FOOTER_LINKS = [
     ]
   },
   {
-    title: 'Program',
+    title: 'Plans',
     links: [
       { label: 'Subscriptions', href: '/about#subscriptions' },
       { label: 'Fuelist Rewards', href: '/account' },
@@ -52,7 +52,7 @@ export default function Footer() {
             </Link>
 
             <p className="text-stone-400 text-lg font-medium leading-relaxed max-w-sm">
-              Handcrafted, high-density nutrition systems designed for peak performance. Nutritious by design, delicious by nature.
+              Fresh, handcrafted bowls made for people who care about what they eat. Nutritious by design, delicious by nature.
             </p>
 
             <div className="flex items-center gap-4">
@@ -101,7 +101,7 @@ export default function Footer() {
               © {new Date().getFullYear()} FUELIST PVT LTD.
             </p>
             <div className="flex gap-6">
-              <Link href="/privacy" className="text-xs font-black capitalize tracking-widest text-stone-300 hover:text-stone-900">Privacy Protocol</Link>
+              <Link href="/privacy" className="text-xs font-black capitalize tracking-widest text-stone-300 hover:text-stone-900">Privacy Policy</Link>
               <Link href="/terms" className="text-xs font-black capitalize tracking-widest text-stone-300 hover:text-stone-900">Terms Of Service</Link>
             </div>
           </div>
@@ -113,7 +113,7 @@ export default function Footer() {
               isEnabled ? "bg-emerald-500 shadow-emerald-200" : "bg-rose-500 shadow-rose-200"
             )} />
             <span className="text-[10px] font-black capitalize tracking-wider text-stone-900">
-              {isEnabled ? 'All Operations Green' : 'Currently Out Of Service'}
+              {isEnabled ? 'Open for Deliveries' : 'Temporarily Closed'}
             </span>
           </div>
         </div>

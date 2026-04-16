@@ -44,11 +44,11 @@ function SuccessIndicator() {
 
 // ── Order Timeline ────────────────────────────────────────────────────────────
 const TIMELINE: { label: string; icon: IconName; done: boolean; active: boolean }[] = [
-  { label: 'Transmission Logged', icon: 'success', done: true,  active: false },
-  { label: 'Payment Authenticated', icon: 'security', done: true,  active: false },
-  { label: 'Kitchen Deployment', icon: 'preparing', done: false, active: true  },
-  { label: 'Logistics Transit', icon: 'shipping', done: false, active: false },
-  { label: 'Fulfilment Complete', icon: 'received', done: false, active: false },
+  { label: 'Order Received', icon: 'success', done: true,  active: false },
+  { label: 'Payment Confirmed', icon: 'security', done: true,  active: false },
+  { label: 'Preparing Your Order', icon: 'preparing', done: false, active: true  },
+  { label: 'Out for Delivery', icon: 'shipping', done: false, active: false },
+  { label: 'Delivered', icon: 'received', done: false, active: false },
 ]
 
 function OrderTimeline() {
@@ -107,11 +107,11 @@ function SuccessContent() {
       <div className="text-center space-y-6">
         <SuccessIndicator />
         <div className="space-y-4">
-          <h1 className="text-5xl font-black text-stone-900 tracking-tighter uppercase">Order Authenticated</h1>
+          <h1 className="text-5xl font-black text-stone-900 tracking-tighter uppercase">Order Confirmed</h1>
           <div className="flex flex-col items-center gap-3">
              {shortId && <Badge variant="premium" className="px-6 py-1.5 text-xs tracking-[0.3em]">{shortId}</Badge>}
              <p className="text-stone-400 font-medium text-lg max-w-md mx-auto leading-relaxed">
-               Your payment protocol has been successfully verified. Fuelist Kitchens are now preparing your nutrition system.
+               Your payment has been confirmed. Fuelist Kitchens are now preparing your order.
              </p>
           </div>
         </div>
@@ -125,7 +125,7 @@ function SuccessContent() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full mt-8">
         {/* ── Tracking status ── */}
         <div className="rounded-[3rem] bg-white border border-stone-100 shadow-premium p-10 space-y-8">
-          <h2 className="text-[11px] font-black text-stone-300 uppercase tracking-[0.3em]">Live Logistics Status</h2>
+          <h2 className="text-[11px] font-black text-stone-300 uppercase tracking-[0.3em]">Live Order Status</h2>
           <OrderTimeline />
         </div>
 

@@ -113,7 +113,7 @@ export default function LocationPicker({ onLocationSelect }: LocationPickerProps
         ) : (
           <Icon name="compass" size={16} strokeWidth={2.5} />
         )}
-        <span>{locationLoading ? 'Locating Protocol...' : 'Identify Current Position'}</span>
+        <span>{locationLoading ? 'Getting your location...' : 'Use My Location'}</span>
       </button>
 
       {locationError && (

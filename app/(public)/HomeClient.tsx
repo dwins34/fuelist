@@ -61,6 +61,14 @@ const CATEGORIES = [
     bg: 'bg-amber-100/30',
     accent: 'text-amber-800',
   },
+  {
+    slug: 'shakes',
+    label: 'Muscle Blends',
+    description: 'Precision macros in every sip.',
+    icon: 'zap',
+    bg: 'bg-stone-50/80',
+    accent: 'text-stone-900',
+  },
 ]
 
 export default function HomeClient() {
@@ -109,7 +117,7 @@ export default function HomeClient() {
               </Badge>
               <h1 className="text-5xl sm:text-[7rem] font-black tracking-tighter text-stone-900 leading-[0.85] mb-8">
                 Fresh <span className="text-amber-500">Fruit</span><br />
-                <span className="text-stone-800/90 underline decoration-amber-500/30 decoration-8 underline-offset-8">Delivery Delhi.</span>
+                <span className="text-stone-800/90 underline decoration-amber-500/30 decoration-8 underline-offset-8">Delivery Daily.</span>
               </h1>
               <p className="text-lg sm:text-2xl text-stone-500 max-w-2xl mb-12 font-medium leading-relaxed">
                 Premium fruit bowls, high-protein breakfast, and power bowls curated with

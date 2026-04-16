@@ -35,7 +35,7 @@ const SAMPLE_ROWS = [
 const NOTES = [
   ['Field notes:'],
   ['name', 'Required. Any text.'],
-  ['category', 'Required. Must be one of: fruit, breakfast, power'],
+  ['category', 'Required. Must be one of: fruit, breakfast, power, shakes'],
   ['price', 'Required. Number (e.g. 249 or 249.50)'],
   ['calories', 'Number. Leave blank for 0.'],
   ['protein / carbs / fats', 'Numbers in grams. Leave blank for 0.'],

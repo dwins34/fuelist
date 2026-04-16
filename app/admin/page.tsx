@@ -48,12 +48,12 @@ export default async function AdminDashboard() {
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pb-2 border-b border-stone-100">
         <div>
-          <h1 className="text-3xl font-black text-stone-900 tracking-tighter">Command Center</h1>
-          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-stone-300 mt-2">Operational Intelligence & Store Metrics</p>
+          <h1 className="text-3xl font-black text-stone-900 tracking-tighter">Admin Dashboard</h1>
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-stone-300 mt-2">Store Overview & Metrics</p>
         </div>
         <div className="flex items-center gap-2 px-6 py-3 bg-stone-50 rounded-2xl border border-stone-100 shadow-inner">
            <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shadow-sm shadow-emerald-200" />
-           <span className="text-[10px] font-black uppercase tracking-widest text-stone-900">Systems Operational</span>
+           <span className="text-[10px] font-black uppercase tracking-widest text-stone-900">Store Online</span>
         </div>
       </div>
 

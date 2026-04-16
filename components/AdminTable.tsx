@@ -316,7 +316,7 @@ export default function AdminTable({ items, onRefresh }: AdminTableProps) {
                <Icon name="warning" size={16} strokeWidth={3} />
              </div>
              <p className="text-sm font-black text-amber-900 tracking-tight capitalize">
-                Synchronize requested: {pendingCount} Pending Change{pendingCount !== 1 ? 's' : ''}
+                {pendingCount} unsaved change{pendingCount !== 1 ? 's' : ''} — save to apply
              </p>
           </motion.div>
         )}
@@ -334,7 +334,7 @@ export default function AdminTable({ items, onRefresh }: AdminTableProps) {
                 <th className="px-8 py-5 text-right text-xs font-black uppercase tracking-widest text-stone-400">Calories</th>
                 <th className="px-8 py-5 text-center text-xs font-black uppercase tracking-widest text-stone-400">Live Status</th>
                 <th className="px-8 py-5 text-center text-xs font-black uppercase tracking-widest text-stone-400">Premium</th>
-                <th className="px-8 py-5 text-right text-xs font-black uppercase tracking-widest text-stone-400">Operations</th>
+                <th className="px-8 py-5 text-right text-xs font-black uppercase tracking-widest text-stone-400">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-50">
@@ -445,7 +445,7 @@ export default function AdminTable({ items, onRefresh }: AdminTableProps) {
       <Modal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        title={editItem ? 'Configure Item' : 'New Intake'}
+        title={editItem ? 'Edit Menu Item' : 'Add Menu Item'}
       >
         <form onSubmit={handleSubmit} className="space-y-8 p-1">
           <Input
@@ -467,6 +467,7 @@ export default function AdminTable({ items, onRefresh }: AdminTableProps) {
               <option value="fruit">Fruit Bowls</option>
               <option value="breakfast">Breakfast Bowls</option>
               <option value="power">Power Bowls</option>
+              <option value="shakes">Muscle Blends</option>
             </select>
           </div>
 
@@ -530,7 +531,7 @@ export default function AdminTable({ items, onRefresh }: AdminTableProps) {
           />
 
           <Input
-            label="Visual Deployment Url"
+            label="Image URL"
             value={form.image_url}
             onChange={(e) => setForm({ ...form, image_url: e.target.value })}
             placeholder="https://..."
