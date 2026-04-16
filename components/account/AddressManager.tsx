@@ -103,17 +103,17 @@ export default function AddressManager({ onSelect, selectedId, hideHeader }: Add
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {/* Header section */}
       {!hideHeader && (
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-black text-stone-900 tracking-tight capitalize">Saved Addresses</h2>
-            <p className="text-[11px] font-medium text-stone-400 mt-1 capitalize tracking-widest leading-none">Manage your delivery addresses.</p>
+            <h2 className="text-base font-black text-stone-900 tracking-tight capitalize">Saved Addresses</h2>
+            <p className="text-[10px] font-medium text-stone-400 mt-0.5 tracking-wider">Manage your delivery addresses.</p>
           </div>
           {!isAdding && (
             <Button onClick={() => setIsAdding(true)} variant="outline" size="sm" className="shadow-sm">
-              <Icon name="plus" size={12} strokeWidth={3} className="mr-2" />
+              <Icon name="plus" size={12} strokeWidth={3} className="mr-1.5" />
               Add New
             </Button>
           )}
@@ -123,7 +123,7 @@ export default function AddressManager({ onSelect, selectedId, hideHeader }: Add
       {hideHeader && !isAdding && (
         <div className="flex justify-end">
           <Button onClick={() => setIsAdding(true)} variant="outline" size="sm" className="shadow-sm">
-            <Icon name="plus" size={12} strokeWidth={3} className="mr-2" />
+            <Icon name="plus" size={12} strokeWidth={3} className="mr-1.5" />
             Add New
           </Button>
         </div>
@@ -131,25 +131,25 @@ export default function AddressManager({ onSelect, selectedId, hideHeader }: Add
 
       {/* Loading State */}
       {loading && !isAdding && addresses.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-16 gap-3 opacity-30">
-          <div className="h-8 w-8 border-4 border-amber-500/20 border-t-amber-500 rounded-full animate-spin" />
+        <div className="flex flex-col items-center justify-center py-10 gap-3 opacity-30">
+          <div className="h-7 w-7 border-4 border-amber-500/20 border-t-amber-500 rounded-full animate-spin" />
           <p className="text-[10px] font-black capitalize tracking-widest text-stone-500">Loading addresses...</p>
         </div>
       )}
 
       {/* Empty State */}
       {!isAdding && addresses.length === 0 && !loading && (
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-10 border-2 border-dashed border-stone-100 rounded-[2rem] text-center bg-stone-50/20 group hover:border-amber-200 transition-colors"
+          className="py-8 px-6 border-2 border-dashed border-stone-100 rounded-2xl text-center bg-stone-50/20 group hover:border-amber-200 transition-colors"
         >
-          <div className="mx-auto w-14 h-14 bg-stone-100 rounded-xl flex items-center justify-center text-stone-300 group-hover:bg-amber-50 group-hover:text-amber-400 transition-colors mb-4">
-            <Icon name="location" size={28} />
+          <div className="mx-auto w-11 h-11 bg-stone-100 rounded-xl flex items-center justify-center text-stone-300 group-hover:bg-amber-50 group-hover:text-amber-400 transition-colors mb-3">
+            <Icon name="location" size={22} />
           </div>
           <h3 className="text-sm font-black text-stone-900 capitalize">No Saved Addresses</h3>
-          <p className="text-[11px] text-stone-400 mt-1 max-w-[200px] mx-auto leading-relaxed">Add a delivery address to get started.</p>
-          <Button onClick={() => setIsAdding(true)} variant="primary" size="md" className="mt-6">
+          <p className="text-[11px] text-stone-400 mt-1 max-w-[180px] mx-auto leading-relaxed">Add a delivery address to get started.</p>
+          <Button onClick={() => setIsAdding(true)} variant="primary" size="sm" className="mt-4">
             Add New Address
           </Button>
         </motion.div>
@@ -158,10 +158,7 @@ export default function AddressManager({ onSelect, selectedId, hideHeader }: Add
       {/* List Existing Addresses */}
       <AnimatePresence mode="popLayout">
         {!isAdding && addresses.length > 0 && (
-          <motion.div 
-            layout
-            className="grid grid-cols-1 gap-4"
-          >
+          <motion.div layout className="flex flex-col gap-2.5">
             {addresses.map((addr, idx) => {
               const isSelected = onSelect ? selectedId === addr.id : addr.is_default
               return (
@@ -172,66 +169,65 @@ export default function AddressManager({ onSelect, selectedId, hideHeader }: Add
                   animate={{ opacity: 1, x: 0, transition: { delay: idx * 0.05 } }}
                   exit={{ opacity: 0, scale: 0.95 }}
                 >
-                  <Card 
-                    interactive 
+                  <Card
+                    interactive
                     onClick={() => {
                       if (onSelect) onSelect(addr)
                       else if (!addr.is_default) setDefaultAddress(addr.id)
                     }}
                     className={cn(
-                      "group relative !rounded-[2rem] border transition-all duration-300",
-                      isSelected 
-                        ? "border-amber-500 bg-amber-50/10 ring-1 ring-amber-500/20 shadow-premium" 
+                      "group relative !rounded-2xl border transition-all duration-300",
+                      isSelected
+                        ? "border-amber-400 bg-amber-50/20 ring-1 ring-amber-400/20 shadow-md"
                         : "border-stone-100 bg-white hover:border-amber-200 shadow-sm"
                     )}
                   >
-                    <CardContent className="flex flex-row items-center gap-6 p-6">
-                      {/* Left: Dynamic Icon Container */}
+                    <CardContent className="flex flex-row items-center gap-3 p-3">
+                      {/* Icon */}
                       <div className={cn(
-                        "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-all duration-300",
-                        isSelected 
-                          ? "bg-amber-500 text-white shadow-lg shadow-amber-200/40" 
+                        "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all duration-300",
+                        isSelected
+                          ? "bg-amber-500 text-white shadow-md shadow-amber-200/50"
                           : "bg-stone-50 text-stone-400 group-hover:bg-amber-50 group-hover:text-amber-500"
                       )}>
-                        <Icon 
-                          name={(addr.label?.toLowerCase() || 'other') as any} 
-                          size={22} 
-                        />
+                        <Icon name={(addr.label?.toLowerCase() || 'other') as any} size={18} />
                       </div>
-                      
-                      {/* Middle: Address Manifest (Truncation-Safe) */}
-                      <div className="flex-1 min-w-0 space-y-1">
-                        <div className="flex items-center gap-2 mb-2 font-black capitalize">
-                          <Badge variant={isSelected ? "premium" : "secondary"} className="text-[9px] py-1 px-3 !rounded-full">
+
+                      {/* Address text */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <span className={cn(
+                            "text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full",
+                            isSelected ? "bg-amber-500 text-white" : "bg-stone-100 text-stone-500"
+                          )}>
                             {addr.label}
-                          </Badge>
+                          </span>
                           {isSelected && (
-                            <Badge variant="success" className="text-[9px] py-1 px-3 !rounded-full flex items-center gap-1.5">
-                              <Icon name="success" size={10} strokeWidth={3} /> {onSelect ? 'Selected' : 'Default'}
-                            </Badge>
+                            <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 flex items-center gap-1">
+                              <Icon name="success" size={8} strokeWidth={3} />
+                              {onSelect ? 'Selected' : 'Default'}
+                            </span>
                           )}
                         </div>
-                        <h4 className="text-sm font-black text-stone-900 truncate leading-tight tracking-tight capitalize">
+                        <p className="text-xs font-black text-stone-900 truncate leading-snug">
                           {addr.house_number}, {addr.street_address}
-                        </h4>
-                        <p className="text-[11px] font-bold text-stone-400 truncate capitalize mt-1 tracking-wider">
-                          {addr.city}, {addr.state} {addr.pincode}
+                        </p>
+                        <p className="text-[10px] font-medium text-stone-400 truncate">
+                          {addr.city}, {addr.pincode}
                         </p>
                       </div>
 
-                      {/* Right: Actions Container */}
-                      <div className="shrink-0 pl-10">
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            deleteAddress(addr.id)
-                          }}
-                          className="p-3 text-stone-200 hover:text-rose-500 hover:bg-rose-50 rounded-2xl transition-all duration-300 active:scale-90"
-                          title="Delete Address"
-                        >
-                          <Icon name="delete" size={18} strokeWidth={2.5} />
-                        </button>
-                      </div>
+                      {/* Delete */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          deleteAddress(addr.id)
+                        }}
+                        className="p-2 text-stone-200 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all duration-200 active:scale-90 shrink-0"
+                        title="Delete Address"
+                      >
+                        <Icon name="delete" size={15} strokeWidth={2.5} />
+                      </button>
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -246,19 +242,19 @@ export default function AddressManager({ onSelect, selectedId, hideHeader }: Add
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className="rounded-[2.5rem] bg-white border border-stone-100 p-6 md:p-8 shadow-premium"
+            className="rounded-2xl bg-white border border-stone-100 p-4 sm:p-6 shadow-premium"
           >
-            <div className="mb-8">
-              <h3 className="text-xl font-black text-stone-900 tracking-tighter capitalize">Add New Address</h3>
-              <p className="text-[11px] font-bold text-stone-400 mt-1 capitalize tracking-widest">Enter your delivery details below.</p>
+            <div className="mb-4">
+              <h3 className="text-base font-black text-stone-900 tracking-tighter capitalize">Add New Address</h3>
+              <p className="text-[10px] font-medium text-stone-400 mt-0.5 tracking-wider">Enter your delivery details below.</p>
             </div>
-            
-            <div className="mb-6">
-              <div className="text-[9px] font-black capitalize tracking-widest text-stone-300 mb-2 ml-1">Search Address</div>
+
+            <div className="mb-4">
+              <div className="text-[9px] font-black capitalize tracking-widest text-stone-300 mb-1.5 ml-1">Search Address</div>
               <LocationPicker onLocationSelect={handleLocationSelect} />
             </div>
 
-            <div className="space-y-5">
+            <div className="space-y-3">
               <Input
                 label="Flat / House No."
                 id="house_number"
@@ -266,7 +262,7 @@ export default function AddressManager({ onSelect, selectedId, hideHeader }: Add
                 value={houseNumber}
                 onChange={(e) => { setHouseNumber(e.target.value); setFormError('') }}
                 placeholder="Flat / Floor / Suite"
-                icon={<Icon name="home" size={16} />}
+                icon={<Icon name="home" size={15} />}
               />
 
               <Input
@@ -275,53 +271,53 @@ export default function AddressManager({ onSelect, selectedId, hideHeader }: Add
                 type="text"
                 value={streetAddress}
                 onChange={(e) => setStreetAddress(e.target.value)}
-                placeholder="Auto-filled via terminal search"
-                icon={<Icon name="compass" size={16} />}
+                placeholder="Auto-filled from search"
+                icon={<Icon name="compass" size={15} />}
               />
 
-              <div className="grid grid-cols-2 gap-5">
-                <Input 
-                  label="Registry City" 
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  label="City"
                   id="city"
-                  value={city} 
+                  value={city}
                   onChange={(e) => setCity(e.target.value)}
-                  placeholder="City" 
-                  icon={<Icon name="location" size={16} />}
+                  placeholder="City"
+                  icon={<Icon name="location" size={15} />}
                 />
-                <Input 
-                  label="Pincode" 
+                <Input
+                  label="Pincode"
                   id="pincode"
-                  value={pincode} 
+                  value={pincode}
                   onChange={(e) => setPincode(e.target.value)}
-                  placeholder="Pincode" 
-                  icon={<Icon name="package" size={16} />}
+                  placeholder="Pincode"
+                  icon={<Icon name="package" size={15} />}
                 />
               </div>
 
-              <Input 
-                label="Operational Landmark (optional)" 
+              <Input
+                label="Landmark (optional)"
                 id="landmark"
-                value={landmark} 
-                onChange={(e) => setLandmark(e.target.value)} 
-                placeholder="Near landmark" 
-                icon={<Icon name="info" size={16} />}
+                value={landmark}
+                onChange={(e) => setLandmark(e.target.value)}
+                placeholder="Near landmark"
+                icon={<Icon name="info" size={15} />}
               />
-              
+
               <div>
-                <p className="text-[9px] font-black capitalize tracking-widest text-stone-300 mb-3 ml-1">Zone Tag</p>
-                <div className="flex flex-wrap gap-2">
+                <p className="text-[9px] font-black capitalize tracking-widest text-stone-300 mb-2 ml-1">Label</p>
+                <div className="flex gap-2">
                   {(['Home', 'Work', 'Other'] as const).map(l => (
                     <button
                       key={l}
                       onClick={() => setLabel(l)}
                       className={cn(
-                        "flex items-center gap-2 px-5 py-2 rounded-xl text-[10px] font-black capitalize tracking-widest transition-all duration-200 border-2",
-                        label === l 
-                          ? "bg-stone-900 border-stone-900 text-amber-500 shadow-md" 
+                        "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black capitalize tracking-wider transition-all duration-200 border-2",
+                        label === l
+                          ? "bg-stone-900 border-stone-900 text-amber-500 shadow-md"
                           : "bg-white border-stone-100 text-stone-400 hover:border-stone-200"
                       )}
                     >
-                      <Icon name={l.toLowerCase() as any} size={14} strokeWidth={3} />
+                      <Icon name={l.toLowerCase() as any} size={12} strokeWidth={3} />
                       {l}
                     </button>
                   ))}
@@ -329,15 +325,15 @@ export default function AddressManager({ onSelect, selectedId, hideHeader }: Add
               </div>
 
               {formError && (
-                <Badge variant="danger" className="w-full py-2.5 justify-center gap-2 shadow-none rounded-xl">
-                  <Icon name="error" size={14} strokeWidth={3} />
+                <Badge variant="danger" className="w-full py-2 justify-center gap-2 shadow-none rounded-xl">
+                  <Icon name="error" size={13} strokeWidth={3} />
                   {formError}
                 </Badge>
               )}
 
-              <div className="flex gap-3 pt-6">
-                <Button onClick={handleSave} loading={saving} size="md" className="flex-1">Save Address</Button>
-                <Button onClick={() => setIsAdding(false)} variant="ghost" size="md" className="shrink-0">Cancel</Button>
+              <div className="flex gap-2 pt-2">
+                <Button onClick={handleSave} loading={saving} size="sm" className="flex-1">Save Address</Button>
+                <Button onClick={() => setIsAdding(false)} variant="ghost" size="sm" className="shrink-0">Cancel</Button>
               </div>
             </div>
           </motion.div>

@@ -222,7 +222,10 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount: finalTotal }),
       })
-      if (!res.ok) throw new Error(await res.text())
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}))
+        throw new Error(errBody.error ?? `create-order failed (${res.status})`)
+      }
       const orderData = await res.json()
 
       const options: Record<string, any> = {
@@ -276,8 +279,9 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
       }
       const rzp = new window.Razorpay(options)
       rzp.open()
-    } catch (err) {
-      setPayError('Failed to initiate payment.')
+    } catch (err: any) {
+      console.error('handlePayment error:', err)
+      setPayError(err?.message ?? 'Failed to initiate payment.')
       setStep('address')
     }
   }, [address, items, total, finalTotal, appliedCoupon, pointsToUse, profile, clearCart, onClose, router, checkDelivery])

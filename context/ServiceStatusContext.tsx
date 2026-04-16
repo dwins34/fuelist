@@ -33,12 +33,12 @@ export function ServiceStatusProvider({ children }: { children: React.ReactNode 
 
   const fetchStatus = async () => {
     try {
-      const res = await fetch('/api/config')
+      const res = await fetch('/api/config', { cache: 'no-store' })
       if (res.ok) {
         const data = await res.json()
         setConfig(data.config)
         if (typeof data.delivery_fee === 'number') setDeliveryFee(data.delivery_fee)
-        if (data.delivery_zone?.lat) setDeliveryZone(data.delivery_zone)
+        setDeliveryZone(data.delivery_zone ?? null)
         if (data.config.enabled) setBannerHeight(0)
       }
     } catch (err) {

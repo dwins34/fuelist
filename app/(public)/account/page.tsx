@@ -68,8 +68,8 @@ function validatePassword(password: string, confirm: string): FormErrors {
 // ── Skeleton ─────────────────────────────────────────────────────────────────
 function Skeleton() {
   return (
-    <div className="mx-auto max-w-6xl px-6 py-20 flex flex-col lg:flex-row gap-12 animate-pulse">
-      <div className="w-full lg:w-80 space-y-8">
+    <div className="mx-auto max-w-6xl px-3 py-10 sm:px-6 sm:py-20 flex flex-row gap-6 lg:gap-12 animate-pulse">
+      <div className="w-16 sm:w-20 lg:w-72 space-y-8 shrink-0">
         <div className="flex flex-col items-center space-y-4">
           <div className="h-24 w-24 rounded-full bg-stone-100" />
           <div className="h-4 w-32 bg-stone-100 rounded" />
@@ -257,14 +257,14 @@ export default function AccountPage() {
         <div className="absolute bottom-[0%] right-[10%] h-[30%] w-[25%] rounded-full bg-amber-50/20 blur-[80px]" />
       </div>
 
-      <div className="h-full relative mx-auto max-w-7xl px-6 py-6 sm:px-8">
-        <div className="h-full flex flex-col lg:flex-row gap-8 lg:gap-12">
-          
-          {/* Sidebar Section */}
-          <div className="h-auto lg:h-full no-scrollbar py-2 px-1 shrink-0 w-full lg:w-80">
-            <AccountSidebar 
-              activeTab={activeTab} 
-              onTabChange={setActiveTab} 
+      <div className="h-full relative mx-auto max-w-7xl px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
+        <div className="h-full flex flex-row gap-3 sm:gap-6 lg:gap-12">
+
+          {/* Sidebar Section — always visible, icon-only on mobile */}
+          <div className="h-full no-scrollbar py-2 px-1 shrink-0">
+            <AccountSidebar
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
               profile={profile ? {
                 name: profile.name,
                 email: profile.email,
@@ -274,8 +274,8 @@ export default function AccountPage() {
           </div>
 
           {/* Main Workspace Section */}
-          <main className="flex-1 min-h-0 overflow-y-auto pr-4 pb-20 custom-scrollbar scroll-smooth">
-            <div className="max-w-4xl py-4">
+          <main className="flex-1 min-h-0 overflow-y-auto pb-20 custom-scrollbar scroll-smooth">
+            <div className="max-w-4xl py-2 sm:py-4">
               {activeTab === 'personal' && (
                 <PersonalInfoTab 
                   name={name} setName={setName}
@@ -288,10 +288,10 @@ export default function AccountPage() {
               )}
 
               {activeTab === 'address' && (
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-12">
-                  <div className="border-b border-stone-100 pb-5">
-                    <h1 className="text-xl font-black text-stone-900 tracking-tighter uppercase">Saved Addresses</h1>
-                    <p className="text-xs font-medium text-stone-400 mt-1">Manage your delivery addresses.</p>
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+                  <div className="border-b border-stone-100 pb-3">
+                    <h1 className="text-base sm:text-xl font-black text-stone-900 tracking-tighter uppercase">Saved Addresses</h1>
+                    <p className="text-[11px] sm:text-xs font-medium text-stone-400 mt-1">Manage your delivery addresses.</p>
                   </div>
                   <AddressManager />
                 </motion.div>

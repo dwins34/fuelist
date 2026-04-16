@@ -29,13 +29,13 @@ export default function PersonalInfoTab({
       className="space-y-6"
     >
       {/* Header Section */}
-      <div className="flex flex-col gap-1 bottom-b border-stone-100 pb-5">
-        <h1 className="text-xl font-black text-stone-900 tracking-tighter capitalize">Personal Information</h1>
-        <p className="text-xs font-medium text-stone-400">Update your profile details for a personalized experience.</p>
+      <div className="flex flex-col gap-1 border-b border-stone-100 pb-3">
+        <h1 className="text-base sm:text-xl font-black text-stone-900 tracking-tighter capitalize">Personal Information</h1>
+        <p className="text-[11px] sm:text-xs font-medium text-stone-400">Update your profile details.</p>
       </div>
 
-      <form onSubmit={onSubmit} className="space-y-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <form onSubmit={onSubmit} className="space-y-4 sm:space-y-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-5">
           <Input
             label="Full Name"
             id="name"
@@ -44,7 +44,7 @@ export default function PersonalInfoTab({
             onChange={(e) => setName(e.target.value)}
             placeholder="Swapnil Bansal"
             error={formErrors.name}
-            icon={<Icon name="user" size={18} />}
+            icon={<Icon name="user" size={16} />}
           />
 
           <Input
@@ -55,39 +55,39 @@ export default function PersonalInfoTab({
             onChange={(e) => setPhone(e.target.value)}
             placeholder="+91 7337488364"
             error={formErrors.phone}
-            icon={<Icon name="phone" size={18} />}
+            icon={<Icon name="phone" size={16} />}
           />
         </div>
 
         {/* Read-only Email Section */}
         <Card className="bg-stone-50/50 border-dashed border-stone-200">
-          <CardContent className="flex flex-col gap-3 p-5">
+          <CardContent className="flex flex-col gap-2 p-3 sm:p-5">
             <div>
-              <label className="text-[11px] font-black capitalize tracking-wider text-stone-400 ml-1 mb-2 block">
+              <label className="text-[10px] font-black capitalize tracking-wider text-stone-400 ml-1 mb-1.5 block">
                 Email Address
               </label>
-              <div className="flex items-center gap-3 bg-white border border-stone-100 rounded-xl px-4 py-3 shadow-sm opacity-60">
-                <Icon name="mail" size={18} className="text-stone-300" />
-                <span className="text-sm font-bold text-stone-500">{email}</span>
-                <div className="ml-auto flex items-center gap-1.5 text-[9px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100 capitalize tracking-tight">
-                  <Icon name="success" size={10} strokeWidth={3} />
+              <div className="flex items-center gap-2 bg-white border border-stone-100 rounded-xl px-3 py-2.5 shadow-sm opacity-60">
+                <Icon name="mail" size={15} className="text-stone-300 shrink-0" />
+                <span className="text-xs font-bold text-stone-500 truncate">{email}</span>
+                <div className="ml-auto flex items-center gap-1 text-[9px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100 capitalize tracking-tight shrink-0">
+                  <Icon name="success" size={9} strokeWidth={3} />
                   Verified
                 </div>
               </div>
             </div>
-            <p className="flex items-center gap-2 text-[11px] font-bold text-stone-400 ml-1">
-              <Icon name="info" size={12} strokeWidth={2.5} className="text-stone-300" />
-              Connected via Google authentication. Email cannot be changed here.
+            <p className="flex items-center gap-1.5 text-[10px] font-bold text-stone-400 ml-1">
+              <Icon name="info" size={11} strokeWidth={2.5} className="text-stone-300 shrink-0" />
+              Email cannot be changed here.
             </p>
           </CardContent>
         </Card>
 
-        <div className="pt-6 flex justify-end">
-          <Button 
-            type="submit" 
-            loading={saving} 
-            size="lg"
-            className="min-w-[200px] shadow-premium"
+        <div className="flex justify-end">
+          <Button
+            type="submit"
+            loading={saving}
+            size="sm"
+            className="sm:min-w-[160px] shadow-premium"
           >
             Save Changes
           </Button>

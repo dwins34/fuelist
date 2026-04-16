@@ -48,17 +48,17 @@ export default function SecurityTab({
       className="space-y-10"
     >
       {/* Header Section */}
-      <div className="flex flex-col gap-1.5 border-b border-stone-100 pb-8">
-        <h1 className="text-3xl font-black text-stone-900 tracking-tighter">Login & Security</h1>
-        <p className="text-sm font-medium text-stone-400">Manage your sign-in options and account security.</p>
+      <div className="flex flex-col gap-1 border-b border-stone-100 pb-3">
+        <h1 className="text-base sm:text-xl font-black text-stone-900 tracking-tighter">Login & Security</h1>
+        <p className="text-[11px] sm:text-xs font-medium text-stone-400">Manage your sign-in options.</p>
       </div>
 
-      <div className="space-y-8">
+      <div className="space-y-4">
         {/* Connection Status Section */}
-        <div className="space-y-4">
-          <h2 className="text-[11px] font-black text-stone-400 capitalize tracking-widest ml-1">Sign-in Methods</h2>
-          <div className="grid grid-cols-1 gap-4">
-            
+        <div className="space-y-3">
+          <h2 className="text-[10px] font-black text-stone-400 capitalize tracking-widest ml-1">Sign-in Methods</h2>
+          <div className="grid grid-cols-1 gap-3">
+
             {/* Google Row */}
             <AnimatePresence>
               {isGoogleUser && (
@@ -66,21 +66,19 @@ export default function SecurityTab({
                   initial={{ opacity: 0, scale: 0.98 }}
                   animate={{ opacity: 1, scale: 1 }}
                 >
-                  <Card variant="default" className="p-4 sm:p-5 group hover:bg-stone-50/50 transition-colors">
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-4">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white shadow-sm border border-stone-100 group-hover:scale-110 transition-transform duration-300">
-                          <GoogleIcon />
-                        </div>
-                        <div>
-                          <p className="text-base font-black text-stone-900 leading-tight">Google Account</p>
-                          <p className="text-xs font-medium text-stone-400 mt-0.5">{email}</p>
-                        </div>
+                  <Card variant="default" className="p-3 group hover:bg-stone-50/50 transition-colors overflow-hidden">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white shadow-sm border border-stone-100 shrink-0">
+                        <GoogleIcon />
                       </div>
-                      <Badge variant="success" className="px-3 shrink-0">
-                        <Icon name="success" size={10} strokeWidth={3} />
-                        Connected
-                      </Badge>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-black text-stone-900 leading-tight">Google Account</p>
+                        <p className="text-[10px] font-medium text-stone-400 mt-0.5 truncate">{email}</p>
+                      </div>
+                      <div className="shrink-0 flex items-center gap-1 bg-emerald-50 border border-emerald-100 px-2 py-1 rounded-full">
+                        <Icon name="success" size={9} strokeWidth={3} className="text-emerald-500" />
+                        <span className="text-[9px] font-black text-emerald-600 tracking-wide">Connected</span>
+                      </div>
                     </div>
                   </Card>
                 </motion.div>
@@ -88,32 +86,30 @@ export default function SecurityTab({
             </AnimatePresence>
 
             {/* Email/Password Row */}
-            <Card 
+            <Card
               className={cn(
-                "p-4 sm:p-5 transition-all duration-300",
+                "p-3 transition-all duration-300 overflow-hidden",
                 showPwForm ? "ring-2 ring-amber-500/20 border-amber-500/30 bg-amber-50/10 shadow-premium" : "hover:bg-stone-50/50"
               )}
             >
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <div className={cn(
-                    "flex h-12 w-12 items-center justify-center rounded-2xl transition-colors duration-300 shadow-sm border",
-                    showPwForm ? "bg-amber-500 text-white border-amber-400 shadow-amber-200" : "bg-white text-stone-400 border-stone-100"
-                  )}>
-                    <Icon name="security" size={24} />
-                  </div>
-                  <div>
-                    <p className="text-base font-black text-stone-900 leading-tight">Account Password</p>
-                    <p className="text-xs font-medium text-stone-400 mt-0.5">
-                      {hasPassword ? 'Securely set' : 'Not configured yet'}
-                    </p>
-                  </div>
+              <div className="flex items-center gap-3">
+                <div className={cn(
+                  "flex h-9 w-9 items-center justify-center rounded-xl transition-colors duration-300 shadow-sm border shrink-0",
+                  showPwForm ? "bg-amber-500 text-white border-amber-400 shadow-amber-200" : "bg-white text-stone-400 border-stone-100"
+                )}>
+                  <Icon name="security" size={17} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-black text-stone-900 leading-tight">Password</p>
+                  <p className="text-[10px] font-medium text-stone-400 mt-0.5">
+                    {hasPassword ? 'Securely set' : 'Not set yet'}
+                  </p>
                 </div>
                 <Button
                   variant={showPwForm ? "secondary" : "outline"}
                   size="sm"
                   onClick={() => setShowPwForm(!showPwForm)}
-                  className="px-6 shrink-0"
+                  className="shrink-0"
                 >
                   {showPwForm ? 'Cancel' : hasPassword ? 'Change' : 'Set up'}
                 </Button>
@@ -126,25 +122,23 @@ export default function SecurityTab({
         <AnimatePresence>
           {showPwForm && (
             <motion.div
-              initial={{ opacity: 0, height: 0, y: -20 }}
+              initial={{ opacity: 0, height: 0, y: -10 }}
               animate={{ opacity: 1, height: 'auto', y: 0 }}
-              exit={{ opacity: 0, height: 0, y: -20 }}
+              exit={{ opacity: 0, height: 0, y: -10 }}
               className="overflow-hidden"
             >
-              <Card variant="glass" className="p-8 sm:p-10 border-amber-100 bg-white/60 shadow-premium">
-                <div className="space-y-2 mb-8">
-                  <h3 className="text-xl font-black text-stone-900 tracking-tight">
-                    {hasPassword ? 'Update your password' : 'Create a password'}
+              <Card variant="glass" className="p-4 sm:p-6 border-amber-100 bg-white/60 shadow-premium">
+                <div className="space-y-1 mb-4">
+                  <h3 className="text-base font-black text-stone-900 tracking-tight">
+                    {hasPassword ? 'Update password' : 'Create a password'}
                   </h3>
-                  <p className="text-sm font-medium text-stone-400 max-w-lg">
-                    {hasPassword
-                      ? 'Enter your new password below. Ensure it is at least 6 characters long.'
-                      : 'Add a password to enable direct sign-in with your email address.'}
+                  <p className="text-[11px] font-medium text-stone-400">
+                    {hasPassword ? 'At least 6 characters.' : 'Add a password for direct email sign-in.'}
                   </p>
                 </div>
 
-                <form onSubmit={onPasswordSubmit} className="space-y-8">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <form onSubmit={onPasswordSubmit} className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <Input
                       label="New Password"
                       id="password"
@@ -154,7 +148,7 @@ export default function SecurityTab({
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
                       error={passwordForm.errors.password}
-                      icon={<Icon name="security" size={18} />}
+                      icon={<Icon name="security" size={16} />}
                     />
                     <Input
                       label="Confirm Password"
@@ -165,16 +159,16 @@ export default function SecurityTab({
                       onChange={(e) => setConfirm(e.target.value)}
                       placeholder="••••••••"
                       error={passwordForm.errors.confirm}
-                      icon={<Icon name="success" size={18} />}
+                      icon={<Icon name="success" size={16} />}
                     />
                   </div>
 
-                  <div className="pt-4 flex justify-end">
-                    <Button 
-                      type="submit" 
-                      loading={passwordForm.saving} 
-                      size="lg"
-                      className="min-w-[200px] shadow-premium"
+                  <div className="flex justify-end">
+                    <Button
+                      type="submit"
+                      loading={passwordForm.saving}
+                      size="sm"
+                      className="sm:min-w-[160px] shadow-premium"
                     >
                       {hasPassword ? 'Update Password' : 'Save Password'}
                     </Button>

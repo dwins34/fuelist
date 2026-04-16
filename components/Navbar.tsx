@@ -185,63 +185,102 @@ export default function Navbar() {
       <AnimatePresence>
         {mobileMenuOpen && (
           <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="md:hidden border-t border-stone-100 bg-white overflow-hidden shadow-2xl"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.18 }}
+            className="md:hidden border-t border-stone-100 bg-white/95 backdrop-blur-xl overflow-hidden shadow-2xl"
           >
-            <div className="px-6 py-6 space-y-2">
-              {navLinks.map((link) => (
-                <Link 
-                  key={link.href} 
-                  href={link.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={cn(
-                    "flex items-center gap-3 px-4 py-3 rounded-2xl text-base font-bold transition-all",
-                    pathname === link.href 
-                      ? "bg-amber-50 text-amber-700" 
-                      : "text-stone-600 hover:bg-stone-50"
-                  )}
-                >
-                  <Icon name={link.icon} size={20} strokeWidth={2} className="opacity-70" />
-                  {link.label}
-                </Link>
-              ))}
+            <div className="px-4 pt-4 pb-6 space-y-4">
 
-              <div className="pt-4 mt-4 border-t border-stone-50">
-                {profile ? (
-                  <div className="space-y-2">
-                    <div className="px-4 py-4 flex items-center gap-3 bg-stone-50 rounded-[2rem] mb-4">
-                      <UserAvatar avatarUrl={avatarUrl} name={profile.name} size="md" />
-                      <div className="min-w-0 flex-1">
-                        <p className="font-black text-stone-900 text-sm truncate">{profile.name}</p>
-                        <p className="text-[11px] font-bold text-stone-400 truncate tracking-wide">{profile.email}</p>
-                      </div>
-                    </div>
-                    {menuItems.map(item => (
-                      <button
-                        key={item.id}
-                        onClick={() => {
-                          item.onClick()
-                          setMobileMenuOpen(false)
-                        }}
+              {/* ── Section 1: Navigation ── */}
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-stone-300 px-2 mb-2">Navigate</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {navLinks.map((link) => {
+                    const isActive = pathname === link.href
+                    return (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        onClick={() => setMobileMenuOpen(false)}
                         className={cn(
-                          "flex w-full items-center gap-3 px-4 py-3 rounded-2xl text-base font-bold transition-all",
-                          item.variant === 'danger' ? "text-red-600 hover:bg-red-50" : "text-stone-600 hover:bg-stone-50 shadow-sm"
+                          "flex items-center gap-2.5 px-3 py-3 rounded-2xl text-sm font-black transition-all",
+                          isActive
+                            ? "bg-amber-500 text-white shadow-md shadow-amber-200"
+                            : "bg-stone-50 text-stone-600 hover:bg-stone-100"
                         )}
                       >
-                        {item.icon && <Icon name={item.icon} size={20} strokeWidth={2} />}
+                        <div className={cn(
+                          "flex h-7 w-7 items-center justify-center rounded-xl shrink-0",
+                          isActive ? "bg-white/20" : "bg-white text-stone-400"
+                        )}>
+                          <Icon name={link.icon} size={15} strokeWidth={2.5} />
+                        </div>
+                        {link.label}
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* ── Section 2: Account ── */}
+              {profile ? (
+                <div>
+                  {/* Profile card */}
+                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-stone-300 px-2 mb-2">Account</p>
+                  <div className="bg-gradient-to-br from-stone-900 to-stone-800 rounded-2xl p-4 mb-2 flex items-center gap-3">
+                    <UserAvatar avatarUrl={avatarUrl} name={profile.name} size="md" />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-black text-white text-sm truncate leading-tight">{profile.name}</p>
+                      <p className="text-[10px] font-medium text-stone-400 truncate">{profile.email}</p>
+                    </div>
+                    <div className="shrink-0 flex items-center gap-1 bg-amber-500/20 px-2.5 py-1 rounded-full">
+                      <Icon name="points" size={10} strokeWidth={3} className="text-amber-400" />
+                      <span className="text-[10px] font-black text-amber-400">{profile.reward_points ?? 0}</span>
+                    </div>
+                  </div>
+
+                  {/* Account actions */}
+                  <div className="flex flex-col gap-1">
+                    {menuItems.filter(i => i.variant !== 'danger').map(item => (
+                      <button
+                        key={item.id}
+                        onClick={() => { item.onClick(); setMobileMenuOpen(false) }}
+                        className="flex w-full items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-stone-700 hover:bg-stone-50 transition-all"
+                      >
+                        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-stone-100 text-stone-500 shrink-0">
+                          {item.icon && <Icon name={item.icon} size={15} strokeWidth={2.5} />}
+                        </div>
                         {item.label}
                       </button>
                     ))}
+                    {/* Sign out separated */}
+                    <div className="mt-1 pt-2 border-t border-stone-100">
+                      {menuItems.filter(i => i.variant === 'danger').map(item => (
+                        <button
+                          key={item.id}
+                          onClick={() => { item.onClick(); setMobileMenuOpen(false) }}
+                          className="flex w-full items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-rose-500 hover:bg-rose-50 transition-all"
+                        >
+                          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-50 text-rose-400 shrink-0">
+                            {item.icon && <Icon name={item.icon} size={15} strokeWidth={2.5} />}
+                          </div>
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                ) : (
-                  <div className="grid grid-cols-2 gap-3">
-                    <Button href="/login" variant="outline" size="md" className="w-full" onClick={() => setMobileMenuOpen(false)}>Log In</Button>
-                    <Button href="/signup" size="md" className="w-full" onClick={() => setMobileMenuOpen(false)}>Join Now</Button>
+                </div>
+              ) : (
+                <div className="space-y-2 pt-1">
+                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-stone-300 px-2 mb-2">Account</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button href="/login" variant="outline" size="sm" className="w-full" onClick={() => setMobileMenuOpen(false)}>Log In</Button>
+                    <Button href="/signup" size="sm" className="w-full" onClick={() => setMobileMenuOpen(false)}>Join Now</Button>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </motion.div>
         )}
