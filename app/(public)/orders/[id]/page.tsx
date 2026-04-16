@@ -230,47 +230,6 @@ export default function OrderTrackingPage() {
           })}
         </div>
 
-        {/* Detailed Timeline List */}
-        <div className="space-y-4 border-t border-stone-50 pt-8">
-          <AnimatePresence mode="popLayout">
-            {STEPS.map((step, i) => {
-              const isDone    = i <= currentIdx
-              const isCurrent = i === currentIdx
-              if (!isDone && !isCurrent) return null
-              return (
-                <motion.div 
-                  layout
-                  key={step.key} 
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className={cn(
-                    "flex items-center gap-5 rounded-3xl p-5 border transition-all duration-500",
-                    isCurrent ? "bg-amber-50/20 border-amber-100 shadow-sm" : "bg-stone-50/50 border-stone-50 opacity-60"
-                  )}
-                >
-                  <div className={cn(
-                    "flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-white shadow-sm",
-                    isCurrent ? "bg-amber-500" : "bg-stone-200"
-                  )}>
-                    {isCurrent ? <Icon name={step.icon} size={20} strokeWidth={2.5} /> : <Icon name="success" size={16} strokeWidth={4} />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3">
-                      <p className="text-sm font-black text-stone-900 tracking-tight">{step.label}</p>
-                      {isCurrent && !isDelivered && (
-                        <div className="flex items-center gap-1.5">
-                           <div className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
-                           <span className="text-[10px] font-black uppercase tracking-widest text-amber-600">In Progress</span>
-                        </div>
-                      )}
-                    </div>
-                    {isCurrent && <p className="text-[11px] font-medium text-stone-400 mt-1 leading-relaxed">{step.sublabel}</p>}
-                  </div>
-                </motion.div>
-              )
-            }).reverse()}
-          </AnimatePresence>
-        </div>
       </Card>
 
       {/* Order Items & Address Summary */}

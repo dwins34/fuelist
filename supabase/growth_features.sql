@@ -54,6 +54,7 @@ create policy "coupons: admin all" on public.coupons
 -- -------------------------------------------------------
 alter table public.orders
   add column if not exists total_amount          numeric(10,2) not null default 0,
+  add column if not exists delivery_fee          numeric(8,2)  not null default 0,
   add column if not exists payment_status        text          not null default 'pending',
   add column if not exists payment_id            text,
   add column if not exists razorpay_order_id     text,

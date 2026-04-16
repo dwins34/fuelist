@@ -108,6 +108,7 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null)
   const [payError, setPayError] = useState<string | null>(null)
   const [outOfArea, setOutOfArea] = useState(false)
+  const [orderForOther, setOrderForOther] = useState(false)
 
   const [appliedCoupon, setAppliedCoupon] = useState<ApplyCouponResult | null>(null)
   const [pointsToUse, setPointsToUse] = useState(0)
@@ -150,6 +151,7 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
         setOutOfArea(false)
         setAppliedCoupon(null)
         setPointsToUse(0)
+        setOrderForOther(false)
       }, 300)
       return () => clearTimeout(timer)
     }
@@ -192,6 +194,13 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
       router.push(`/login?redirect=${encodeURIComponent(window.location.pathname + '?cart=open')}`)
       return
     }
+    // Pre-fill name & phone from profile if the fields are still empty
+    setAddress((prev) => ({
+      ...prev,
+      name:  prev.name  || profile.name  || '',
+      phone: prev.phone || profile.phone || '',
+    }))
+    setOrderForOther(false)
     setStep('address')
   }, [count, profile, address, router])
 
@@ -453,23 +462,93 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
                       <span className="text-sm font-black text-amber-700">{formatPrice(finalTotal)}</span>
                     </div>
 
-                    <Input
-                      label="Name"
-                      value={address.name}
-                      onChange={(v) => { setAddress({...address, name: v.target.value}); setErrors({...errors, name: undefined}) }}
-                      placeholder="Your full name"
-                      error={errors.name}
-                      icon={<Icon name="user" size={16}/>}
-                    />
-                    <Input
-                      label="Phone"
-                      value={address.phone}
-                      onChange={(v) => { setAddress({...address, phone: v.target.value}); setErrors({...errors, phone: undefined}) }}
-                      placeholder="+91 98765 43210"
-                      type="tel"
-                      error={errors.phone}
-                      icon={<Icon name="phone" size={16}/>}
-                    />
+                    {/* ── Recipient details ── */}
+                    {!orderForOther && profile && !profile.name && !profile.phone ? (
+                      // Profile has no name/phone — nudge to fill account settings
+                      <div className="flex items-start gap-3 rounded-2xl bg-amber-50 border border-amber-100 px-4 py-3">
+                        <Icon name="warning" size={16} className="text-amber-500 mt-0.5 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-black text-amber-800 leading-snug">No name or phone on your account.</p>
+                          <p className="text-[11px] text-amber-600 mt-0.5">
+                            <a href="/account" className="underline underline-offset-2 hover:text-amber-800 transition-colors" onClick={undefined}>
+                              Add them in Account Settings
+                            </a>
+                            {' '}or enter below for this order.
+                          </p>
+                        </div>
+                      </div>
+                    ) : !orderForOther && (profile?.name || profile?.phone) ? (
+                      // Profile has details — show read-only chip + "order for someone else" toggle
+                      <div className="rounded-2xl bg-stone-50 border border-stone-100 px-4 py-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-stone-400">Delivering to</p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOrderForOther(true)
+                              setAddress((prev) => ({ ...prev, name: '', phone: '' }))
+                              setErrors((prev) => ({ ...prev, name: undefined, phone: undefined }))
+                            }}
+                            className="text-[10px] font-black text-amber-600 hover:text-amber-700 uppercase tracking-wider transition-colors"
+                          >
+                            Order for someone else?
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+                            <Icon name="user" size={14} className="text-amber-600" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-black text-stone-900 truncate">{profile?.name || '—'}</p>
+                            <p className="text-[11px] font-bold text-stone-400">{profile?.phone || '—'}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {/* Show name/phone inputs when profile is incomplete OR ordering for someone else */}
+                    {(orderForOther || !profile?.name || !profile?.phone) && (
+                      <>
+                        {orderForOther && (
+                          <div className="flex items-center justify-between px-1">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-stone-400">Receiver&apos;s details</p>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOrderForOther(false)
+                                setAddress((prev) => ({
+                                  ...prev,
+                                  name:  profile?.name  || '',
+                                  phone: profile?.phone || '',
+                                }))
+                                setErrors((prev) => ({ ...prev, name: undefined, phone: undefined }))
+                              }}
+                              className="text-[10px] font-black text-stone-400 hover:text-stone-600 uppercase tracking-wider transition-colors"
+                            >
+                              ← Back to my details
+                            </button>
+                          </div>
+                        )}
+                        <Input
+                          label={orderForOther ? "Receiver's Name" : "Name"}
+                          value={address.name}
+                          onChange={(v) => { setAddress({...address, name: v.target.value}); setErrors({...errors, name: undefined}) }}
+                          placeholder={orderForOther ? "Receiver's full name" : "Your full name"}
+                          error={errors.name}
+                          icon={<Icon name="user" size={16}/>}
+                        />
+                        <Input
+                          label={orderForOther ? "Receiver's Phone" : "Phone"}
+                          value={address.phone}
+                          onChange={(v) => { setAddress({...address, phone: v.target.value}); setErrors({...errors, phone: undefined}) }}
+                          placeholder="+91 98765 43210"
+                          type="tel"
+                          error={errors.phone}
+                          icon={<Icon name="phone" size={16}/>}
+                        />
+                      </>
+                    )}
+
                     <div className="pt-2 border-t border-stone-100">
                       <AddressManager hideHeader selectedId={selectedAddressId || undefined} onSelect={handleSelectAddress} />
                     </div>

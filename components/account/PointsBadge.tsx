@@ -34,7 +34,7 @@ export default function PointsBadge({ points, className }: PointsBadgeProps) {
             <span className="text-[9px] font-black capitalize tracking-widest text-amber-600/60">Pts</span>
           </div>
           <span className="text-[10px] font-bold text-stone-400 mt-1 capitalize tracking-wider">
-            ₹100 = 1 Pt
+            ₹100 purchase = 1 Pt
           </span>
         </div>
       </div>
