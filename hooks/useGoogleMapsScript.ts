@@ -2,18 +2,39 @@
 
 import { useState, useEffect } from 'react'
 
-let injectScriptPromise: Promise<void> | null = null
+// Module-level singleton — shared across all hook instances
+let scriptPromise: Promise<void> | null = null
+let scriptReady = false   // true once fully initialised (places lib ready)
+
+function waitForPlaces(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const MAX_WAIT = 8000   // 8 s hard cap
+    const INTERVAL = 100
+    let elapsed = 0
+
+    const poll = setInterval(() => {
+      if (window.google?.maps?.places) {
+        clearInterval(poll)
+        scriptReady = true
+        resolve()
+        return
+      }
+      elapsed += INTERVAL
+      if (elapsed >= MAX_WAIT) {
+        clearInterval(poll)
+        reject(new Error('Google Maps Places library did not initialise in time.'))
+      }
+    }, INTERVAL)
+  })
+}
 
 export function useGoogleMapsScript() {
-  const [isLoaded, setIsLoaded] = useState(false)
+  // Initialise synchronously if the lib is already ready (e.g. hot reload / sibling mount)
+  const [isLoaded, setIsLoaded] = useState(() => scriptReady)
   const [loadError, setLoadError] = useState<Error | null>(null)
 
   useEffect(() => {
-    // If it's already there on window, we're good
-    if (window.google?.maps?.places) {
-      setIsLoaded(true)
-      return
-    }
+    if (scriptReady) { setIsLoaded(true); return }
 
     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY
     if (!apiKey) {
@@ -21,31 +42,43 @@ export function useGoogleMapsScript() {
       return
     }
 
-    if (!injectScriptPromise) {
-      injectScriptPromise = new Promise((resolve, reject) => {
+    // Inject the script tag only once
+    if (!scriptPromise) {
+      scriptPromise = new Promise<void>((resolve, reject) => {
+        // Script may already be injected (e.g. Next.js fast-refresh)
+        if (window.google?.maps?.places) { resolve(); return }
+
+        const existing = document.querySelector('script[data-gmaps]')
+        if (existing) {
+          // Script tag exists but hasn't fired onload yet — just wait for Places
+          waitForPlaces().then(resolve).catch(reject)
+          return
+        }
+
         const script = document.createElement('script')
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry,marker&loading=async`
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry&loading=async`
         script.async = true
         script.defer = true
-        script.setAttribute('loading', 'async')
-        
+        script.dataset.gmaps = '1'
+
         script.onload = () => {
-          resolve()
+          // Script loaded but Places library may still be async-initialising
+          waitForPlaces().then(resolve).catch(reject)
         }
-        
-        script.onerror = (error) => {
-          injectScriptPromise = null // Allow retrying
-          reject(error instanceof Error ? error : new Error('Failed to load Google Maps script'))
+
+        script.onerror = () => {
+          scriptPromise = null   // allow retry on next mount
+          reject(new Error('Failed to load Google Maps script. Check your API key and billing.'))
         }
-        
+
         document.head.appendChild(script)
       })
     }
 
-    injectScriptPromise
+    scriptPromise
       .then(() => setIsLoaded(true))
-      .catch((error) => setLoadError(error))
-      
+      .catch((err) => { setLoadError(err instanceof Error ? err : new Error(String(err))) })
+
   }, [])
 
   return { isLoaded, loadError }

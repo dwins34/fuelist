@@ -105,6 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setAvatarUrl(null)
           setAccessToken(null)
           accessTokenRef.current = null
+          try { localStorage.removeItem('fuelist_avatar') } catch {}
           setLoading(false)
           return
         }
@@ -119,7 +120,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
           setUser(u)
-          setAvatarUrl(meta?.avatar_url ?? meta?.picture ?? null)
+          // Persist avatar URL so it survives page refresh without flickering
+          const freshAvatar = meta?.avatar_url ?? meta?.picture ?? null
+          if (freshAvatar) {
+            try { localStorage.setItem('fuelist_avatar', freshAvatar) } catch {}
+          }
+          const cachedAvatar = freshAvatar ?? (() => { try { return localStorage.getItem('fuelist_avatar') } catch { return null } })()
+          setAvatarUrl(cachedAvatar)
           // Immediately render with metadata — DB enriches in background
           const displayName = meta?.full_name ?? meta?.name ?? u.email?.split('@')[0] ?? 'User'
           setProfile((prev) => prev ?? EMPTY_PROFILE(u.id, u.email ?? '', displayName))

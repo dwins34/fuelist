@@ -12,14 +12,14 @@ interface LocationPickerProps {
 }
 
 export default function LocationPicker({ onLocationSelect }: LocationPickerProps) {
-  const { 
-    query, 
-    setQuery, 
-    predictions, 
-    loading: searchLoading, 
-    clear, 
-    getPlaceDetails, 
-    detailsLoading 
+  const {
+    query,
+    setQuery,
+    predictions,
+    loading: searchLoading,
+    clear,
+    getPlaceDetails,
+    detailsLoading,
   } = usePlacesAutocomplete()
   
   const { getCurrentLocation, loading: locationLoading, error: locationError } = useLocation()
@@ -85,7 +85,11 @@ export default function LocationPicker({ onLocationSelect }: LocationPickerProps
           className="w-full rounded-2xl border-2 border-stone-100 bg-stone-50/50 py-3.5 pl-12 pr-12 text-sm font-medium shadow-sm outline-none transition-all focus:border-amber-500 focus:bg-white focus:ring-4 focus:ring-amber-500/5 placeholder:text-stone-300"
           autoComplete="off"
         />
-        {query && (
+        {detailsLoading ? (
+          <div className="absolute right-4 text-amber-500">
+            <Icon name="spinner" size={16} className="animate-spin" />
+          </div>
+        ) : query ? (
           <button
             type="button"
             onClick={clear}
@@ -93,7 +97,7 @@ export default function LocationPicker({ onLocationSelect }: LocationPickerProps
           >
             <Icon name="close" size={14} strokeWidth={3} />
           </button>
-        )}
+        ) : null}
       </div>
 
       {/* ── Primary CTA: Use Current Location ── */}
@@ -113,7 +117,7 @@ export default function LocationPicker({ onLocationSelect }: LocationPickerProps
         ) : (
           <Icon name="compass" size={16} strokeWidth={2.5} />
         )}
-        <span>{locationLoading ? 'Getting your location...' : 'Use My Location'}</span>
+        <span>{isLocating ? 'Getting your location...' : 'Use My Location'}</span>
       </button>
 
       {locationError && (
