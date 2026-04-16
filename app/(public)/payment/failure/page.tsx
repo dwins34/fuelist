@@ -2,14 +2,19 @@
 
 import { motion } from 'framer-motion'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
 import { Icon } from '@/lib/icons'
 import { Badge } from '@/components/ui/badge'
 import Button from '@/components/ui/Button'
 
-export default function PaymentFailurePage() {
+function FailureContent() {
+  const searchParams = useSearchParams()
+  const reason = searchParams.get('reason')
+
   return (
     <div className="flex min-h-[85vh] flex-col items-center justify-center px-6 text-center max-w-xl mx-auto py-12 animate-in fade-in duration-1000">
-      
+
       {/* Visual Indicator - Refined Size */}
       <div className="relative flex items-center justify-center py-8">
         <motion.div
@@ -19,10 +24,10 @@ export default function PaymentFailurePage() {
         >
           <Icon name="error" size={32} strokeWidth={3} className="text-rose-500" />
         </motion.div>
-        <motion.div 
+        <motion.div
           animate={{ scale: [1, 1.2, 1], opacity: [0.1, 0.05, 0.1] }}
           transition={{ duration: 4, repeat: Infinity }}
-          className="absolute inset-0 m-auto h-40 w-40 rounded-full bg-rose-500/20 blur-3xl" 
+          className="absolute inset-0 m-auto h-40 w-40 rounded-full bg-rose-500/20 blur-3xl"
         />
       </div>
 
@@ -32,9 +37,15 @@ export default function PaymentFailurePage() {
         </Badge>
         <h1 className="text-4xl font-black text-stone-900 tracking-tighter uppercase leading-none">Payment Failed</h1>
         <p className="text-stone-400 font-medium text-sm max-w-sm mx-auto leading-relaxed">
-          The payment gateway reported a verification failure. Any funds deducted from your account will be automatically 
+          The payment gateway reported a verification failure. Any funds deducted from your account will be automatically
           refunded within 5-7 operational days.
         </p>
+        {reason && (
+          <div className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-rose-50 border border-rose-100">
+            <Icon name="warning" size={13} className="text-rose-400 shrink-0" />
+            <span className="text-[10px] font-black text-rose-500 tracking-wider">{reason}</span>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
@@ -58,5 +69,17 @@ export default function PaymentFailurePage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function PaymentFailurePage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-[85vh] items-center justify-center">
+        <div className="h-10 w-10 border-4 border-stone-100 border-t-rose-500 rounded-full animate-spin" />
+      </div>
+    }>
+      <FailureContent />
+    </Suspense>
   )
 }

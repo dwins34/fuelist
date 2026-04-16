@@ -228,6 +228,9 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
       }
       const orderData = await res.json()
 
+      // Shared flag so handler and ondismiss can coordinate
+      let paymentDone = false
+
       const options: Record<string, any> = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: orderData.amount,
@@ -242,6 +245,9 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
         },
         theme: { color: '#d97706' },
         handler: async (response: any) => {
+          // Mark success immediately so ondismiss (fired by Razorpay when the
+          // modal auto-closes after payment) does not reset our state.
+          paymentDone = true
           try {
             const verifyRes = await fetch('/api/payment/verify', {
               method: 'POST',
@@ -258,20 +264,26 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
                 reward_points_to_use: pointsToUse,
               }),
             })
-            if (!verifyRes.ok) throw new Error('Verification failed')
             const verifyData = await verifyRes.json()
+            if (!verifyRes.ok || !verifyData.success) {
+              throw new Error(verifyData.error ?? `Verification failed (${verifyRes.status})`)
+            }
             clearCart()
             onClose()
             router.push(`/payment/success?order_id=${verifyData.order_id}`)
-          } catch (err) {
+          } catch (err: any) {
             console.error('verify failed:', err)
             clearCart()
             onClose()
-            router.push('/payment/failure')
+            const reason = encodeURIComponent(err?.message ?? 'Unknown error')
+            router.push(`/payment/failure?reason=${reason}`)
           }
         },
         modal: {
           ondismiss: () => {
+            // Razorpay fires ondismiss even after a successful payment when the
+            // modal closes automatically. Guard against that here.
+            if (paymentDone) return
             setStep('address')
             setPayError('Payment cancelled.')
           },
