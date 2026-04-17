@@ -57,8 +57,8 @@ export default function AddressManager({ onSelect, selectedId, hideHeader }: Add
       setFormError('House / Flat number is required')
       return
     }
-    if (!streetAddress.trim() || !city.trim() || !pincode.trim()) {
-      setFormError('Please search for your location to auto-fill street details')
+    if (!streetAddress.trim() || !city.trim()) {
+      setFormError('Please search for your location to fill in Street Address and City')
       return
     }
 
