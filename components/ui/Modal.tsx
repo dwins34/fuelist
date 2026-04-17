@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, ReactNode } from 'react'
+import { ReactNode } from 'react'
+import { useScrollLock } from '@/hooks/useScrollLock'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Icon } from '@/lib/icons'
 import { cn } from '@/lib/utils'
@@ -30,17 +31,7 @@ export default function Modal({
   className,
   maxWidth = 'lg'
 }: ModalProps) {
-  
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = ''
-    }
-    return () => {
-      document.body.style.overflow = ''
-    }
-  }, [isOpen])
+  useScrollLock(isOpen)
 
   return (
     <AnimatePresence>
@@ -52,7 +43,7 @@ export default function Modal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-stone-900/40 backdrop-blur-md"
+            className="absolute inset-0 bg-stone-900/40 backdrop-blur-md touch-none"
           />
 
           {/* Panel */}

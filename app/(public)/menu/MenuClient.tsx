@@ -97,6 +97,24 @@ function MenuContent({ defaultCategory }: { defaultCategory?: Category | 'all' }
     if (btn) btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
   }, [activeCategory])
 
+  // Scroll to initial category once items have loaded and sections are rendered
+  useEffect(() => {
+    if (loading || initialCat === 'all') return
+    // Use rAF + setTimeout to wait for sections to mount after render
+    const raf = requestAnimationFrame(() => {
+      setTimeout(() => {
+        const el = sectionRefs.current[initialCat]
+        if (!el) return
+        isScrollingTo.current = true
+        const top = el.getBoundingClientRect().top + window.scrollY - 130
+        window.scrollTo({ top, behavior: 'smooth' })
+        setTimeout(() => { isScrollingTo.current = false }, 800)
+      }, 50)
+    })
+    return () => cancelAnimationFrame(raf)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]) // only run when loading transitions to false
+
   // Set up IntersectionObserver to track which section is in view
   useEffect(() => {
     if (observerRef.current) observerRef.current.disconnect()

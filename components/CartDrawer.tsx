@@ -9,6 +9,7 @@ import { DeliveryAddress } from '@/lib/whatsapp'
 import { useAuthContext } from '@/context/AuthContext'
 import { useServiceStatus } from '@/context/ServiceStatusContext'
 import { useDeliveryCheck } from '@/hooks/useDeliveryCheck'
+import { useScrollLock } from '@/hooks/useScrollLock'
 import { Icon } from '@/lib/icons'
 import CouponInput from '@/components/CouponInput'
 import RewardPointsToggle from '@/components/RewardPointsToggle'
@@ -66,7 +67,7 @@ function validateAddress(a: DeliveryAddress): AddressErrors {
   else if (!/^\+?\d{7,15}$/.test(rawPhone)) errs.phone = 'Enter a valid phone number.'
 
   if (!a.address_line1.trim()) errs.address_line1 = 'Address is required.'
-  else if (a.address_line1.trim().length < 5) errs.address_line1 = 'Please enter a complete address.'
+  else if (a.address_line1.trim().length < 1) errs.address_line1 = 'Please enter a complete address.'
 
   if (!a.city.trim()) errs.city = 'City is required.'
 
@@ -117,6 +118,8 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
   const { isEnabled, deliveryFee, serviceAreaLabel } = useServiceStatus()
   const { check: checkDelivery } = useDeliveryCheck()
 
+  useScrollLock(open)
+
   const discountAmount = appliedCoupon?.discount_amount ?? 0
   const pointsValue = pointsToUse
   const subtotal = Math.max(0, total - discountAmount - pointsValue)
@@ -124,8 +127,6 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
 
   useEffect(() => {
     if (open) {
-      document.body.style.overflow = 'hidden'
-      
       // Attempt to restore saved state
       const saved = loadCartDrawerState()
       if (saved) {
@@ -133,11 +134,6 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
         setAddress(saved.address)
         clearCartDrawerState()
       }
-    } else {
-      document.body.style.overflow = ''
-    }
-    return () => {
-      document.body.style.overflow = ''
     }
   }, [open])
 
@@ -355,7 +351,7 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={step === 'paying' ? undefined : (step === 'address' ? () => setStep('cart') : onClose)}
-            className="fixed inset-0 z-50 bg-stone-900/50 backdrop-blur-sm"
+            className="fixed inset-0 z-50 bg-stone-900/50 backdrop-blur-sm touch-none"
           />
 
           {/* Drawer */}

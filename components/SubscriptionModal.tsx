@@ -8,6 +8,7 @@ import { formatPrice, getImageUrl, categoryLabel } from '@/lib/utils'
 import { useAuthContext } from '@/context/AuthContext'
 import { useServiceStatus } from '@/context/ServiceStatusContext'
 import { useDeliveryCheck } from '@/hooks/useDeliveryCheck'
+import { useScrollLock } from '@/hooks/useScrollLock'
 import { useRouter } from 'next/navigation'
 import AddressManager from '@/components/account/AddressManager'
 import { UserAddress } from '@/hooks/useAddresses'
@@ -142,12 +143,7 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
   const [checkingArea, setCheckingArea] = useState(false)
   const [showAllSummaryItems, setShowAllSummaryItems] = useState(false)
 
-  useEffect(() => {
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = ''
-    }
-  }, [])
+  useScrollLock(true)
 
   useEffect(() => {
     const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -339,7 +335,7 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm transition-all animate-in fade-in duration-300"
+      className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm touch-none transition-all animate-in fade-in duration-300"
       onClick={(e) => { if (e.target === e.currentTarget && step !== 'paying') onClose() }}
     >
       <motion.div 
