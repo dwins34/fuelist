@@ -97,18 +97,12 @@ export function AddressProvider({ children }: { children: React.ReactNode }) {
       }
 
       console.log('AddressContext: calling insert...', payload)
-      
-      // Add a timeout to prevent infinite hangs
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 15000)
 
       const { data, error: sbError } = await supabase
         .from('user_addresses')
         .insert([payload])
         .select()
-        .abortSignal(controller.signal as any)
-      
-      clearTimeout(timeoutId)
+
       console.log('AddressContext: insert returned', { data, sbError })
 
       if (sbError) {

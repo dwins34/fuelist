@@ -500,23 +500,58 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
                       <span className="text-sm font-black text-amber-700">{formatPrice(finalTotal)}</span>
                     </div>
 
-                    {/* ── Recipient details ── */}
-                    {!orderForOther && profile && !profile.name && !profile.phone ? (
-                      // Profile has no name/phone — nudge to fill account settings
-                      <div className="flex items-start gap-3 rounded-2xl bg-amber-50 border border-amber-100 px-4 py-3">
-                        <Icon name="warning" size={16} className="text-amber-500 mt-0.5 shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-black text-amber-800 leading-snug">No name or phone on your account.</p>
-                          <p className="text-[11px] text-amber-600 mt-0.5">
-                            <a href="/account" className="underline underline-offset-2 hover:text-amber-800 transition-colors" onClick={undefined}>
-                              Add them in Account Settings
-                            </a>
-                            {' '}or enter below for this order.
-                          </p>
+                    {/* ── Recipient details ──────────────────────────────────
+                     *
+                     *  4 mutually exclusive states — only ONE renders at a time:
+                     *
+                     *  A. orderForOther       → editable inputs for receiver
+                     *  B. profile complete    → read-only chip (name + phone)
+                     *  C. profile incomplete  → chip (partial) + missing field input
+                     *  D. no profile data     → both inputs + account nudge
+                     * ─────────────────────────────────────────────────────── */}
+
+                    {orderForOther ? (
+                      /* ── A: Ordering for someone else ── */
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between px-0.5">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-stone-400">Receiver&apos;s details</p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOrderForOther(false)
+                              setAddress((prev) => ({
+                                ...prev,
+                                name:  profile?.name  || '',
+                                phone: profile?.phone || '',
+                              }))
+                              setErrors((prev) => ({ ...prev, name: undefined, phone: undefined }))
+                            }}
+                            className="text-[10px] font-black text-stone-400 hover:text-stone-700 uppercase tracking-wider transition-colors"
+                          >
+                            ← Use my details
+                          </button>
                         </div>
+                        <Input
+                          label="Receiver's Name"
+                          value={address.name}
+                          onChange={(v) => { setAddress({ ...address, name: v.target.value }); setErrors({ ...errors, name: undefined }) }}
+                          placeholder="Full name of receiver"
+                          error={errors.name}
+                          icon={<Icon name="user" size={16} />}
+                        />
+                        <Input
+                          label="Receiver's Phone"
+                          value={address.phone}
+                          onChange={(v) => { setAddress({ ...address, phone: v.target.value }); setErrors({ ...errors, phone: undefined }) }}
+                          placeholder="+91 98765 43210"
+                          type="tel"
+                          error={errors.phone}
+                          icon={<Icon name="phone" size={16} />}
+                        />
                       </div>
-                    ) : !orderForOther && (profile?.name || profile?.phone) ? (
-                      // Profile has details — show read-only chip + "order for someone else" toggle
+
+                    ) : profile?.name && profile?.phone ? (
+                      /* ── B: Profile complete — read-only chip ── */
                       <div className="rounded-2xl bg-stone-50 border border-stone-100 px-4 py-3 space-y-2">
                         <div className="flex items-center justify-between">
                           <p className="text-[10px] font-black uppercase tracking-widest text-stone-400">Delivering to</p>
@@ -537,54 +572,80 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
                             <Icon name="user" size={14} className="text-amber-600" />
                           </div>
                           <div className="min-w-0">
-                            <p className="text-sm font-black text-stone-900 truncate">{profile?.name || '—'}</p>
-                            <p className="text-[11px] font-bold text-stone-400">{profile?.phone || '—'}</p>
+                            <p className="text-sm font-black text-stone-900 truncate">{profile.name}</p>
+                            <p className="text-[11px] font-bold text-stone-500">{profile.phone}</p>
                           </div>
                         </div>
                       </div>
-                    ) : null}
 
-                    {/* Show name/phone inputs when profile is incomplete OR ordering for someone else */}
-                    {(orderForOther || !profile?.name || !profile?.phone) && (
-                      <>
-                        {orderForOther && (
-                          <div className="flex items-center justify-between px-1">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-stone-400">Receiver&apos;s details</p>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setOrderForOther(false)
-                                setAddress((prev) => ({
-                                  ...prev,
-                                  name:  profile?.name  || '',
-                                  phone: profile?.phone || '',
-                                }))
-                                setErrors((prev) => ({ ...prev, name: undefined, phone: undefined }))
-                              }}
-                              className="text-[10px] font-black text-stone-400 hover:text-stone-600 uppercase tracking-wider transition-colors"
-                            >
-                              ← Back to my details
-                            </button>
+                    ) : profile?.name && !profile?.phone ? (
+                      /* ── C: Has name, missing phone — show chip + phone input only ── */
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between px-0.5">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-stone-400">Delivering to</p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOrderForOther(true)
+                              setAddress((prev) => ({ ...prev, name: '', phone: '' }))
+                              setErrors((prev) => ({ ...prev, name: undefined, phone: undefined }))
+                            }}
+                            className="text-[10px] font-black text-amber-600 hover:text-amber-700 uppercase tracking-wider transition-colors"
+                          >
+                            Order for someone else?
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-3 rounded-2xl bg-stone-50 border border-stone-100 px-4 py-2.5">
+                          <div className="h-8 w-8 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+                            <Icon name="user" size={14} className="text-amber-600" />
                           </div>
-                        )}
+                          <p className="text-sm font-black text-stone-900">{profile.name}</p>
+                        </div>
                         <Input
-                          label={orderForOther ? "Receiver's Name" : "Name"}
-                          value={address.name}
-                          onChange={(v) => { setAddress({...address, name: v.target.value}); setErrors({...errors, name: undefined}) }}
-                          placeholder={orderForOther ? "Receiver's full name" : "Your full name"}
-                          error={errors.name}
-                          icon={<Icon name="user" size={16}/>}
-                        />
-                        <Input
-                          label={orderForOther ? "Receiver's Phone" : "Phone"}
+                          label="Your Phone Number"
                           value={address.phone}
-                          onChange={(v) => { setAddress({...address, phone: v.target.value}); setErrors({...errors, phone: undefined}) }}
+                          onChange={(v) => { setAddress({ ...address, phone: v.target.value }); setErrors({ ...errors, phone: undefined }) }}
                           placeholder="+91 98765 43210"
                           type="tel"
                           error={errors.phone}
-                          icon={<Icon name="phone" size={16}/>}
+                          icon={<Icon name="phone" size={16} />}
                         />
-                      </>
+                        <p className="text-[10px] text-stone-400 px-1">
+                          Save your phone in{' '}
+                          <a href="/account" className="text-amber-600 underline underline-offset-2 hover:text-amber-700">Account Settings</a>
+                          {' '}to skip this next time.
+                        </p>
+                      </div>
+
+                    ) : (
+                      /* ── D: No profile data — both inputs + nudge ── */
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-2.5 rounded-xl bg-amber-50 border border-amber-100 px-3 py-2.5">
+                          <Icon name="warning" size={14} className="text-amber-500 mt-0.5 shrink-0" />
+                          <p className="text-[11px] text-amber-700 leading-relaxed">
+                            Add your name &amp; phone in{' '}
+                            <a href="/account" className="font-black underline underline-offset-2 hover:text-amber-900">Account Settings</a>
+                            {' '}to auto-fill here on every order.
+                          </p>
+                        </div>
+                        <Input
+                          label="Your Name"
+                          value={address.name}
+                          onChange={(v) => { setAddress({ ...address, name: v.target.value }); setErrors({ ...errors, name: undefined }) }}
+                          placeholder="Your full name"
+                          error={errors.name}
+                          icon={<Icon name="user" size={16} />}
+                        />
+                        <Input
+                          label="Your Phone"
+                          value={address.phone}
+                          onChange={(v) => { setAddress({ ...address, phone: v.target.value }); setErrors({ ...errors, phone: undefined }) }}
+                          placeholder="+91 98765 43210"
+                          type="tel"
+                          error={errors.phone}
+                          icon={<Icon name="phone" size={16} />}
+                        />
+                      </div>
                     )}
 
                     <div className="pt-2 border-t border-stone-100">

@@ -24,7 +24,10 @@ begin
     coalesce(new.email, ''),
     'user'
   )
-  on conflict (id) do nothing;  -- don't overwrite existing rows (preserves role)
+  -- ON CONFLICT DO NOTHING (no target) handles ALL unique violations:
+  -- both the primary key (id) and the email unique constraint.
+  -- This covers re-registration after an auth record was deleted.
+  on conflict do nothing;
   return new;
 end;
 $$;
