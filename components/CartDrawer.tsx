@@ -1,11 +1,10 @@
 'use client'
 
-import { useEffect, useRef, useState, useCallback } from 'react'
-import Image from 'next/image'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useCart } from '@/context/CartContext'
-import { formatPrice, getImageUrl } from '@/lib/utils'
+import { formatPrice } from '@/lib/utils'
 import { DeliveryAddress } from '@/lib/whatsapp'
 import { useAuthContext } from '@/context/AuthContext'
 import { useServiceStatus } from '@/context/ServiceStatusContext'
@@ -98,13 +97,13 @@ function loadRazorpayScript(): Promise<boolean> {
 }
 
 export default function CartDrawer({ open, onClose }: CartDrawerProps) {
-  const { items, count, total, updateQuantity, removeItem, clearCart } = useCart()
+  const { items, count, total, updateQuantity, clearCart } = useCart()
   const router = useRouter()
 
   const [step, setStep] = useState<'cart' | 'address' | 'paying'>('cart')
   const [address, setAddress] = useState<DeliveryAddress>(EMPTY_ADDRESS)
   const [errors, setErrors] = useState<AddressErrors>({})
-  const [addrLoading, setAddrLoading] = useState(false)
+  const [addrLoading] = useState(false)
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null)
   const [payError, setPayError] = useState<string | null>(null)
   const [outOfArea, setOutOfArea] = useState(false)
@@ -209,7 +208,13 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
     if (Object.keys(errs).length) { setErrors(errs); return }
 
     const coords = (address.lat && address.lng) ? { lat: address.lat, lng: address.lng } : null
-    const deliveryResult = await checkDelivery(coords, address.pincode)
+    let deliveryResult
+    try {
+      deliveryResult = await checkDelivery(coords, address.pincode)
+    } catch {
+      setOutOfArea(true)
+      return
+    }
     if (!deliveryResult.eligible) {
       setOutOfArea(true)
       return
@@ -218,13 +223,46 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
     setPayError(null)
     setStep('paying')
 
+    // ── Free order (100% discount via coupon / points) ───────────────────────
+    if (finalTotal <= 0) {
+      try {
+        const verifyRes = await fetch('/api/payment/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            razorpay_order_id:  `free_${Date.now()}`,
+            razorpay_payment_id: `free_${Date.now()}`,
+            razorpay_signature:  'free',
+            items,
+            total_amount: total,
+            delivery_fee: deliveryFee,
+            address,
+            coupon_code: appliedCoupon?.coupon?.code ?? null,
+            reward_points_to_use: pointsToUse,
+            is_free_order: true,
+          }),
+        })
+        const verifyData = await verifyRes.json()
+        if (!verifyRes.ok || !verifyData.success) {
+          throw new Error(verifyData.error ?? 'Failed to place free order')
+        }
+        clearCart()
+        onClose()
+        router.push(`/payment/success?order_id=${verifyData.order_id}`)
+      } catch (err: any) {
+        setPayError(err?.message ?? 'Failed to place order.')
+        setStep('address')
+      }
+      return
+    }
+
     const loaded = await loadRazorpayScript()
     if (!loaded) {
-      setPayError('Could not load payment gateway.')
+      setPayError('Payment gateway blocked. Please disable your ad blocker and try again.')
       setStep('address')
       return
     }
-    
+
     try {
       const res = await fetch('/api/payment/create-order', {
         method: 'POST',

@@ -19,6 +19,7 @@ export async function POST(req: NextRequest) {
       address,
       coupon_code,
       reward_points_to_use,
+      is_free_order,
     } = await req.json()
 
     // ── 1. Validate required fields ───────────────────────────────────────────
@@ -26,17 +27,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing payment fields' }, { status: 400 })
     }
 
-    // ── 2. Verify Razorpay signature (HMAC-SHA256) ────────────────────────────
-    const secret = process.env.RAZORPAY_KEY_SECRET!
-    const body   = `${razorpay_order_id}|${razorpay_payment_id}`
-    const expectedSignature = crypto
-      .createHmac('sha256', secret)
-      .update(body)
-      .digest('hex')
+    // ── 2. Verify Razorpay signature (skip for fully-discounted free orders) ──
+    if (!is_free_order) {
+      const secret = process.env.RAZORPAY_KEY_SECRET!
+      const body   = `${razorpay_order_id}|${razorpay_payment_id}`
+      const expectedSignature = crypto
+        .createHmac('sha256', secret)
+        .update(body)
+        .digest('hex')
 
-    if (expectedSignature !== razorpay_signature) {
-      console.warn('Razorpay signature mismatch — possible tamper attempt')
-      return NextResponse.json({ error: 'Payment verification failed' }, { status: 400 })
+      if (expectedSignature !== razorpay_signature) {
+        console.warn('Razorpay signature mismatch — possible tamper attempt')
+        return NextResponse.json({ error: 'Payment verification failed' }, { status: 400 })
+      }
     }
 
     // ── 3. Get authenticated user (optional — guest orders allowed) ───────────
@@ -141,8 +144,8 @@ export async function POST(req: NextRequest) {
         items:                 items ?? [],
         total_amount:          baseAmount,
         delivery_fee:          deliveryFee,
-        payment_status:        'paid',
-        payment_id:            razorpay_payment_id,
+        payment_status:        is_free_order ? 'free' : 'paid',
+        payment_id:            is_free_order ? null : razorpay_payment_id,
         razorpay_order_id,
         address:               address ?? null,
         coupon_id:             resolvedCouponId,

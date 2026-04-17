@@ -50,13 +50,27 @@ export function useDeliveryCheck() {
           return r
         }
 
-        // ── Fallback: pincode allowlist (legacy, while zone is not configured) ─
-        if (pincode) {
+        // ── Zone configured but no coords: require location picker ────────────
+        // Don't fall back to pincode when a zone is set — the pincode list is
+        // too coarse and lets addresses far outside the zone slip through.
+        if (deliveryZone && (!coords || !isValidCoord(coords))) {
+          const r: DeliveryCheckResult = {
+            eligible: false,
+            distanceKm: null,
+            radiusKm: deliveryZone.radius_km,
+            reason: 'no_user_coords',
+          }
+          setResult(r)
+          return r
+        }
+
+        // ── Fallback: pincode allowlist (only when zone is NOT configured) ────
+        if (!deliveryZone && pincode) {
           const eligible = isInServiceArea(pincode)
           const r: DeliveryCheckResult = {
             eligible,
             distanceKm: null,
-            radiusKm: deliveryZone?.radius_km ?? 0,
+            radiusKm: 0,
             reason: 'fallback_pincode',
           }
           setResult(r)

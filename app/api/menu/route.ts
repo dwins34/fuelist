@@ -48,7 +48,8 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    console.error('Menu insert error:', JSON.stringify(error, null, 2))
+    return NextResponse.json({ error: error.message, details: error.details, hint: error.hint, code: error.code }, { status: 500 })
   }
 
   return NextResponse.json(data, { status: 201 })
