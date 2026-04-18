@@ -413,7 +413,7 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
                         </div>
                         <h3 className="text-base font-black text-stone-900 tracking-tight">Cart is empty</h3>
                         <p className="text-xs font-medium text-stone-400 mt-1.5 max-w-[180px]">Add some healthy bowls to get started!</p>
-                        <Button variant="primary" leftIcon={<Icon name="bowl" size={14} strokeWidth={2.5} />} className="mt-6" onClick={onClose}>Browse Menu</Button>
+                        <Button variant="primary" leftIcon={<Icon name="bowl" size={14} strokeWidth={2.5} />} className="mt-6" onClick={() => { onClose(); router.push('/menu') }}>Browse Menu</Button>
                       </div>
                     ) : (
                       <div className="px-4 pt-3 pb-1 divide-y divide-stone-50">

@@ -113,7 +113,7 @@ function LiveTracker({ status }: { status: OrderStatus }) {
 
 function OrderCard({ order, onReorder }: { order: Order; onReorder: (items: CartItem[]) => void }) {
   const date     = new Date(order.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-  const time     = new Date(order.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+  const time     = new Date(order.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }).toUpperCase()
   const shortId  = `#${order.id.slice(-8).toUpperCase()}`
   const active   = isActive(order.order_status)
   const delivered = order.order_status === 'delivered'

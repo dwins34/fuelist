@@ -142,7 +142,7 @@ export async function POST(req: NextRequest) {
       .insert({
         user_id:               user?.id ?? null,
         items:                 items ?? [],
-        total_amount:          baseAmount,
+        total_amount:          finalAmount,
         delivery_fee:          deliveryFee,
         payment_status:        is_free_order ? 'free' : 'paid',
         payment_id:            is_free_order ? null : razorpay_payment_id,
