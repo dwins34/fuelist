@@ -9,6 +9,7 @@ import { useAuthContext } from '@/context/AuthContext'
 import { useServiceStatus } from '@/context/ServiceStatusContext'
 import { useDeliveryCheck } from '@/hooks/useDeliveryCheck'
 import { useScrollLock } from '@/hooks/useScrollLock'
+import PhoneOtpVerify from '@/components/ui/PhoneOtpVerify'
 import { useRouter } from 'next/navigation'
 import AddressManager from '@/components/account/AddressManager'
 import { UserAddress } from '@/hooks/useAddresses'
@@ -113,7 +114,7 @@ function isProfileComplete(profile: { name: string; phone: string } | null): boo
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function SubscriptionModal({ initialItem, onClose, onSuccess, restoredConfig }: SubscriptionModalProps) {
-  const { profile } = useAuthContext()
+  const { profile, reloadProfile } = useAuthContext()
   const { isEnabled, serviceAreaLabel } = useServiceStatus()
   const { check: checkDelivery } = useDeliveryCheck()
   const router = useRouter()
@@ -492,10 +493,29 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
                 exit={{ opacity: 0, x: -20 }}
                 className="px-6 py-6"
               >
-                <div className="mb-8">
+                <div className="mb-6">
                   <h3 className="text-lg font-black text-stone-900 tracking-tight">Where should we deliver?</h3>
                   <p className="text-sm font-medium text-stone-400 mt-1">Select or add the address for your daily deliveries.</p>
                 </div>
+
+                {/* Phone verification — shown when profile has no phone yet */}
+                {profile && !profile.phone && (
+                  <div className="mb-6 rounded-2xl border border-amber-100 bg-amber-50 p-4 space-y-3">
+                    <div className="flex items-start gap-2">
+                      <Icon name="phone" size={15} className="text-amber-500 mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-sm font-black text-stone-900">Verify your phone first</p>
+                        <p className="text-[11px] text-stone-500 mt-0.5">We need your WhatsApp number for delivery updates.</p>
+                      </div>
+                    </div>
+                    <PhoneOtpVerify
+                      compact
+                      onVerified={async (phone) => {
+                        await reloadProfile()
+                      }}
+                    />
+                  </div>
+                )}
 
                 <AddressManager hideHeader selectedId={selectedAddress?.id} onSelect={handleSelectAddress} />
 

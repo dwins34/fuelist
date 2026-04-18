@@ -112,12 +112,13 @@ function Toast({ message, type }: { message: string; type: 'success' | 'error' }
 export default function AccountPage() {
   const router = useRouter()
   const { profile, loading, error: loadError, saveProfile } = useUserProfile()
-  const { accessToken, user } = useAuthContext()
+  const { accessToken, user, reloadProfile } = useAuthContext()
 
   const [activeTab, setActiveTab] = useState<AccountTab>('personal')
   const [name, setName] = useState('')
-  const [phone, setPhone] = useState('')
   const [formErrors, setFormErrors] = useState<FormErrors>({})
+  const [nameSaving, setNameSaving] = useState(false)
+  const [nameSaved, setNameSaved] = useState(false)
   const [saving, setSaving] = useState(false)
   const [showPwForm, setShowPwForm] = useState(false)
   const [password, setPassword] = useState('')
@@ -139,7 +140,6 @@ export default function AccountPage() {
   useEffect(() => {
     if (!profile) return
     setName(profile.name)
-    setPhone(profile.phone)
   }, [profile])
 
   useEffect(() => {
@@ -169,19 +169,27 @@ export default function AccountPage() {
     setTimeout(() => setToast(null), 3500)
   }
 
-  async function handleSaveProfile(e: React.FormEvent) {
-    if (e) e.preventDefault()
-    const errs = validateProfile({ name, phone })
-    if (Object.keys(errs).length) { setFormErrors(errs); return }
-    setFormErrors({})
-    setSaving(true)
+  async function handleNameBlur() {
+    const trimmed = name.trim()
+    if (!trimmed || trimmed === profile?.name) return
+    if (trimmed.length < 2) { setFormErrors((e) => ({ ...e, name: 'Name must be at least 2 characters.' })); return }
+    setFormErrors((e) => ({ ...e, name: undefined }))
+    setNameSaving(true)
+    setNameSaved(false)
     try {
-      const { error } = await saveProfile({ name: name.trim(), phone: phone.trim() })
-      if (error) showToast('Failed to save. Please try again.', 'error')
-      else showToast('Profile saved successfully.', 'success')
+      const { error } = await saveProfile({ name: trimmed, phone: profile?.phone ?? '' })
+      if (error) showToast('Failed to save name. Please try again.', 'error')
+      else { setNameSaved(true); setTimeout(() => setNameSaved(false), 2500) }
     } finally {
-      setSaving(false)
+      setNameSaving(false)
     }
+  }
+
+  async function handlePhoneVerified(verifiedPhone: string) {
+    // Phone is already saved to DB by /api/auth/phone/verify-otp
+    // Reload the profile so it reflects everywhere
+    await reloadProfile()
+    showToast('Phone number verified & saved.', 'success')
   }
 
   async function handleSetPassword(e: React.FormEvent) {
@@ -277,13 +285,16 @@ export default function AccountPage() {
           <main className="flex-1 min-h-0 overflow-y-auto pb-20 custom-scrollbar scroll-smooth">
             <div className="max-w-4xl py-2 sm:py-4">
               {activeTab === 'personal' && (
-                <PersonalInfoTab 
-                  name={name} setName={setName}
-                  phone={phone} setPhone={setPhone}
+                <PersonalInfoTab
+                  name={name}
+                  setName={setName}
+                  savedPhone={profile?.phone ?? ''}
                   email={profile?.email}
                   formErrors={formErrors}
-                  saving={saving}
-                  onSubmit={handleSaveProfile}
+                  onNameBlur={handleNameBlur}
+                  onPhoneVerified={handlePhoneVerified}
+                  nameSaving={nameSaving}
+                  nameSaved={nameSaved}
                 />
               )}
 
