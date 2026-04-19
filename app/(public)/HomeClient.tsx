@@ -390,8 +390,7 @@ export default function HomeClient() {
                 <span className="text-stone-800/90 underline decoration-amber-500/30 decoration-8 underline-offset-8">Delivery Daily.</span>
               </h1>
               <p className="text-lg sm:text-2xl text-stone-500 max-w-2xl mb-12 font-medium leading-relaxed">
-                Premium fruit bowls, high-protein breakfast, and power bowls curated with
-                full macro-transparency for the high-performance life in Delhi.
+                Clean fruit bowls, high-protein breakfasts, and power bowls — built with full macro transparency for those who expect more from their food.
               </p>
               <div className="flex flex-col sm:flex-row items-center gap-5">
                 <HeroCTA />
