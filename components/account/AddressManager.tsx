@@ -74,8 +74,14 @@ export default function AddressManager({ onSelect, selectedId, hideHeader }: Add
       lng
     }
 
-    setSaving(true)
+    // Safety net: never leave the button stuck in loading state
+    const saveTimeout = setTimeout(() => {
+      setSaving(false)
+      setFormError('Request timed out. Please check your connection and try again.')
+    }, 10000)
+
     const res = await addAddress(payload)
+    clearTimeout(saveTimeout)
     setSaving(false)
 
     if (res.error) {

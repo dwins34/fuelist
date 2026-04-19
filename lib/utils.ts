@@ -18,16 +18,19 @@ export function categoryLabel(category: Category): string {
 export function cn(...classes: (string | undefined | false | null)[]): string {
   return classes.filter(Boolean).join(' ')
 }
-export function getImageUrl(url: string) {
+export function getImageUrl(url: string, width = 400) {
   if (!url) return ""
 
-  // Handle Google Drive links
-  if (url.includes("drive.google.com")) {
-    const match = url.match(/\/d\/(.*?)\//)
+  if (url.includes("drive.google.com") || url.includes("docs.google.com")) {
+    // Extract file ID from any Drive URL pattern:
+    // /file/d/FILE_ID/view  OR  ?id=FILE_ID  OR  /d/FILE_ID
+    const match =
+      url.match(/\/d\/([a-zA-Z0-9_-]+)/) ||
+      url.match(/[?&]id=([a-zA-Z0-9_-]+)/)
     const fileId = match?.[1]
-
     if (fileId) {
-      return `https://drive.google.com/uc?export=view&id=${fileId}`
+      // lh3.googleusercontent.com serves Drive images publicly without auth
+      return `https://lh3.googleusercontent.com/d/${fileId}=w${width}`
     }
   }
 
