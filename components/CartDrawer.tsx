@@ -588,46 +588,39 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
                   </motion.div>
                 )}
 
-                {/* ── VERIFY NUDGE ── */}
+                {/* ── VERIFY PHONE (inline) ── */}
                 {step === 'verify-nudge' && (
-                  <motion.div 
-                    key="verify-nudge" 
-                    initial={{ opacity: 0, scale: 0.95 }} 
-                    animate={{ opacity: 1, scale: 1 }} 
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    className="flex flex-col items-center justify-center py-12 px-6 text-center"
+                  <motion.div
+                    key="verify-nudge"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    className="px-5 py-8 space-y-6"
                   >
-                    <div className="w-20 h-20 bg-amber-50 rounded-3xl flex items-center justify-center text-amber-500 mb-6 shadow-sm border border-amber-100/50">
-                      <Icon name="security" size={40} strokeWidth={1.5} />
-                    </div>
-                    <h3 className="text-lg font-black text-stone-900 tracking-tight leading-tight">Verification Required</h3>
-                    <p className="text-xs font-medium text-stone-500 mt-3 max-w-[240px] leading-relaxed">
-                      To ensure seamless delivery and order updates, please verify your phone number in your account settings.
-                    </p>
-                    
-                    <div className="w-full space-y-3 mt-8">
-                      <Button 
-                        variant="primary" 
-                        fullWidth 
-                        onClick={() => {
-                          onClose();
-                          router.push('/account?tab=personal&return_to=cart');
-                        }}
-                      >
-                        Go to Account Settings
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        fullWidth 
-                        onClick={() => setStep('cart')}
-                      >
-                        Back to Cart
-                      </Button>
+                    {/* Header */}
+                    <div className="flex items-center gap-3">
+                      <button onClick={() => setStep('cart')} className="p-1.5 rounded-xl hover:bg-stone-100 transition-colors">
+                        <Icon name="chevronRight" size={18} className="rotate-180 text-stone-500" />
+                      </button>
+                      <div>
+                        <h3 className="text-base font-black text-stone-900 tracking-tight">Verify your number</h3>
+                        <p className="text-[11px] font-medium text-stone-400">One-time verification before checkout</p>
+                      </div>
                     </div>
 
-                    <p className="text-[10px] font-bold text-stone-300 mt-8 uppercase tracking-widest">
-                      Quick & Secure • One-time process
-                    </p>
+                    <PhoneOtpVerify
+                      compact
+                      onVerified={async (phone) => {
+                        // Reload profile so profile.phone is fresh in context
+                        await reloadProfile()
+                        setAddress((prev) => ({
+                          ...prev,
+                          name:  prev.name  || profile?.name  || '',
+                          phone: prev.phone || phone,
+                        }))
+                        setStep('address')
+                      }}
+                    />
                   </motion.div>
                 )}
 
