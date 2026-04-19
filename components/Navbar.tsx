@@ -63,12 +63,26 @@ export default function Navbar() {
     { href: '/contact', label: 'Contact', icon: 'mail' },
   ] as const
 
+  const staffRole = profile?.role
+  const isStaff = staffRole === 'admin' || staffRole === 'kitchen' || staffRole === 'delivery'
+  const staffPortal = {
+    href:  staffRole === 'admin' ? '/admin' : '/kitchen',
+    label: staffRole === 'admin' ? 'Admin Dashboard' : staffRole === 'kitchen' ? 'Kitchen Display' : 'Delivery Board',
+    icon:  staffRole === 'admin' ? 'dashboard' : staffRole === 'kitchen' ? 'bowl' : 'time',
+  } as const
+
   const menuItems = [
     ...(profile?.role === 'admin' ? [{
       id: 'admin',
       label: 'Admin Dashboard',
       icon: 'dashboard' as const,
       onClick: () => router.push('/admin')
+    }] : []),
+    ...(['kitchen', 'delivery'].includes(profile?.role ?? '') ? [{
+      id: 'staff',
+      label: staffPortal.label,
+      icon: staffPortal.icon as any,
+      onClick: () => router.push(staffPortal.href)
     }] : []),
     {
       id: 'orders',
@@ -102,8 +116,8 @@ export default function Navbar() {
         </div>
       </div>
       <div className="flex items-center gap-2 flex-wrap">
-        {profile.role === 'admin' && (
-          <Badge variant="premium" className="text-[9px] px-2 py-0">Admin</Badge>
+        {isStaff && (
+          <Badge variant="premium" className="text-[9px] px-2 py-0 capitalize">{staffRole}</Badge>
         )}
         <Badge variant="premium" className="text-[9px] px-2 py-0 bg-amber-50 border-amber-200 text-amber-700">
           <Icon name="points" size={10} strokeWidth={3} className="mr-1" />
@@ -149,7 +163,17 @@ export default function Navbar() {
         </div>
 
         {/* Auth / Profile Area */}
-        <div className="hidden md:flex items-center gap-4">
+        <div className="hidden md:flex items-center gap-3">
+          {/* Staff portal shortcut */}
+          {!loading && isStaff && (
+            <Link
+              href={staffPortal.href}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-black bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 transition-all"
+            >
+              <Icon name={staffPortal.icon} size={14} strokeWidth={2.5} />
+              {staffPortal.label}
+            </Link>
+          )}
           {loading ? (
             <div className="h-10 w-10 animate-pulse rounded-full bg-stone-100" />
           ) : profile ? (
@@ -192,6 +216,24 @@ export default function Navbar() {
             className="md:hidden border-t border-stone-100 bg-white/95 backdrop-blur-xl overflow-hidden shadow-2xl"
           >
             <div className="px-4 pt-4 pb-6 space-y-4">
+
+              {/* ── Staff Portal shortcut (mobile) ── */}
+              {isStaff && (
+                <Link
+                  href={staffPortal.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-amber-500 text-white shadow-lg shadow-amber-200"
+                >
+                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20 shrink-0">
+                    <Icon name={staffPortal.icon} size={16} strokeWidth={2.5} />
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-black uppercase tracking-widest opacity-80">Staff Portal</p>
+                    <p className="text-sm font-black">{staffPortal.label}</p>
+                  </div>
+                  <Icon name="arrowRight" size={16} className="ml-auto opacity-60" />
+                </Link>
+              )}
 
               {/* ── Section 1: Navigation ── */}
               <div>

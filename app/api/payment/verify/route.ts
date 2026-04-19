@@ -137,12 +137,21 @@ export async function POST(req: NextRequest) {
     const earnedPoints  = Math.floor(finalAmount * POINTS_PER_RUPEE)
 
     // ── 9. Insert order ───────────────────────────────────────────────────────
+    // Estimate prep time: 5 min base per item + load factor
+    const itemList  = Array.isArray(items) ? items : []
+    const itemCount = itemList.reduce((s: number, i: any) => s + (i.quantity ?? 1), 0)
+    const { count: activeOrders } = await supabase
+      .from('orders')
+      .select('id', { count: 'exact', head: true })
+      .in('order_status', ['new', 'preparing'])
+    const estimatedPrepTime = Math.max(5, itemCount * 5 + Math.floor((activeOrders ?? 0) / 2))
+
     const { data: order, error: insertError } = await supabase
       .from('orders')
       .insert({
         user_id:               user?.id ?? null,
         items:                 items ?? [],
-        total_amount:          baseAmount,
+        total_amount:          finalAmount,
         delivery_fee:          deliveryFee,
         payment_status:        is_free_order ? 'free' : 'paid',
         payment_id:            is_free_order ? null : razorpay_payment_id,
@@ -152,6 +161,8 @@ export async function POST(req: NextRequest) {
         discount_amount:       discountAmount,
         reward_points_used:    resolvedPointsUsed,
         reward_points_earned:  earnedPoints,
+        estimated_prep_time:   estimatedPrepTime,
+        order_status:          'new',
       })
       .select('id')
       .single()

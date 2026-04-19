@@ -20,14 +20,18 @@ import { cn } from '@/lib/utils'
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Order {
-  id:             string
-  items:          CartItem[]
-  total_amount:   number
-  payment_status: string
-  order_status:   OrderStatus
-  payment_id:     string | null
-  address:        DeliveryAddress | null
-  created_at:     string
+  id:                  string
+  items:               CartItem[]
+  total_amount:        number
+  delivery_fee:        number | null
+  discount_amount:     number | null
+  reward_points_used:  number | null
+  payment_status:      string
+  order_status:        OrderStatus
+  payment_id:          string | null
+  address:             DeliveryAddress | null
+  created_at:          string
+  estimated_prep_time: number | null
 }
 
 // ─── Status steps ─────────────────────────────────────────────────────────────
@@ -139,13 +143,13 @@ export default function OrderTrackingPage() {
   const isDelivered = order.order_status === 'delivered'
   const shortId     = `#${order.id.slice(-8).toUpperCase()}`
   const date        = new Date(order.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-  const time        = new Date(order.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+  const time        = new Date(order.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }).toUpperCase()
 
   return (
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="mx-auto max-w-xl px-6 py-12 space-y-10"
+      className="mx-auto max-w-2xl px-6 py-12 space-y-10"
     >
       {/* Navigation & Header */}
       <div className="flex items-center justify-between">
@@ -234,55 +238,140 @@ export default function OrderTrackingPage() {
 
       {/* Order Items & Address Summary */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Summary */}
-        <Card className="p-8">
-           <h3 className="text-[11px] font-black uppercase tracking-widest text-stone-400 mb-6">Order Items</h3>
-           <div className="space-y-5">
-              {order.items.map(({ item, quantity }: { item: MenuItem; quantity: number }, idx) => (
-                <div key={`${item.id}-${idx}`} className="flex items-center gap-4 group">
-                  <div className="relative h-12 w-12 shrink-0 rounded-2xl overflow-hidden bg-stone-50 shadow-inner">
-                    {item.image_url
-                      ? <Image src={getImageUrl(item.image_url)} alt={item.name} fill className="object-cover group-hover:scale-110 transition-transform" sizes="48px" />
-                      : <div className="flex h-full items-center justify-center text-stone-200"><Icon name="bowl" size={24} /></div>
-                    }
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-black text-stone-900 truncate tracking-tight">{item.name}</p>
-                    <p className="text-[10px] font-bold text-stone-400 mt-1 uppercase tracking-tight">{quantity} Bowl{quantity > 1 ? 's' : ''}</p>
-                  </div>
-                  <span className="text-sm font-black text-stone-900 tracking-tighter shrink-0">{formatPrice(item.price * quantity)}</span>
+
+        {/* Order Items Card */}
+        <Card className="p-0 overflow-hidden">
+          <div className="px-6 pt-6 pb-4 border-b border-stone-100 flex items-center justify-between">
+            <div>
+              <h3 className="text-[10px] font-black uppercase tracking-[0.25em] text-stone-400">Order Items</h3>
+              <p className="text-[11px] font-medium text-stone-400 mt-0.5">
+                {order.items.length} item{order.items.length !== 1 ? 's' : ''}
+              </p>
+            </div>
+            <div className="h-8 w-8 rounded-xl bg-amber-50 flex items-center justify-center">
+              <Icon name="bowl" size={14} className="text-amber-500" />
+            </div>
+          </div>
+
+          <div className="divide-y divide-stone-50">
+            {order.items.map(({ item, quantity }: { item: MenuItem; quantity: number }, idx) => (
+              <div key={`${item.id}-${idx}`} className="flex items-center gap-3 px-5 py-3.5 group hover:bg-stone-50/40 transition-colors">
+                <div className="relative h-11 w-11 shrink-0 rounded-xl overflow-hidden bg-stone-100">
+                  {item.image_url
+                    ? <Image src={getImageUrl(item.image_url)} alt={item.name} fill className="object-cover" sizes="44px" />
+                    : <div className="flex h-full items-center justify-center text-stone-300"><Icon name="bowl" size={20} /></div>
+                  }
                 </div>
-              ))}
-              <div className="flex items-center justify-between border-t border-stone-100 pt-5">
-                <span className="text-[11px] font-black uppercase tracking-[0.2em] text-stone-300">Total Charged</span>
-                <span className="text-xl font-black text-stone-900 tracking-tighter">{formatPrice(order.total_amount)}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[12px] font-black text-stone-900 truncate">{item.name}</p>
+                  <p className="text-[10px] font-medium text-stone-400 truncate mt-0.5">
+                    Qty {quantity}{item.calories ? ` · ${item.calories * quantity} kcal` : ''}{item.protein ? ` · P${item.protein * quantity}g` : ''}
+                  </p>
+                </div>
+                <p className="text-[13px] font-black text-stone-900 shrink-0">{formatPrice(item.price * quantity)}</p>
               </div>
-           </div>
+            ))}
+          </div>
+
+          <div className="px-5 py-4 bg-stone-50/60 border-t border-stone-100 space-y-2">
+            {/* Subtotal */}
+            {(() => {
+              const subtotal = order.items.reduce((s, { item, quantity }) => s + item.price * quantity, 0)
+              const delivery = order.delivery_fee ?? 0
+              const discount = order.discount_amount ?? 0
+              const points   = order.reward_points_used ?? 0
+              return (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-medium text-stone-400">Subtotal</span>
+                    <span className="text-[11px] font-bold text-stone-600">{formatPrice(subtotal)}</span>
+                  </div>
+                  {delivery > 0 && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-medium text-stone-400">Delivery fee</span>
+                      <span className="text-[11px] font-bold text-stone-600">+{formatPrice(delivery)}</span>
+                    </div>
+                  )}
+                  {discount > 0 && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-medium text-emerald-600">Voucher applied</span>
+                      <span className="text-[11px] font-bold text-emerald-600">−{formatPrice(discount)}</span>
+                    </div>
+                  )}
+                  {points > 0 && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-medium text-amber-600">Reward points</span>
+                      <span className="text-[11px] font-bold text-amber-600">−{formatPrice(points)}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between pt-2 border-t border-stone-200">
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-stone-500">Total Charged</span>
+                    <span className="text-lg font-black text-stone-900 tracking-tighter">{formatPrice(order.total_amount)}</span>
+                  </div>
+                </>
+              )
+            })()}
+          </div>
         </Card>
 
-        {/* Address */}
+        {/* Delivery Address Card */}
         {order.address && (
-          <Card className="p-8 bg-stone-50/50">
-            <h3 className="text-[11px] font-black uppercase tracking-widest text-stone-400 mb-6">Delivery Address</h3>
-             <div className="flex flex-col gap-4">
-                <div className="flex items-center gap-3">
-                   <div className="h-10 w-10 bg-white rounded-2xl flex items-center justify-center text-amber-500 shadow-sm border border-stone-100">
-                     <Icon name="user" size={18} />
-                   </div>
-                   <div>
-                     <p className="text-sm font-black text-stone-900 tracking-tight leading-none">{order.address.name}</p>
-                     <p className="text-[10px] font-bold text-stone-400 mt-1.5 uppercase tracking-widest">{order.address.phone}</p>
-                   </div>
-                </div>
-                <div className="flex items-start gap-3 mt-2">
-                   <Icon name="location" size={18} className="text-stone-300 mt-1 shrink-0" />
-                   <div className="text-xs font-bold text-stone-500 leading-relaxed uppercase tracking-tight">
-                    <p>{order.address.address_line1}, {order.address.address_line2}</p>
-                    <p>{order.address.city}, {order.address.state} — {order.address.pincode}</p>
-                    {order.address.landmark && <p className="text-amber-600 mt-1">Landmark: {order.address.landmark}</p>}
-                   </div>
-                </div>
-             </div>
+          <Card className="p-0 overflow-hidden">
+            {/* Header — matches Order Items card */}
+            <div className="px-6 pt-6 pb-4 border-b border-stone-100 flex items-center justify-between">
+              <div>
+                <h3 className="text-[10px] font-black uppercase tracking-[0.25em] text-stone-400">Delivery Address</h3>
+                <p className="text-[11px] font-medium text-stone-400 mt-0.5">Where we're headed</p>
+              </div>
+              <div className="h-8 w-8 rounded-xl bg-amber-50 flex items-center justify-center">
+                <Icon name="location" size={14} className="text-amber-500" />
+              </div>
+            </div>
+
+            {/* Recipient row — same height/padding as item rows */}
+            <div className="flex items-center gap-3 px-5 py-3.5 border-b border-stone-50">
+              <div className="h-11 w-11 shrink-0 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white shadow-sm shadow-amber-200/40">
+                <Icon name="user" size={18} strokeWidth={2.5} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[12px] font-black text-stone-900 truncate">{order.address.name}</p>
+                <p className="text-[10px] font-medium text-stone-400 truncate mt-0.5">{order.address.phone}</p>
+              </div>
+              <span className="text-[8px] font-black uppercase tracking-widest text-amber-600 bg-amber-50 border border-amber-100 px-2 py-1 rounded-full shrink-0">Recipient</span>
+            </div>
+
+            {/* Address row */}
+            <div className="flex items-start gap-3 px-5 py-3.5">
+              <div className="h-11 w-11 shrink-0 rounded-xl bg-stone-100 flex items-center justify-center">
+                <Icon name="location" size={16} className="text-stone-400" />
+              </div>
+              <div className="flex-1 min-w-0 pt-0.5">
+                <p className="text-[12px] font-black text-stone-900 leading-snug">
+                  {order.address.address_line1}
+                  {order.address.address_line2 ? `, ${order.address.address_line2}` : ''}
+                </p>
+                <p className="text-[10px] font-medium text-stone-400 mt-0.5">
+                  {[order.address.city, order.address.state].filter(Boolean).join(', ')}
+                  {order.address.pincode ? ` — ${order.address.pincode}` : ''}
+                </p>
+                {order.address.landmark && (
+                  <p className="text-[10px] font-bold text-amber-600 mt-1">
+                    Near: {order.address.landmark}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Footer — matches Order Items card */}
+            <div className="px-5 py-3 bg-stone-50/60 border-t border-stone-100 flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 inline-block shrink-0" />
+              <p className="text-[9px] font-black uppercase tracking-widest text-stone-400">
+                {isDelivered
+                  ? 'Delivered successfully'
+                  : `Delivery in progress · Est. ${order.estimated_prep_time ? `${order.estimated_prep_time} min` : '35–50 min'}`
+                }
+              </p>
+            </div>
           </Card>
         )}
       </div>
