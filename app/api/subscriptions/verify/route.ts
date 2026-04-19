@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { createClient } from '@/lib/supabase/server'
+import { supabaseAdmin } from '@/lib/supabase/admin'
 import { getTodayStrIST } from '@/lib/utils'
 
 export async function POST(req: NextRequest) {
@@ -34,8 +35,21 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    // 4. Update subscriptions
-    const { data, error: updateErr } = await supabase
+    // 4. Check idempotency — already activated?
+    const { data: alreadyActive } = await supabaseAdmin
+      .from('subscriptions')
+      .select('id')
+      .eq('razorpay_order_id', razorpay_order_id)
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .limit(1)
+
+    if (alreadyActive && alreadyActive.length > 0) {
+      return NextResponse.json({ success: true, message: 'Already activated' })
+    }
+
+    // 5. Activate subscriptions
+    const { data, error: updateErr } = await supabaseAdmin
       .from('subscriptions')
       .update({
         status:         'active',

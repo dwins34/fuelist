@@ -52,7 +52,6 @@ export default function AddressManager({ onSelect, selectedId, hideHeader }: Add
   }
 
   const handleSave = async () => {
-    console.log('AddressManager: Starting handleSave validation', { houseNumber, streetAddress, city, pincode })
     if (!houseNumber.trim()) {
       setFormError('House / Flat number is required')
       return
@@ -75,10 +74,8 @@ export default function AddressManager({ onSelect, selectedId, hideHeader }: Add
       lng
     }
 
-    console.log('AddressManager: Initiating save with payload:', payload)
     setSaving(true)
     const res = await addAddress(payload)
-    console.log('AddressManager: addAddress result:', res)
     setSaving(false)
 
     if (res.error) {

@@ -62,7 +62,6 @@ export function AddressProvider({ children }: { children: React.ReactNode }) {
     }, 8000)
 
     try {
-      console.log('AddressContext: fetching addresses for', profile.id)
       const { data, error: sbError } = await supabase
         .from('user_addresses')
         .select('*')
@@ -86,7 +85,6 @@ export function AddressProvider({ children }: { children: React.ReactNode }) {
   const addAddress = async (input: CreateAddressInput) => {
     if (!profile?.id) return { data: null, error: 'Authentication required. Please sign in again.' }
 
-    console.log('AddressContext: addAddress starting...', { profileId: profile.id, input })
 
     try {
       const isFirst = addresses.length === 0
@@ -96,14 +94,12 @@ export function AddressProvider({ children }: { children: React.ReactNode }) {
         is_default: isFirst
       }
 
-      console.log('AddressContext: calling insert...', payload)
 
       const { data, error: sbError } = await supabase
         .from('user_addresses')
         .insert([payload])
         .select()
 
-      console.log('AddressContext: insert returned', { data, sbError })
 
       if (sbError) {
         if (sbError.code === '23503') { 

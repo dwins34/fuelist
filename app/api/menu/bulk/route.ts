@@ -39,7 +39,7 @@ function parseRow(raw: RowInput, idx: number) {
     errors.push(`category must be one of: ${VALID_CATEGORIES.join(', ')}`)
 
   const price = parseFloat(String(raw.price ?? ''))
-  if (isNaN(price) || price < 0) errors.push('price must be a non-negative number')
+  if (isNaN(price) || price <= 0 || price > 10000) errors.push('price must be between ₹1 and ₹10,000')
 
   const calories = parseInt(String(raw.calories ?? '0')) || 0
   const protein  = parseFloat(String(raw.protein  ?? '0')) || 0

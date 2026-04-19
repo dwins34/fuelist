@@ -21,8 +21,9 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/admin/inquiries',     label: 'Inquiries',     icon: 'mail' },
   { href: '/admin/menu',          label: 'Menu Items',    icon: 'bowl' },
   { href: '/admin/subscriptions', label: 'Subscriptions', icon: 'subscriptions' },
+  { href: '/admin/deliveries',    label: 'Deliveries',    icon: 'time' },
   { href: '/admin/users',         label: 'Users & Roles', icon: 'users' },
-  { href: '/kitchen',             label: 'Live Orders',   icon: 'time', external: true },
+  { href: '/kitchen',             label: 'Live Orders',   icon: 'bowl', external: true },
 ]
 
 export default function AdminSidebar({ userName }: { userName: string }) {

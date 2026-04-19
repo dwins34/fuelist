@@ -13,18 +13,18 @@ export async function POST(req: NextRequest) {
     if (!user) return NextResponse.json({ success: true, phone, persisted: false })
 
     // Use admin client — bypasses RLS so the update always lands
-    const { error: dbErr, count } = await supabaseAdmin
+    const { error: dbErr, data: updated } = await supabaseAdmin
       .from('users')
       .update({ phone })
       .eq('id', user.id)
-      .select('id', { count: 'exact', head: true })
+      .select('id')
 
     if (dbErr) {
       console.error('verify-otp db error:', dbErr)
       return NextResponse.json({ error: 'Failed to save phone number.' }, { status: 500 })
     }
 
-    if (count === 0) {
+    if (!updated || updated.length === 0) {
       console.error('verify-otp: no row updated for user', user.id)
       return NextResponse.json({ error: 'User profile not found.' }, { status: 404 })
     }

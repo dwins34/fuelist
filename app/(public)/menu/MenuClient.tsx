@@ -49,6 +49,8 @@ function MenuContent({ defaultCategory }: { defaultCategory?: Category | 'all' }
   const observerRef = useRef<IntersectionObserver | null>(null)
   const isScrollingTo = useRef(false)
 
+  const [fetchError, setFetchError] = useState(false)
+
   useEffect(() => {
     fetch('/api/menu')
       .then((r) => r.json())
@@ -56,7 +58,7 @@ function MenuContent({ defaultCategory }: { defaultCategory?: Category | 'all' }
         setItems(Array.isArray(data) ? data : [])
         setLoading(false)
       })
-      .catch(() => setLoading(false))
+      .catch(() => { setFetchError(true); setLoading(false) })
   }, [])
 
   const filtered = useMemo(() => {
@@ -161,6 +163,19 @@ function MenuContent({ defaultCategory }: { defaultCategory?: Category | 'all' }
 
   const activeFilters = [highProtein, lowCalorie, bestsellersOnly].filter(Boolean).length
   const totalVisible = filtered.length
+
+  if (fetchError) {
+    return (
+      <div className="flex flex-col items-center justify-center py-32 text-center px-6">
+        <p className="text-4xl mb-4">🥲</p>
+        <p className="text-lg font-black text-stone-900">Menu unavailable</p>
+        <p className="text-sm text-stone-400 mt-1 mb-6">We couldn't load the menu. Please try again.</p>
+        <button onClick={() => window.location.reload()} className="px-5 py-2.5 rounded-xl bg-amber-500 text-white text-sm font-black hover:bg-amber-600 transition-colors">
+          Retry
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 py-12 sm:py-16">

@@ -270,7 +270,14 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
       const res = await fetch('/api/payment/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: finalTotal }),
+        body: JSON.stringify({
+          amount: finalTotal,
+          items,
+          address,
+          coupon_code:          appliedCoupon?.coupon?.code ?? null,
+          reward_points_to_use: pointsToUse,
+          delivery_fee:         deliveryFee,
+        }),
       })
       if (!res.ok) {
         const errBody = await res.json().catch(() => ({}))
