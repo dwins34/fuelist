@@ -116,9 +116,14 @@ export function useLocation() {
               const details: PlaceDetails = { lat, lng, address, streetAddress, city, state, pincode }
               resolve(details)
             } else {
-              const errorMsg = status === 'ZERO_RESULTS' 
-                ? 'No address found for this location.' 
-                : 'Failed to reverse geocode location. Status: ' + status
+              let errorMsg = ''
+              if (status === 'ZERO_RESULTS') {
+                errorMsg = 'No address found for this location.'
+              } else if (status === 'REQUEST_DENIED') {
+                errorMsg = 'Google Geocoding API is not enabled. Please enable it in the Google Cloud Console.'
+              } else {
+                errorMsg = 'Failed to reverse geocode location. Status: ' + status
+              }
               setError(errorMsg)
               reject(new Error(errorMsg))
             }

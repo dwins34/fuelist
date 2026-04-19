@@ -45,7 +45,8 @@ import {
   AlertTriangle,
   Users,
   CheckCircle,
-  Pause
+  Pause,
+  MessageCircle
 } from 'lucide-react'
 
 /**
@@ -110,6 +111,7 @@ export const ICONS = {
   users: Users,
   checkCircle: CheckCircle,
   pause: Pause,
+  whatsapp: MessageCircle,
 } as const
 
 export type IconName = keyof typeof ICONS

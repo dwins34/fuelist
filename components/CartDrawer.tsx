@@ -18,6 +18,7 @@ import { UserAddress } from '@/hooks/useAddresses'
 import { ApplyCouponResult } from '@/types'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
+import PhoneOtpVerify from '@/components/ui/PhoneOtpVerify'
 import { cn } from '@/lib/utils'
 
 // Extend Window to hold the Razorpay constructor
@@ -101,7 +102,7 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
   const { items, count, total, updateQuantity, clearCart } = useCart()
   const router = useRouter()
 
-  const [step, setStep] = useState<'cart' | 'address' | 'paying'>('cart')
+  const [step, setStep] = useState<'cart' | 'address' | 'paying' | 'verify-nudge'>('cart')
   const [address, setAddress] = useState<DeliveryAddress>(EMPTY_ADDRESS)
   const [errors, setErrors] = useState<AddressErrors>({})
   const [addrLoading] = useState(false)
@@ -114,7 +115,7 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
   const [pointsToUse, setPointsToUse] = useState(0)
   const [isFirstOrder, setIsFirstOrder] = useState(false)
 
-  const { profile, accessToken } = useAuthContext()
+  const { profile, accessToken, reloadProfile } = useAuthContext()
   const { isEnabled, deliveryFee, serviceAreaLabel } = useServiceStatus()
   const { check: checkDelivery } = useDeliveryCheck()
 
@@ -189,6 +190,12 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
       router.push(`/login?redirect=${encodeURIComponent(window.location.pathname + '?cart=open')}`)
       return
     }
+    // Gating: If profile exists but phone is not verified/present
+    if (!profile.phone) {
+      setStep('verify-nudge')
+      return
+    }
+
     // Pre-fill name & phone from profile if the fields are still empty
     setAddress((prev) => ({
       ...prev,
@@ -546,8 +553,8 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
                         />
                       </div>
 
-                    ) : profile?.name && profile?.phone ? (
-                      /* ── B: Profile complete — read-only chip ── */
+                    ) : (
+                      /* ── B: Profile verified (guaranteed by gate) ── */
                       <div className="rounded-2xl bg-stone-50 border border-stone-100 px-4 py-3 space-y-2">
                         <div className="flex items-center justify-between">
                           <p className="text-[10px] font-black uppercase tracking-widest text-stone-400">Delivering to</p>
@@ -567,86 +574,60 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
                           <div className="h-8 w-8 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
                             <Icon name="user" size={14} className="text-amber-600" />
                           </div>
-                          <div className="min-w-0">
-                            <p className="text-sm font-black text-stone-900 truncate">{profile.name}</p>
-                            <p className="text-[11px] font-bold text-stone-500">{profile.phone}</p>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-black text-stone-900 truncate">{profile?.name || 'Authorized User'}</p>
+                            <p className="text-[11px] font-bold text-stone-500">{profile?.phone}</p>
                           </div>
                         </div>
-                      </div>
-
-                    ) : profile?.name && !profile?.phone ? (
-                      /* ── C: Has name, missing phone — show chip + phone input only ── */
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between px-0.5">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-stone-400">Delivering to</p>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setOrderForOther(true)
-                              setAddress((prev) => ({ ...prev, name: '', phone: '' }))
-                              setErrors((prev) => ({ ...prev, name: undefined, phone: undefined }))
-                            }}
-                            className="text-[10px] font-black text-amber-600 hover:text-amber-700 uppercase tracking-wider transition-colors"
-                          >
-                            Order for someone else?
-                          </button>
-                        </div>
-                        <div className="flex items-center gap-3 rounded-2xl bg-stone-50 border border-stone-100 px-4 py-2.5">
-                          <div className="h-8 w-8 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
-                            <Icon name="user" size={14} className="text-amber-600" />
-                          </div>
-                          <p className="text-sm font-black text-stone-900">{profile.name}</p>
-                        </div>
-                        <Input
-                          label="Your Phone Number"
-                          value={address.phone}
-                          onChange={(v) => { setAddress({ ...address, phone: v.target.value }); setErrors({ ...errors, phone: undefined }) }}
-                          placeholder="+91 98765 43210"
-                          type="tel"
-                          error={errors.phone}
-                          icon={<Icon name="phone" size={16} />}
-                        />
-                        <p className="text-[10px] text-stone-400 px-1">
-                          Save your phone in{' '}
-                          <a href="/account" className="text-amber-600 underline underline-offset-2 hover:text-amber-700">Account Settings</a>
-                          {' '}to skip this next time.
-                        </p>
-                      </div>
-
-                    ) : (
-                      /* ── D: No profile data — both inputs + nudge ── */
-                      <div className="space-y-2">
-                        <div className="flex items-start gap-2.5 rounded-xl bg-amber-50 border border-amber-100 px-3 py-2.5">
-                          <Icon name="warning" size={14} className="text-amber-500 mt-0.5 shrink-0" />
-                          <p className="text-[11px] text-amber-700 leading-relaxed">
-                            Add your name &amp; phone in{' '}
-                            <a href="/account" className="font-black underline underline-offset-2 hover:text-amber-900">Account Settings</a>
-                            {' '}to auto-fill here on every order.
-                          </p>
-                        </div>
-                        <Input
-                          label="Your Name"
-                          value={address.name}
-                          onChange={(v) => { setAddress({ ...address, name: v.target.value }); setErrors({ ...errors, name: undefined }) }}
-                          placeholder="Your full name"
-                          error={errors.name}
-                          icon={<Icon name="user" size={16} />}
-                        />
-                        <Input
-                          label="Your Phone"
-                          value={address.phone}
-                          onChange={(v) => { setAddress({ ...address, phone: v.target.value }); setErrors({ ...errors, phone: undefined }) }}
-                          placeholder="+91 98765 43210"
-                          type="tel"
-                          error={errors.phone}
-                          icon={<Icon name="phone" size={16} />}
-                        />
                       </div>
                     )}
 
                     <div className="pt-2 border-t border-stone-100">
                       <AddressManager hideHeader selectedId={selectedAddressId || undefined} onSelect={handleSelectAddress} />
                     </div>
+                  </motion.div>
+                )}
+
+                {/* ── VERIFY NUDGE ── */}
+                {step === 'verify-nudge' && (
+                  <motion.div 
+                    key="verify-nudge" 
+                    initial={{ opacity: 0, scale: 0.95 }} 
+                    animate={{ opacity: 1, scale: 1 }} 
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="flex flex-col items-center justify-center py-12 px-6 text-center"
+                  >
+                    <div className="w-20 h-20 bg-amber-50 rounded-3xl flex items-center justify-center text-amber-500 mb-6 shadow-sm border border-amber-100/50">
+                      <Icon name="security" size={40} strokeWidth={1.5} />
+                    </div>
+                    <h3 className="text-lg font-black text-stone-900 tracking-tight leading-tight">Verification Required</h3>
+                    <p className="text-xs font-medium text-stone-500 mt-3 max-w-[240px] leading-relaxed">
+                      To ensure seamless delivery and order updates, please verify your phone number in your account settings.
+                    </p>
+                    
+                    <div className="w-full space-y-3 mt-8">
+                      <Button 
+                        variant="primary" 
+                        fullWidth 
+                        onClick={() => {
+                          onClose();
+                          router.push('/account?tab=personal&return_to=cart');
+                        }}
+                      >
+                        Go to Account Settings
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        fullWidth 
+                        onClick={() => setStep('cart')}
+                      >
+                        Back to Cart
+                      </Button>
+                    </div>
+
+                    <p className="text-[10px] font-bold text-stone-300 mt-8 uppercase tracking-widest">
+                      Quick & Secure • One-time process
+                    </p>
                   </motion.div>
                 )}
 
@@ -666,7 +647,7 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
             </div>
 
             {/* ── Fixed bill + CTA footer ── */}
-            {items.length > 0 && step !== 'paying' && (
+            {items.length > 0 && step !== 'paying' && step !== 'verify-nudge' && (
               <div className="border-t border-stone-100 bg-white shadow-[0_-4px_20px_rgba(28,25,23,0.06)]">
                 {/* Bill summary */}
                 <div className="px-4 pt-3 pb-2 space-y-1">

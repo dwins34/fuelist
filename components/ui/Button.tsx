@@ -31,6 +31,7 @@ interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>,
   href?: string
   leftIcon?: ReactNode    // renders at amber-500 colour inside button
   showArrow?: boolean     // append ChevronRight — default true for ghost variant
+  fullWidth?: boolean     // adds w-full to the button
   // Framer Motion passthrough
   whileHover?: any
   whileTap?: any
@@ -123,6 +124,7 @@ const Button = forwardRef<any, ButtonProps>(({
   type = 'button',
   leftIcon,
   showArrow,
+  fullWidth = false,
   whileHover,
   whileTap,
   initial,
@@ -130,7 +132,7 @@ const Button = forwardRef<any, ButtonProps>(({
   transition,
   ...props
 }, ref) => {
-  const cls = cn(base, variants[variant], sizes[size], className)
+  const cls = cn(base, variants[variant], sizes[size], fullWidth && 'w-full', className)
 
   // Ghost buttons default to showing the right chevron
   const renderArrow = showArrow ?? (variant === 'ghost')
