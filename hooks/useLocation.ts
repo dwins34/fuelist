@@ -8,8 +8,8 @@ export function useLocation() {
   const { isLoaded, loadError } = useGoogleMapsScript()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  
-  const geocoder = useRef<google.maps.Geocoder | null>(null)
+
+  const geocoder = useRef<any>(null)
 
   useEffect(() => {
     if (isLoaded && !loadError && window.google?.maps?.Geocoder) {
@@ -37,7 +37,7 @@ export function useLocation() {
         return
       }
 
-      // Safety timeout in case the browser geolocation API hangs (common on some mobile browsers)
+      // Safety timeout in case the browser geolocation API hangs
       safetyTimeout = setTimeout(() => {
         const errorMsg = 'Location request timed out. Please try again or search manually.'
         setError(errorMsg)
@@ -50,111 +50,123 @@ export function useLocation() {
           const lat = position.coords.latitude
           const lng = position.coords.longitude
 
-          // Lazy initialization of geocoder if not already ready
-          if (!geocoder.current && window.google?.maps?.Geocoder) {
-            geocoder.current = new window.google.maps.Geocoder()
-          }
+          const doGeocode = () => {
+            geocoder.current!.geocode({ location: { lat, lng } }, (results: any[], status: any) => {
+              cleanup()
+              if (status === window.google.maps.GeocoderStatus.OK && results && results[0]) {
+                const place = results[0]
+                const address = place.formatted_address || ''
 
-          if (!geocoder.current) {
-            const errorMsg = 'Google Maps service not ready. Please refresh.'
-            setError(errorMsg)
-            cleanup()
-            reject(new Error(errorMsg))
-            return
-          }
+                let city = ''
+                let state = ''
+                let pincode = ''
+                const streetParts: string[] = []
 
-          geocoder.current.geocode({ location: { lat, lng } }, (results, status) => {
-            cleanup()
-            if (status === window.google.maps.GeocoderStatus.OK && results && results[0]) {
-              const place = results[0]
-              const address = place.formatted_address || ''
-              
-              let city = ''
-              let state = ''
-              let pincode = ''
-              const streetParts: string[] = []
+                place.address_components?.forEach((component: any) => {
+                  const types = component.types
 
-              place.address_components?.forEach(component => {
-                const types = component.types
-                
-                if (types.includes('locality')) {
-                  city = component.long_name
-                } else if (!city && (types.includes('administrative_area_level_2') || types.includes('sublocality_level_1') || types.includes('sublocality'))) {
-                  city = component.long_name
-                }
-                
-                if (types.includes('administrative_area_level_1')) {
-                  state = component.long_name
-                } 
-                
-                if (types.includes('postal_code')) {
-                  pincode = component.long_name
-                } 
-                
-                if (
-                  types.includes('premise') ||
-                  types.includes('subpremise') ||
-                  types.includes('street_number') ||
-                  types.includes('route') ||
-                  types.includes('neighborhood') ||
-                  types.includes('sublocality') ||
-                  types.includes('sublocality_level_1') ||
-                  types.includes('sublocality_level_2') ||
-                  types.includes('sublocality_level_3')
-                ) {
-                  if (component.long_name !== city) {
-                    streetParts.push(component.long_name)
+                  if (types.includes('locality')) {
+                    city = component.long_name
+                  } else if (!city && (
+                    types.includes('administrative_area_level_2') ||
+                    types.includes('sublocality_level_1') ||
+                    types.includes('sublocality')
+                  )) {
+                    city = component.long_name
                   }
-                }
-              })
 
-              if (!city && state) city = state
+                  if (types.includes('administrative_area_level_1')) {
+                    state = component.long_name
+                  }
 
-              const uniqueStreetParts = Array.from(new Set(streetParts))
-              const streetAddress = uniqueStreetParts.join(', ')
+                  if (types.includes('postal_code')) {
+                    pincode = component.long_name
+                  }
 
-              const details: PlaceDetails = { lat, lng, address, streetAddress, city, state, pincode }
-              resolve(details)
-            } else {
-              let errorMsg = ''
-              if (status === 'ZERO_RESULTS') {
-                errorMsg = 'No address found for this location.'
-              } else if (status === 'REQUEST_DENIED') {
-                errorMsg = 'Google Geocoding API is not enabled. Please enable it in the Google Cloud Console.'
+                  if (
+                    types.includes('premise') ||
+                    types.includes('subpremise') ||
+                    types.includes('street_number') ||
+                    types.includes('route') ||
+                    types.includes('neighborhood') ||
+                    types.includes('sublocality') ||
+                    types.includes('sublocality_level_1') ||
+                    types.includes('sublocality_level_2') ||
+                    types.includes('sublocality_level_3')
+                  ) {
+                    if (component.long_name !== city) {
+                      streetParts.push(component.long_name)
+                    }
+                  }
+                })
+
+                if (!city && state) city = state
+
+                const uniqueStreetParts = Array.from(new Set(streetParts))
+                const streetAddress = uniqueStreetParts.join(', ')
+
+                resolve({ lat, lng, address, streetAddress, city, state, pincode })
               } else {
-                errorMsg = 'Failed to reverse geocode location. Status: ' + status
+                let errorMsg = ''
+                if (status === 'ZERO_RESULTS') {
+                  errorMsg = 'No address found for this location.'
+                } else if (status === 'REQUEST_DENIED') {
+                  errorMsg = 'Google Geocoding API is not enabled. Please enable it in the Google Cloud Console.'
+                } else {
+                  errorMsg = 'Failed to reverse geocode location. Status: ' + status
+                }
+                setError(errorMsg)
+                reject(new Error(errorMsg))
               }
-              setError(errorMsg)
-              reject(new Error(errorMsg))
+            })
+          }
+
+          // Wait up to 10 s for the Maps SDK to finish loading before geocoding
+          const waitForGeocoder = (attempts = 0): void => {
+            if (window.google?.maps?.Geocoder && !geocoder.current) {
+              geocoder.current = new window.google.maps.Geocoder()
             }
-          })
+            if (geocoder.current) {
+              doGeocode()
+              return
+            }
+            if (attempts >= 100) {
+              const errorMsg = 'Google Maps service not ready. Please refresh and try again.'
+              setError(errorMsg)
+              cleanup()
+              reject(new Error(errorMsg))
+              return
+            }
+            setTimeout(() => waitForGeocoder(attempts + 1), 100)
+          }
+
+          waitForGeocoder()
         },
-        (error) => {
+        (err) => {
           cleanup()
           let errorMsg = 'Failed to get current location.'
-          
-          // Check for common mobile/browser restriction patterns
-          const isSecureOrigin = window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-          
-          switch (error.code) {
-            case error.PERMISSION_DENIED:
-              if (!isSecureOrigin) {
-                errorMsg = 'Location access is restricted to secure (HTTPS) connections. Please use a secure link or search manually.'
-              } else {
-                errorMsg = 'Location permission denied. Please enable location access in your browser settings (tap the lock icon in the address bar) or search manually.'
-              }
+
+          const isSecureOrigin =
+            window.location.protocol === 'https:' ||
+            window.location.hostname === 'localhost' ||
+            window.location.hostname === '127.0.0.1'
+
+          switch (err.code) {
+            case err.PERMISSION_DENIED:
+              errorMsg = isSecureOrigin
+                ? 'Location permission denied. Please enable location access in your browser settings (tap the lock icon in the address bar) or search manually.'
+                : 'Location access is restricted to secure (HTTPS) connections. Please use a secure link or search manually.'
               break
-            case error.POSITION_UNAVAILABLE:
+            case err.POSITION_UNAVAILABLE:
               errorMsg = 'Location information is unavailable. This can happen in private browsing or poor signal areas.'
               break
-            case error.TIMEOUT:
+            case err.TIMEOUT:
               errorMsg = 'The request to get user location timed out. Please try again or search manually.'
               break
           }
           setError(errorMsg)
           reject(new Error(errorMsg))
         },
-        // enableHighAccuracy: false is more reliable on mobile/indoors
         { enableHighAccuracy: false, timeout: 10000, maximumAge: 30000 }
       )
     })
