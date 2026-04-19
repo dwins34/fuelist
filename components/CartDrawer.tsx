@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useCart } from '@/context/CartContext'
-import { formatPrice } from '@/lib/utils'
+import { formatPrice, getServingSize } from '@/lib/utils'
 import { DeliveryAddress } from '@/lib/whatsapp'
 import { useAuthContext } from '@/context/AuthContext'
 import { useServiceStatus } from '@/context/ServiceStatusContext'
@@ -58,6 +58,46 @@ export function clearCartDrawerState() {
   try { localStorage.removeItem(CART_DRAWER_KEY) } catch {}
 }
 
+// ── Toast ────────────────────────────────────────────────────────────────────
+interface ToastMsg { id: number; message: string; type: 'error' | 'success' | 'info' }
+
+function CartToast({ toasts }: { toasts: ToastMsg[] }) {
+  return (
+    <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[200] flex flex-col gap-2 items-center pointer-events-none w-[calc(100vw-2rem)] max-w-xs">
+      <AnimatePresence>
+        {toasts.map((t) => (
+          <motion.div
+            key={t.id}
+            initial={{ opacity: 0, y: 12, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.95 }}
+            transition={{ duration: 0.22 }}
+            className={cn(
+              'flex items-center gap-2.5 px-4 py-3 rounded-2xl text-xs font-black shadow-xl border w-full',
+              t.type === 'error'   && 'bg-white text-rose-700 border-rose-100',
+              t.type === 'success' && 'bg-white text-emerald-700 border-emerald-100',
+              t.type === 'info'    && 'bg-white text-amber-700 border-amber-100',
+            )}
+          >
+            <Icon
+              name={t.type === 'error' ? 'error' : t.type === 'success' ? 'success' : 'info'}
+              size={14}
+              strokeWidth={3}
+              className={cn(
+                t.type === 'error'   && 'text-rose-500',
+                t.type === 'success' && 'text-emerald-500',
+                t.type === 'info'    && 'text-amber-500',
+              )}
+            />
+            {t.message}
+          </motion.div>
+        ))}
+      </AnimatePresence>
+    </div>
+  )
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 function validateAddress(a: DeliveryAddress): AddressErrors {
   const errs: AddressErrors = {}
   if (!a.name.trim()) errs.name = 'Name is required.'
@@ -108,6 +148,14 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
   const [addrLoading] = useState(false)
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null)
   const [payError, setPayError] = useState<string | null>(null)
+  const [toasts, setToasts] = useState<ToastMsg[]>([])
+  const toastCounter = useRef(0)
+
+  const showToast = useCallback((message: string, type: ToastMsg['type'] = 'error') => {
+    const id = ++toastCounter.current
+    setToasts((prev) => [...prev, { id, message, type }])
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3000)
+  }, [])
   const [outOfArea, setOutOfArea] = useState(false)
   const [orderForOther, setOrderForOther] = useState(false)
 
@@ -207,8 +255,17 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
   }, [count, profile, address, router])
 
   const handlePayment = useCallback(async () => {
+    if (!selectedAddressId) {
+      showToast('Please select a delivery address to continue.', 'error')
+      return
+    }
+
     const errs = validateAddress(address)
-    if (Object.keys(errs).length) { setErrors(errs); return }
+    if (Object.keys(errs).length) {
+      showToast('Please fill in all required address fields.', 'error')
+      setErrors(errs)
+      return
+    }
 
     const coords = (address.lat && address.lng) ? { lat: address.lat, lng: address.lng } : null
     let deliveryResult
@@ -353,12 +410,13 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
       setPayError(err?.message ?? 'Failed to initiate payment.')
       setStep('address')
     }
-  }, [address, items, total, finalTotal, appliedCoupon, pointsToUse, profile, clearCart, onClose, router, checkDelivery])
+  }, [address, selectedAddressId, items, total, finalTotal, appliedCoupon, pointsToUse, profile, clearCart, onClose, router, checkDelivery, showToast])
 
   return (
     <AnimatePresence>
       {open && (
         <>
+          <CartToast toasts={toasts} />
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -385,9 +443,10 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
               {step === 'address' && (
                 <button
                   onClick={() => setStep('cart')}
-                  className="rounded-full p-1.5 text-stone-400 hover:bg-stone-100 hover:text-stone-900 transition-colors shrink-0"
+                  className="rounded-full p-1.5 text-stone-500 hover:bg-stone-100 hover:text-stone-900 transition-colors shrink-0"
+                  aria-label="Back to cart"
                 >
-                  <Icon name="close" className="rotate-90" size={16} />
+                  <Icon name="arrowRight" size={18} strokeWidth={2.5} className="rotate-180" />
                 </button>
               )}
               <div className="flex-1 min-w-0">
@@ -440,7 +499,9 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
                               </span>
                               <div className="min-w-0">
                                 <p className="text-[13px] font-black text-stone-900 leading-tight whitespace-normal">{item.name}</p>
-                                <p className="text-[10px] font-bold text-amber-600 mt-0.5">{formatPrice(item.price)}</p>
+                                <p className="text-[10px] font-bold text-amber-600 mt-0.5">
+                                  {formatPrice(item.price)} · <span className="text-stone-400 font-bold">{getServingSize(item.category)}</span>
+                                </p>
                               </div>
                             </div>
 
@@ -606,8 +667,8 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
                   >
                     {/* Header */}
                     <div className="flex items-center gap-3">
-                      <button onClick={() => setStep('cart')} className="p-1.5 rounded-xl hover:bg-stone-100 transition-colors">
-                        <Icon name="chevronRight" size={18} className="rotate-180 text-stone-500" />
+                      <button onClick={() => setStep('cart')} className="p-1.5 rounded-xl hover:bg-stone-100 transition-colors" aria-label="Back to cart">
+                        <Icon name="arrowRight" size={18} strokeWidth={2.5} className="rotate-180 text-stone-500" />
                       </button>
                       <div>
                         <h3 className="text-base font-black text-stone-900 tracking-tight">Verify your number</h3>

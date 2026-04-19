@@ -206,7 +206,7 @@ export default function AboutPage() {
           <Reveal className="mb-14">
             <span className="text-[10px] font-black tracking-[0.35em] text-amber-500 uppercase mb-3 block">What we do</span>
             <h2 className="text-4xl font-black text-stone-900 tracking-tighter">
-              Simple, clean, and intentional.
+              Simple, clean, and made with purpose.
             </h2>
           </Reveal>
 
@@ -352,8 +352,8 @@ export default function AboutPage() {
           <Reveal delay={0.15}>
             <div className="space-y-3">
               {[
-                { done: true,  text: 'Real-time kitchen display system' },
                 { done: true,  text: 'Smart subscription management' },
+                { done: true,  text: 'Real-time food tracking system' },
                 { done: true,  text: 'Multi-address delivery' },
                 { done: false, text: 'Expanded city coverage' },
                 { done: false, text: 'Community rewards & referrals' },

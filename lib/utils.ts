@@ -40,6 +40,10 @@ export function getImageUrl(url: string, width = 400) {
 /**
  * Returns today's date in YYYY-MM-DD format using IST (+5:30)
  */
+export function getServingSize(category: Category): string {
+  return category === 'shakes' || category === 'craft_juices' ? '350 ml' : '300 g'
+}
+
 export function getTodayStrIST(): string {
   const date = new Date()
   // IST is UTC + 5:30

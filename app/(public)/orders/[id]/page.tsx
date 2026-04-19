@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
 import { useAuthContext } from '@/context/AuthContext'
 import { useCart } from '@/context/CartContext'
-import { formatPrice, getImageUrl } from '@/lib/utils'
+import { formatPrice, getImageUrl, getServingSize } from '@/lib/utils'
 import { CartItem, MenuItem, OrderStatus } from '@/types'
 import { DeliveryAddress } from '@/lib/whatsapp'
 import { Icon, IconName } from '@/lib/icons'
@@ -153,8 +153,8 @@ export default function OrderTrackingPage() {
     >
       {/* Navigation & Header */}
       <div className="flex items-center justify-between">
-        <Link href="/orders" className="group flex items-center gap-2.5 text-[10px] font-black uppercase tracking-[0.2em] text-stone-300 hover:text-amber-600 transition-all">
-          <Icon name="close" size={14} className="rotate-90" />
+        <Link href="/orders" className="group flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-stone-400 hover:text-amber-600 transition-all">
+          <Icon name="arrowRight" size={16} strokeWidth={2.5} className="rotate-180 group-hover:-translate-x-0.5 transition-transform" />
           Back to Orders
         </Link>
         <Badge variant="premium" className="bg-stone-50 text-stone-400 border-stone-100">
@@ -265,7 +265,7 @@ export default function OrderTrackingPage() {
                 <div className="flex-1 min-w-0">
                   <p className="text-[12px] font-black text-stone-900 truncate">{item.name}</p>
                   <p className="text-[10px] font-medium text-stone-400 truncate mt-0.5">
-                    Qty {quantity}{item.calories ? ` · ${item.calories * quantity} kcal` : ''}{item.protein ? ` · P${item.protein * quantity}g` : ''}
+                    Qty {quantity} · {getServingSize(item.category)}{item.calories ? ` · ${item.calories * quantity} kcal` : ''}{item.protein ? ` · P${item.protein * quantity}g` : ''}
                   </p>
                 </div>
                 <p className="text-[13px] font-black text-stone-900 shrink-0">{formatPrice(item.price * quantity)}</p>

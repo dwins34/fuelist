@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
 import { useAuthContext } from '@/context/AuthContext'
 import { useCart } from '@/context/CartContext'
-import { formatPrice, getImageUrl } from '@/lib/utils'
+import { formatPrice, getImageUrl, getServingSize } from '@/lib/utils'
 import { CartItem, MenuItem, OrderStatus } from '@/types'
 import { DeliveryAddress } from '@/lib/whatsapp'
 import { Icon, IconName } from '@/lib/icons'
@@ -171,7 +171,7 @@ function OrderCard({ order, onReorder }: { order: Order; onReorder: (items: Cart
             <div className="flex-1 min-w-0">
               <p className="text-sm font-black text-stone-900 truncate leading-tight">{item.name}</p>
               <p className="text-xs font-bold text-stone-400 mt-1 uppercase tracking-tight">
-                {quantity} qty · {formatPrice(item.price)} each
+                {quantity} qty · {formatPrice(item.price)} · {getServingSize(item.category)}
               </p>
             </div>
             <span className="text-sm font-black text-stone-900 tracking-tight shrink-0">
@@ -305,7 +305,14 @@ export default function OrdersPage() {
       animate={{ opacity: 1, y: 0 }}
       className="mx-auto max-w-2xl px-6 py-12 space-y-12"
     >
-      <div className="flex border-b border-stone-100 pb-10">
+      <div className="flex items-start gap-4 border-b border-stone-100 pb-10">
+        <button
+          onClick={() => router.back()}
+          aria-label="Go back"
+          className="mt-1 p-2 rounded-2xl text-stone-400 hover:bg-stone-100 hover:text-stone-900 transition-colors shrink-0"
+        >
+          <Icon name="arrowRight" size={20} strokeWidth={2.5} className="rotate-180" />
+        </button>
         <div>
           <h1 className="text-4xl font-black text-stone-900 tracking-tighter">My Orders</h1>
           <p className="text-sm font-medium text-stone-400 mt-2">Track your healthy bowls from farm to fork.</p>

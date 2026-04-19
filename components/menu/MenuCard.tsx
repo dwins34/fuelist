@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { MenuItem } from '@/types'
-import { formatPrice, getImageUrl } from '@/lib/utils'
+import { formatPrice, getImageUrl, getServingSize } from '@/lib/utils'
 import { useCart } from '@/context/CartContext'
 import { Icon } from '@/lib/icons'
 import SubscriptionModal, {
@@ -147,13 +147,17 @@ export default function MenuCard({ item }: MenuCardProps) {
           </p>
 
           <div className="flex flex-wrap gap-1.5 pt-1">
+            <Badge variant="default" className="shadow-none capitalize bg-stone-100 text-stone-600 border-stone-200 flex items-center gap-1">
+              <Icon name="package" size={10} strokeWidth={2.5} />
+              {getServingSize(item.category)}
+            </Badge>
             <Badge variant="info" className="shadow-none capitalize">
               {item.protein}g protein
             </Badge>
             <Badge variant="success" className="shadow-none capitalize">
               {item.carbs}g carbs
             </Badge>
-             <Badge variant="premium" className="shadow-none capitalize">
+            <Badge variant="premium" className="shadow-none capitalize">
               {item.fats}g fats
             </Badge>
           </div>
