@@ -25,8 +25,22 @@ export async function POST(req: NextRequest) {
     }
 
     if (!updated || updated.length === 0) {
-      console.error('verify-otp: no row updated for user', user.id)
-      return NextResponse.json({ error: 'User profile not found.' }, { status: 404 })
+      // Profile row missing — auto-create it (trigger may not have fired)
+      const { error: insertErr } = await supabaseAdmin
+        .from('users')
+        .insert({
+          id:            user.id,
+          email:         user.email ?? '',
+          name:          user.user_metadata?.full_name ?? user.user_metadata?.name ?? (user.email?.split('@')[0] ?? ''),
+          role:          'user',
+          phone,
+          reward_points: 0,
+        })
+        .select('id')
+      if (insertErr) {
+        console.error('verify-otp: failed to auto-create profile', insertErr)
+        return NextResponse.json({ error: 'User profile not found.' }, { status: 404 })
+      }
     }
 
     return NextResponse.json({ success: true, phone, persisted: true })
