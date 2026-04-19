@@ -14,13 +14,14 @@ import { cn } from '@/lib/utils'
 import { useAuthContext } from '@/context/AuthContext'
 
 interface StoredOrder {
-  order_id:         string
-  items:            CartItem[]
-  total_amount:     number
-  delivery_fee:     number
-  discount_amount:  number
+  order_id:           string
+  items:              CartItem[]
+  total_amount:       number
+  delivery_fee:       number
+  discount_amount:    number
   reward_points_used: number
-  address:          DeliveryAddress
+  estimated_prep_time: number | null
+  address:            DeliveryAddress
 }
 
 const STEPS: {
@@ -53,7 +54,7 @@ function SuccessContent() {
     const sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
     if (!sbUrl || !sbKey) return
     fetch(
-      `${sbUrl}/rest/v1/orders?id=eq.${orderId}&select=id,items,total_amount,delivery_fee,discount_amount,reward_points_used,address&limit=1`,
+      `${sbUrl}/rest/v1/orders?id=eq.${orderId}&select=id,items,total_amount,delivery_fee,discount_amount,reward_points_used,estimated_prep_time,address&limit=1`,
       { headers: { apikey: sbKey, Authorization: `Bearer ${accessToken}` } }
     )
       .then(r => r.json())
@@ -66,8 +67,9 @@ function SuccessContent() {
             total_amount:       data.total_amount,
             delivery_fee:       data.delivery_fee ?? 0,
             discount_amount:    data.discount_amount ?? 0,
-            reward_points_used: data.reward_points_used ?? 0,
-            address:            data.address ?? {},
+            reward_points_used:  data.reward_points_used ?? 0,
+            estimated_prep_time: data.estimated_prep_time ?? null,
+            address:             data.address ?? {},
           })
         }
       })
@@ -146,7 +148,9 @@ function SuccessContent() {
             )}
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-100">
               <Icon name="time" size={10} className="text-amber-500" />
-              <span className="text-[9px] font-black text-amber-700 uppercase tracking-wider">35–50 min</span>
+              <span className="text-[9px] font-black text-amber-700 uppercase tracking-wider">
+                {order?.estimated_prep_time ? `~${order.estimated_prep_time} min` : '35–50 min'}
+              </span>
             </div>
           </motion.div>
         </div>

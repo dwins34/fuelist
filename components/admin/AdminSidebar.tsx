@@ -21,6 +21,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/admin/inquiries',     label: 'Inquiries',     icon: 'mail' },
   { href: '/admin/menu',          label: 'Menu Items',    icon: 'bowl' },
   { href: '/admin/subscriptions', label: 'Subscriptions', icon: 'subscriptions' },
+  { href: '/admin/users',         label: 'Users & Roles', icon: 'users' },
   { href: '/kitchen',             label: 'Live Orders',   icon: 'time', external: true },
 ]
 
@@ -65,42 +66,42 @@ export default function AdminSidebar({ userName }: { userName: string }) {
       {/* Sidebar Container */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-72 h-full transform transition-transform duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] lg:static lg:block lg:translate-x-0 bg-white",
+          "fixed inset-y-0 left-0 z-50 w-56 h-full transform transition-transform duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] lg:static lg:block lg:translate-x-0 bg-white",
           isOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-        <div className="flex h-full flex-col border-r border-stone-100 shadow-premium">
+        <div className="flex h-full flex-col border-r border-stone-100 shadow-premium overflow-hidden">
           {/* Sidebar Header */}
-          <div className="flex items-center justify-between px-8 py-8">
-            <Link href="/" className="flex items-center gap-3 group" onClick={closeSidebar}>
-              <div className="h-10 w-10 bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl flex items-center justify-center p-2 shadow-md shadow-amber-200 group-hover:rotate-3 transition-transform">
-                <Logo size={24} />
+          <div className="flex items-center justify-between px-5 py-5">
+            <Link href="/" className="flex items-center gap-2.5 group" onClick={closeSidebar}>
+              <div className="h-8 w-8 bg-gradient-to-br from-amber-400 to-amber-600 rounded-xl flex items-center justify-center p-1.5 shadow-md shadow-amber-200 group-hover:rotate-3 transition-transform shrink-0">
+                <Logo size={18} />
               </div>
-              <span className="text-xl font-black text-stone-900 tracking-tighter">Fuelist</span>
+              <span className="text-base font-black text-stone-900 tracking-tighter">Fuelist</span>
             </Link>
-            <button 
-              onClick={closeSidebar} 
-              className="lg:hidden p-2 text-stone-300 hover:text-stone-900 hover:bg-stone-50 rounded-xl transition-all"
+            <button
+              onClick={closeSidebar}
+              className="lg:hidden p-1.5 text-stone-300 hover:text-stone-900 hover:bg-stone-50 rounded-xl transition-all"
             >
-              <Icon name="close" size={20} strokeWidth={2.5} />
+              <Icon name="close" size={18} strokeWidth={2.5} />
             </button>
           </div>
 
           {/* User Status Card */}
-          <div className="px-6 mb-4">
-            <div className="bg-stone-50 rounded-[2rem] p-5 flex items-center gap-3 border border-stone-100">
-              <div className="h-10 w-10 rounded-full bg-amber-500 text-white font-black text-sm flex items-center justify-center shadow-sm">
+          <div className="px-4 mb-3">
+            <div className="bg-stone-50 rounded-2xl px-3 py-3 flex items-center gap-2.5 border border-stone-100">
+              <div className="h-8 w-8 shrink-0 rounded-full bg-amber-500 text-white font-black text-xs flex items-center justify-center shadow-sm">
                 {userName?.charAt(0).toUpperCase() || 'A'}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-black capitalize tracking-widest text-stone-400 leading-none">Administrator</p>
-                <p className="mt-1 truncate text-sm font-black text-stone-900">{userName}</p>
+                <p className="text-[9px] font-black capitalize tracking-widest text-stone-400 leading-none">Administrator</p>
+                <p className="mt-0.5 truncate text-xs font-black text-stone-900">{userName}</p>
               </div>
             </div>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 space-y-1.5 overflow-y-auto px-5 py-6 custom-scrollbar">
+          <nav className="flex-1 space-y-1 px-3 py-2 overflow-hidden">
             {NAV_ITEMS.map((item) => {
               const isActive = pathname === item.href
               return (
@@ -111,23 +112,23 @@ export default function AdminSidebar({ userName }: { userName: string }) {
                   rel={item.external ? 'noopener noreferrer' : undefined}
                   onClick={closeSidebar}
                   className={cn(
-                    "relative flex items-center gap-4 group rounded-2xl px-5 py-4 text-sm font-black transition-all duration-300",
+                    "relative flex items-center gap-3 group rounded-xl px-3 py-2.5 text-xs font-black transition-all duration-300",
                     isActive
                       ? "bg-amber-500 text-white shadow-lg shadow-amber-200"
                       : "text-stone-400 hover:text-stone-900 hover:bg-stone-50"
                   )}
                 >
                   <div className={cn(
-                    "flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-300",
+                    "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-all duration-300",
                     isActive ? "bg-white/20" : "bg-stone-50 text-stone-300 group-hover:bg-amber-50 group-hover:text-amber-500"
                   )}>
-                    <Icon name={item.icon} size={20} strokeWidth={2.5} />
+                    <Icon name={item.icon} size={16} strokeWidth={2.5} />
                   </div>
                   <span className="tracking-tight">{item.label}</span>
-                  {item.external && <Icon name="arrowRight" size={14} className="ml-auto opacity-30 -rotate-45" />}
-                  
+                  {item.external && <Icon name="arrowRight" size={12} className="ml-auto opacity-30 -rotate-45" />}
+
                   {isActive && !isOpen && (
-                    <motion.div layoutId="adminNavIndicator" className="absolute left-0 w-1 h-6 bg-white rounded-r-full" />
+                    <motion.div layoutId="adminNavIndicator" className="absolute left-0 w-1 h-5 bg-white rounded-r-full" />
                   )}
                 </Link>
               )
@@ -135,12 +136,12 @@ export default function AdminSidebar({ userName }: { userName: string }) {
           </nav>
 
           {/* Footer Branding */}
-          <div className="mt-auto px-8 py-8 border-t border-stone-50">
-            <div className="flex items-center gap-2 text-[10px] font-black text-stone-300 capitalize tracking-widest">
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+          <div className="px-5 py-4 border-t border-stone-50">
+            <div className="flex items-center gap-1.5 text-[9px] font-black text-stone-300 capitalize tracking-widest">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
               Production Ready
             </div>
-            <p className="mt-2 text-[9px] font-bold text-stone-400">© 2026 Fuelist Portal v2.0</p>
+            <p className="mt-1 text-[9px] font-bold text-stone-400">© 2026 Fuelist Portal v2.0</p>
           </div>
         </div>
       </aside>

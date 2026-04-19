@@ -24,11 +24,31 @@ interface OrdersTableProps {
 }
 
 const STATUS_STYLES: Record<string, string> = {
-  pending:   'bg-amber-50 text-amber-700 border-amber-100',
-  confirmed: 'bg-blue-50 text-blue-700 border-blue-100',
-  completed: 'bg-emerald-50 text-emerald-700 border-emerald-100',
-  cancelled: 'bg-stone-100 text-stone-600 border-stone-200',
-  refunded:  'bg-rose-50 text-rose-700 border-rose-100',
+  // order_status values (KDS)
+  new:             'bg-amber-50 text-amber-700 border-amber-100',
+  preparing:       'bg-blue-50 text-blue-700 border-blue-100',
+  ready:           'bg-cyan-50 text-cyan-700 border-cyan-100',
+  out_for_delivery:'bg-purple-50 text-purple-700 border-purple-100',
+  delivered:       'bg-emerald-50 text-emerald-700 border-emerald-100',
+  cancelled:       'bg-stone-100 text-stone-600 border-stone-200',
+  refunded:        'bg-rose-50 text-rose-700 border-rose-100',
+  // legacy status fallbacks
+  pending:         'bg-amber-50 text-amber-700 border-amber-100',
+  confirmed:       'bg-blue-50 text-blue-700 border-blue-100',
+  completed:       'bg-emerald-50 text-emerald-700 border-emerald-100',
+}
+
+const STATUS_LABEL: Record<string, string> = {
+  new:             'New',
+  preparing:       'Preparing',
+  ready:           'Ready',
+  out_for_delivery:'Out for Delivery',
+  delivered:       'Delivered',
+  cancelled:       'Cancelled',
+  refunded:        'Refunded',
+  pending:         'Pending',
+  confirmed:       'Confirmed',
+  completed:       'Completed',
 }
 
 function fmtDate(iso: string) {
@@ -114,12 +134,17 @@ export default function OrdersTable({ orders, total, page, totalPages, onPage }:
                   )}
                 </td>
                 <td className="px-4 py-3">
-                  <span className={cn(
-                    'inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider capitalize',
-                    STATUS_STYLES[order.status] ?? 'bg-stone-50 text-stone-500'
-                  )}>
-                    {order.status}
-                  </span>
+                  {(() => {
+                    const s = (order as any).order_status || order.status || 'pending'
+                    return (
+                      <span className={cn(
+                        'inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider',
+                        STATUS_STYLES[s] ?? 'bg-stone-50 text-stone-500 border-stone-100'
+                      )}>
+                        {STATUS_LABEL[s] ?? s}
+                      </span>
+                    )
+                  })()}
                 </td>
               </tr>
             ))}

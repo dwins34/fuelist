@@ -31,6 +31,7 @@ interface Order {
   payment_id:          string | null
   address:             DeliveryAddress | null
   created_at:          string
+  estimated_prep_time: number | null
 }
 
 // ─── Status steps ─────────────────────────────────────────────────────────────
@@ -365,7 +366,10 @@ export default function OrderTrackingPage() {
             <div className="px-5 py-3 bg-stone-50/60 border-t border-stone-100 flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 inline-block shrink-0" />
               <p className="text-[9px] font-black uppercase tracking-widest text-stone-400">
-                {isDelivered ? 'Delivered successfully' : 'Delivery in progress · Est. 35–50 min'}
+                {isDelivered
+                  ? 'Delivered successfully'
+                  : `Delivery in progress · Est. ${order.estimated_prep_time ? `${order.estimated_prep_time} min` : '35–50 min'}`
+                }
               </p>
             </div>
           </Card>

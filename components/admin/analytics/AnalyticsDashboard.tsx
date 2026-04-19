@@ -92,29 +92,30 @@ export default function AnalyticsDashboard() {
     fetchData(from, to, page)
   }, [from, to, page, fetchData])
 
-  // ── Supabase Realtime ──────────────────────────────────────────────────────
+  // ── Supabase Realtime — auto-refresh with debounce ────────────────────────
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   useEffect(() => {
+    function scheduleRefresh() {
+      setLiveCount(n => n + 1)
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+      debounceRef.current = setTimeout(() => {
+        fetchData(from, to, page)
+      }, 1500)
+    }
+
     const channel = supabase
       .channel('admin-analytics-rt')
-      .on('postgres_changes', {
-        event:  'INSERT',
-        schema: 'public',
-        table:  'orders',
-      }, () => setLiveCount((n) => n + 1))
-      .on('postgres_changes', {
-        event:  'UPDATE',
-        schema: 'public',
-        table:  'orders',
-      }, () => setLiveCount((n) => n + 1))
-      .on('postgres_changes', {
-        event:  'INSERT',
-        schema: 'public',
-        table:  'refunds',
-      }, () => setLiveCount((n) => n + 1))
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders'  }, scheduleRefresh)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders'  }, scheduleRefresh)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'refunds' }, scheduleRefresh)
       .subscribe()
 
-    return () => { supabase.removeChannel(channel) }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    return () => {
+      supabase.removeChannel(channel)
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [from, to, page, fetchData, supabase])
 
   function handlePreset(id: string) {
     setPreset(id)
@@ -143,13 +144,10 @@ export default function AnalyticsDashboard() {
 
         {/* Live update badge */}
         {liveCount > 0 && (
-          <button
-            onClick={() => { fetchData(from, to, page) }}
-            className="flex items-center gap-2 rounded-full bg-amber-50 border border-amber-200 px-3 py-1.5 text-[11px] font-black text-amber-700 hover:bg-amber-100 transition-all animate-pulse"
-          >
-            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-            {liveCount} new update{liveCount > 1 ? 's' : ''} — refresh
-          </button>
+          <div className="flex items-center gap-2 rounded-full bg-amber-50 border border-amber-200 px-3 py-1.5 text-[11px] font-black text-amber-700 animate-pulse">
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-ping" />
+            {liveCount} new update{liveCount > 1 ? 's' : ''} — refreshing…
+          </div>
         )}
       </div>
 

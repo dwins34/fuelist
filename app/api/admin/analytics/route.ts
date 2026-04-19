@@ -33,16 +33,16 @@ export async function GET(req: NextRequest) {
   const limit = 20
 
   // Default: last 7 days in IST
-  const nowIST  = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }))
-  const defTo   = nowIST.toISOString().slice(0, 10)
-  const defFrom = new Date(nowIST.getTime() - 6 * 86400000).toISOString().slice(0, 10)
+  const defTo   = new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Kolkata' }).slice(0, 10)
+  const defFrom = new Date(Date.now() - 6 * 86400000).toLocaleString('sv-SE', { timeZone: 'Asia/Kolkata' }).slice(0, 10)
 
   const fromDate = searchParams.get('from') ?? defFrom
   const toDate   = searchParams.get('to')   ?? defTo
 
-  // Convert to full-day UTC bounds
-  const fromISO = `${fromDate}T00:00:00+05:30`
-  const toISO   = `${toDate}T23:59:59+05:30`
+  // Convert IST date strings to UTC bounds for Supabase (which stores in UTC)
+  // IST is UTC+5:30, so IST midnight = UTC 18:30 previous day
+  const fromISO = new Date(`${fromDate}T00:00:00+05:30`).toISOString()
+  const toISO   = new Date(`${toDate}T23:59:59+05:30`).toISOString()
 
   // ── Run all queries in parallel ────────────────────────────────────────────
   const [
@@ -53,10 +53,10 @@ export async function GET(req: NextRequest) {
     dailyData,
   ] = await Promise.all([
 
-    // Normal orders in range
+    // Normal orders in range — use * to avoid missing-column errors
     supabaseAdmin
       .from('orders')
-      .select('id, total_amount, delivery_fee, discount_amount, items, status, payment_status, created_at, user_id, address, coupon_id, reward_points_used, reward_points_earned')
+      .select('*')
       .gte('created_at', fromISO)
       .lte('created_at', toISO)
       .in('payment_status', ['paid', 'free']),
@@ -64,7 +64,7 @@ export async function GET(req: NextRequest) {
     // Subscription orders in range
     supabaseAdmin
       .from('subscriptions')
-      .select('id, total_price, price_per_delivery, duration_days, frequency, status, payment_status, created_at, user_id, menu_item_id, refund_amount')
+      .select('*')
       .gte('created_at', fromISO)
       .lte('created_at', toISO)
       .eq('payment_status', 'paid'),
@@ -80,7 +80,7 @@ export async function GET(req: NextRequest) {
     // Recent orders (paginated)
     supabaseAdmin
       .from('orders')
-      .select('id, total_amount, status, payment_status, created_at, user_id, items, address, discount_amount, coupon_id', { count: 'exact' })
+      .select('*', { count: 'exact' })
       .gte('created_at', fromISO)
       .lte('created_at', toISO)
       .order('created_at', { ascending: false })
@@ -94,6 +94,13 @@ export async function GET(req: NextRequest) {
       .lte('day', toISO)
       .order('day', { ascending: true }),
   ])
+
+  // Surface any query errors so they don't silently zero-out metrics
+  if (normalOrders.error)    console.error('[analytics] orders error:',       normalOrders.error.message)
+  if (subOrders.error)       console.error('[analytics] subscriptions error:', subOrders.error.message)
+  if (refundData.error)      console.error('[analytics] refunds error:',       refundData.error.message)
+  if (recentOrdersData.error)console.error('[analytics] recentOrders error:',  recentOrdersData.error.message)
+  if (dailyData.error)       console.error('[analytics] dailyRevenue error:',  dailyData.error.message)
 
   const orders = normalOrders.data ?? []
   const subs   = subOrders.data ?? []

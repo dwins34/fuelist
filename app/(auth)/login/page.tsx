@@ -52,7 +52,23 @@ function LoginForm() {
 
     try { localStorage.setItem(LAST_EMAIL_KEY, email) } catch {}
 
-    router.push(redirectTo)
+    // Redirect based on role so kitchen/delivery land on their page
+    const { data: { user } } = await supabase.auth.getUser()
+    let role = user?.app_metadata?.role ?? user?.user_metadata?.role ?? null
+
+    // Fallback: read role from public.users if JWT metadata doesn't have it yet
+    if (!role && user?.id) {
+      const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).single()
+      role = profile?.role ?? 'user'
+    }
+    role = role ?? 'user'
+
+    const dest =
+      role === 'admin'    ? '/admin' :
+      role === 'kitchen'  ? '/kitchen' :
+      role === 'delivery' ? '/kitchen' :
+      redirectTo
+    router.push(dest)
     router.refresh()
   }
 
