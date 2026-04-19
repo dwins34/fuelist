@@ -84,7 +84,7 @@ const CATEGORIES = [
     num: '04',
   },
   {
-    slug: 'juices',
+    slug: 'craft_juices',
     label: 'Craft Juices',
     tagline: 'Cold-pressed, naturally vibrant.',
     description: 'Single-origin produce, cold-pressed to preserve enzymes and micronutrients you cannot get from cooked food.',

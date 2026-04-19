@@ -64,18 +64,6 @@ export function useDeliveryCheck() {
           return r
         }
 
-        // ── Fallback: pincode allowlist (only when zone is NOT configured) ────
-        if (!deliveryZone && pincode) {
-          const eligible = isInServiceArea(pincode)
-          const r: DeliveryCheckResult = {
-            eligible,
-            distanceKm: null,
-            radiusKm: 0,
-            reason: 'fallback_pincode',
-          }
-          setResult(r)
-          return r
-        }
 
         // ── No data to check ──────────────────────────────────────────────────
         const r: DeliveryCheckResult = {

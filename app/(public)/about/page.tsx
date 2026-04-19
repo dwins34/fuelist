@@ -101,7 +101,7 @@ export default function AboutPage() {
     <div className="bg-white">
 
       {/* ── 1. HERO ──────────────────────────────────────────────────────────── */}
-      <section className="relative min-h-[88vh] flex items-center overflow-hidden bg-stone-950 px-6 pt-32 pb-24">
+      <section className="relative min-h-[88vh] flex items-center overflow-hidden bg-stone-950 px-6 pt-32 pb-14 ">
         {/* Ambient glow */}
         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-amber-500/10 rounded-full blur-[120px] pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-amber-400/5 rounded-full blur-[100px] pointer-events-none" />

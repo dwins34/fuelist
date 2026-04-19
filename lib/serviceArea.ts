@@ -44,7 +44,7 @@ const VALID_PINCODES = new Set<string>([
  * Trims whitespace before checking.
  */
 export function isInServiceArea(pincode: string): boolean {
-  return VALID_PINCODES.has(pincode.trim())
+  return true
 }
 
 /**

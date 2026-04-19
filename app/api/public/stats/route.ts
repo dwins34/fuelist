@@ -22,8 +22,24 @@ export async function GET() {
 
     if (userError) throw userError
 
-    // 3. Derived/Mock stats for city growth (could be database-driven later)
-    const activeCities = 5
+    // 3. Dynamic active cities count based on delivery addresses
+    const { data: orders, error: cityError } = await supabase
+      .from('orders')
+      .select('address')
+      .eq('payment_status', 'paid')
+
+    if (cityError) throw cityError
+
+    // Extract unique, trimmed, lowercase city names from order addresses
+    const uniqueCities = new Set(
+      (orders ?? [])
+        .map(o => (o.address as any)?.city)
+        .filter(c => typeof c === 'string' && c.trim().length > 0)
+        .map(c => c.trim().toLowerCase())
+    )
+
+    // Ensure we show at least 1 if there are orders, or fallback to a sensible minimum for display
+    const activeCities = Math.max(uniqueCities.size, 1)
 
     return NextResponse.json({
       success: true,

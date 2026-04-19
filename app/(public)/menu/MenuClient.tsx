@@ -32,13 +32,28 @@ const CATEGORY_ICONS: Record<Category, string> = {
   craft_juices: '🍋',
 }
 
+const VALID_CATEGORIES = new Set<string>(['fruit', 'breakfast', 'power', 'shakes', 'craft_juices'])
+
+function parseCategory(raw: string | null): Category | 'all' {
+  if (raw && VALID_CATEGORIES.has(raw)) return raw as Category
+  return 'all'
+}
+
 function MenuContent({ defaultCategory }: { defaultCategory?: Category | 'all' }) {
   const searchParams = useSearchParams()
-  const initialCat = defaultCategory || (searchParams.get('category') as Category) || 'all'
+  const urlCat = parseCategory(searchParams.get('category'))
+  const initialCat = defaultCategory || urlCat
 
   const [items, setItems] = useState<MenuItem[]>([])
   const [loading, setLoading] = useState(true)
   const [activeCategory, setActiveCategory] = useState<Category | 'all'>(initialCat)
+
+  // Sync active category when URL changes (back/forward navigation or direct link)
+  useEffect(() => {
+    const cat = parseCategory(searchParams.get('category'))
+    setActiveCategory(cat)
+  }, [searchParams])
+
   const [sort, setSort] = useState<SortKey>('default')
   const [highProtein, setHighProtein] = useState(false)
   const [lowCalorie, setLowCalorie] = useState(false)
@@ -99,13 +114,12 @@ function MenuContent({ defaultCategory }: { defaultCategory?: Category | 'all' }
     if (btn) btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
   }, [activeCategory])
 
-  // Scroll to initial category once items have loaded and sections are rendered
-  useEffect(() => {
-    if (loading || initialCat === 'all') return
-    // Use rAF + setTimeout to wait for sections to mount after render
+  // Scroll to selected category when items load OR when URL param changes
+  const scrollToCategory = useCallback((cat: Category | 'all') => {
+    if (cat === 'all') return
     const raf = requestAnimationFrame(() => {
       setTimeout(() => {
-        const el = sectionRefs.current[initialCat]
+        const el = sectionRefs.current[cat]
         if (!el) return
         isScrollingTo.current = true
         const top = el.getBoundingClientRect().top + window.scrollY - 130
@@ -113,9 +127,24 @@ function MenuContent({ defaultCategory }: { defaultCategory?: Category | 'all' }
         setTimeout(() => { isScrollingTo.current = false }, 800)
       }, 50)
     })
-    return () => cancelAnimationFrame(raf)
+    return raf
+  }, [])
+
+  // On initial load: scroll once items are ready
+  useEffect(() => {
+    if (loading) return
+    const raf = scrollToCategory(activeCategory)
+    return () => { if (raf) cancelAnimationFrame(raf) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading]) // only run when loading transitions to false
+  }, [loading])
+
+  // On URL category change (back/forward nav) when items already loaded
+  useEffect(() => {
+    if (loading) return // handled by the effect above
+    const raf = scrollToCategory(activeCategory)
+    return () => { if (raf) cancelAnimationFrame(raf) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCategory])
 
   // Set up IntersectionObserver to track which section is in view
   useEffect(() => {
