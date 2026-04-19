@@ -43,10 +43,10 @@ export default function PhoneOtpVerify({
   const [resend,   setResend]   = useState(0)    // countdown seconds
   const [confirmResult, setConfirmResult] = useState<ConfirmationResult | null>(null)
 
-  const otpRef    = useRef<HTMLInputElement>(null)
-  const timerRef  = useRef<ReturnType<typeof setInterval> | null>(null)
+  const otpRef       = useRef<HTMLInputElement>(null)
+  const timerRef     = useRef<ReturnType<typeof setInterval> | null>(null)
   const recaptchaRef = useRef<RecaptchaVerifier | null>(null)
-  const recaptchaContainerRef = useRef<HTMLDivElement>(null)
+  const wrapperRef   = useRef<HTMLDivElement>(null) // stable outer wrapper
 
   // Start/restart 60s resend countdown
   function startCountdown() {
@@ -62,51 +62,49 @@ export default function PhoneOtpVerify({
 
   // Cleanup on unmount
   useEffect(() => {
-    return () => { 
-      if (timerRef.current) clearInterval(timerRef.current) 
-      if (recaptchaRef.current) {
-        try {
-          recaptchaRef.current.clear()
-        } catch (e) {}
-        recaptchaRef.current = null
-      }
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+      destroyVerifier()
     }
   }, [])
 
   // Auto-focus OTP input when we enter otp_sent state
   useEffect(() => {
-    if (state === 'otp_sent') {
-      setTimeout(() => otpRef.current?.focus(), 100)
-    }
+    if (state === 'otp_sent') setTimeout(() => otpRef.current?.focus(), 100)
   }, [state])
 
-  // Stable singleton initialization
-  const getVerifier = async () => {
+  function destroyVerifier() {
+    if (recaptchaRef.current) {
+      try { recaptchaRef.current.clear() } catch {}
+      recaptchaRef.current = null
+    }
+    // Replace the inner div with a fresh one so reCAPTCHA has a clean DOM node
+    if (wrapperRef.current) wrapperRef.current.innerHTML = '<div></div>'
+  }
+
+  const getVerifier = async (): Promise<RecaptchaVerifier | null> => {
     try {
-      if (recaptchaRef.current) return recaptchaRef.current;
-      if (!recaptchaContainerRef.current) return null;
+      destroyVerifier()
+      const container = wrapperRef.current?.firstElementChild as HTMLElement | null
+      if (!container) return null
 
-      // Ensure container is empty before creating
-      recaptchaContainerRef.current.innerHTML = '';
-
-      const verifier = new RecaptchaVerifier(auth, recaptchaContainerRef.current, {
+      const verifier = new RecaptchaVerifier(auth, container, {
         size: 'invisible',
-        callback: () => { /* reCAPTCHA success */ },
+        callback: () => {},
         'expired-callback': () => {
           setError('Verification expired. Please try again.')
           setState('idle')
-        }
-      });
+          destroyVerifier()
+        },
+      })
 
-      await verifier.render();
-      recaptchaRef.current = verifier;
-      return verifier;
+      await verifier.render()
+      recaptchaRef.current = verifier
+      return verifier
     } catch (err: any) {
-      console.error('Recaptcha init error:', err);
-      // Clean up on error to allow retry
-      if (recaptchaContainerRef.current) recaptchaContainerRef.current.innerHTML = '';
-      recaptchaRef.current = null;
-      return null;
+      console.error('Recaptcha init error:', err)
+      destroyVerifier()
+      return null
     }
   }
 
@@ -150,11 +148,7 @@ export default function PhoneOtpVerify({
 
       setError(customError)
       setState('idle')
-      // Cleanup verifier state on failure so the next attempt can be fresh
-      if (recaptchaRef.current) {
-        try { recaptchaRef.current.clear() } catch (e) {}
-        recaptchaRef.current = null
-      }
+      destroyVerifier()
     }
   }
 
@@ -229,8 +223,8 @@ export default function PhoneOtpVerify({
 
   return (
     <div className="space-y-3">
-      {/* Hidden container for Firebase Recaptcha */}
-      <div ref={recaptchaContainerRef} id="firebase-recaptcha-wrapper"></div>
+      {/* Stable wrapper — inner div is replaced fresh on each attempt */}
+      <div ref={wrapperRef} className="hidden"><div /></div>
 
       {/* ── Phone input row ── */}
       <div>
