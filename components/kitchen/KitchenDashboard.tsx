@@ -7,7 +7,7 @@ import OrderCard from './OrderCard'
 import FilterPanel, { KDSFilters } from './FilterPanel'
 
 interface StaffInfo { id: string; name: string }
-interface KDSOrder {
+export interface KDSOrder {
   id: string
   items: { item: { id: string; name: string; price: number; image_url?: string }; quantity: number }[]
   total_amount: number
@@ -19,12 +19,16 @@ interface KDSOrder {
   created_at: string
   address?: { name?: string } | null
   staff?: StaffInfo | null
+  // Subscription extras
+  is_subscription?: boolean
+  delivery_slot?: string
+  subscription_id?: string
 }
 
 const STATUS_COLS = [
-  { key: 'new',             label: 'New Orders',    accent: 'amber' },
-  { key: 'preparing',       label: 'Preparing',     accent: 'blue' },
-  { key: 'ready',           label: 'Ready to Go',   accent: 'emerald' },
+  { key: 'new',       label: 'New Orders',  accent: 'amber' },
+  { key: 'preparing', label: 'Preparing',   accent: 'blue' },
+  { key: 'ready',     label: 'Ready to Go', accent: 'emerald' },
 ]
 
 const ACCENT_CLASSES: Record<string, { bar: string; count: string }> = {
@@ -37,7 +41,7 @@ let audioCtx: AudioContext | null = null
 function playBeep() {
   try {
     audioCtx ??= new AudioContext()
-    const osc = audioCtx.createOscillator()
+    const osc  = audioCtx.createOscillator()
     const gain = audioCtx.createGain()
     osc.connect(gain)
     gain.connect(audioCtx.destination)
@@ -50,15 +54,15 @@ function playBeep() {
 }
 
 export default function KitchenDashboard() {
-  const [orders, setOrders]     = useState<KDSOrder[]>([])
-  const [staff, setStaff]       = useState<StaffInfo[]>([])
-  const [newIds, setNewIds]     = useState<Set<string>>(new Set())
-  const [loading, setLoading]   = useState(true)
-  const [filters, setFilters]   = useState<KDSFilters>({ status: [], minutes: null, unassigned: false })
-  const supabase = useMemo(() => createClient(), [])
-  const knownIds = useRef<Set<string>>(new Set())
+  const [orders, setOrders]   = useState<KDSOrder[]>([])
+  const [staff, setStaff]     = useState<StaffInfo[]>([])
+  const [newIds, setNewIds]   = useState<Set<string>>(new Set())
+  const [loading, setLoading] = useState(true)
+  const [filters, setFilters] = useState<KDSFilters>({ status: [], minutes: null, unassigned: false })
+  const supabase  = useMemo(() => createClient(), [])
+  const knownIds  = useRef<Set<string>>(new Set())
 
-  // ── Fetch helpers ──────────────────────────────────────────────────────────
+  // ── Fetch helpers ─────────────────────────────────────────────────────────
   const fetchOrders = useCallback(async () => {
     const params = new URLSearchParams()
     if (filters.status.length) params.set('status', filters.status.join(','))
@@ -80,7 +84,7 @@ export default function KitchenDashboard() {
 
   useEffect(() => { fetchOrders(); fetchStaff() }, [fetchOrders, fetchStaff])
 
-  // ── Supabase Realtime ──────────────────────────────────────────────────────
+  // ── Supabase Realtime — orders ────────────────────────────────────────────
   useEffect(() => {
     const channel = supabase
       .channel('kds-orders')
@@ -96,7 +100,6 @@ export default function KitchenDashboard() {
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, (payload) => {
         const updated = payload.new as KDSOrder
         setOrders(prev => {
-          // Remove if done
           if (['delivered', 'cancelled', 'refunded'].includes(updated.order_status)) {
             knownIds.current.delete(updated.id)
             return prev.filter(o => o.id !== updated.id)
@@ -109,24 +112,74 @@ export default function KitchenDashboard() {
     return () => { supabase.removeChannel(channel) }
   }, [supabase])
 
-  // ── Actions ────────────────────────────────────────────────────────────────
-  async function handleStatusChange(id: string, status: string) {
-    await fetch(`/api/kitchen/orders/${id}/status`, {
+  // ── Supabase Realtime — delivery_log (subscriptions) ─────────────────────
+  useEffect(() => {
+    const channel = supabase
+      .channel('kds-delivery-log')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'delivery_log' }, (payload) => {
+        const raw = payload.new as any
+        if (knownIds.current.has(raw.id)) return
+        knownIds.current.add(raw.id)
+        const entry: KDSOrder = {
+          id:                  raw.id,
+          items:               raw.items ?? [],
+          total_amount:        raw.total_amount,
+          order_status:        raw.status,
+          estimated_prep_time: 10,
+          priority_score:      5,
+          assigned_staff_id:   raw.assigned_staff_id,
+          assigned_at:         raw.assigned_at,
+          created_at:          raw.created_at,
+          address:             raw.address,
+          staff:               null,
+          is_subscription:     true,
+          delivery_slot:       raw.delivery_slot,
+          subscription_id:     raw.subscription_id,
+        }
+        setOrders(prev => [entry, ...prev])
+        setNewIds(prev => new Set(prev).add(raw.id))
+        playBeep()
+        setTimeout(() => setNewIds(prev => { const n = new Set(prev); n.delete(raw.id); return n }), 3000)
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'delivery_log' }, (payload) => {
+        const raw = payload.new as any
+        setOrders(prev => {
+          if (['delivered', 'cancelled'].includes(raw.status)) {
+            knownIds.current.delete(raw.id)
+            return prev.filter(o => o.id !== raw.id)
+          }
+          return prev.map(o => o.id === raw.id ? { ...o, order_status: raw.status, ...raw } : o)
+        })
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [supabase])
+
+  // ── Actions — route to correct API based on is_subscription ──────────────
+  async function handleStatusChange(id: string, status: string, isSubscription?: boolean) {
+    const url = isSubscription
+      ? `/api/kitchen/delivery-log/${id}/status`
+      : `/api/kitchen/orders/${id}/status`
+    await fetch(url, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status }),
     })
   }
 
-  async function handleAssign(id: string, staffId: string | null) {
-    await fetch(`/api/kitchen/orders/${id}/assign`, {
+  async function handleAssign(id: string, staffId: string | null, isSubscription?: boolean) {
+    const url = isSubscription
+      ? `/api/kitchen/delivery-log/${id}/assign`
+      : `/api/kitchen/orders/${id}/assign`
+    await fetch(url, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ staff_id: staffId }),
     })
   }
 
-  // ── Derived data ───────────────────────────────────────────────────────────
+  // ── Derived data ──────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
     let list = [...orders]
     if (filters.status.length) list = list.filter(o => filters.status.includes(o.order_status))
@@ -147,6 +200,9 @@ export default function KitchenDashboard() {
     }, {}),
   [filtered])
 
+  const subCount = orders.filter(o => o.is_subscription).length
+  const orderCount = orders.filter(o => !o.is_subscription).length
+
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       {/* Top bar */}
@@ -155,8 +211,16 @@ export default function KitchenDashboard() {
           <span className="text-lg font-black text-white tracking-tight">🍳 Kitchen Display</span>
           <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
         </div>
-        <div className="flex items-center gap-2 text-[10px] font-black text-stone-500 uppercase tracking-widest">
-          <span>Swipe → advance · Swipe ← revert</span>
+        <div className="flex items-center gap-3">
+          {/* Live counts */}
+          <div className="flex items-center gap-2 text-[10px] font-black text-stone-500 uppercase tracking-widest">
+            <span className="text-amber-400">{orderCount} orders</span>
+            <span className="text-stone-700">·</span>
+            <span className="text-emerald-400">{subCount} subscriptions</span>
+          </div>
+          <span className="hidden md:block text-[10px] font-black text-stone-600 uppercase tracking-widest">
+            Swipe → advance · Swipe ← revert
+          </span>
         </div>
       </div>
 
@@ -202,8 +266,8 @@ export default function KitchenDashboard() {
                           key={order.id}
                           order={order}
                           staffList={staff}
-                          onStatusChange={handleStatusChange}
-                          onAssign={handleAssign}
+                          onStatusChange={(id, status) => handleStatusChange(id, status, order.is_subscription)}
+                          onAssign={(id, staffId) => handleAssign(id, staffId, order.is_subscription)}
                           isNew={newIds.has(order.id)}
                         />
                       ))}

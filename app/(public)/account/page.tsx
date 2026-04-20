@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { useAuthContext } from '@/context/AuthContext'
+import { useServiceStatus } from '@/context/ServiceStatusContext'
 import { UserRewardLog } from '@/types'
 
 import AddressManager from '@/components/account/AddressManager'
@@ -113,6 +114,7 @@ export default function AccountPage() {
   const router = useRouter()
   const { profile, loading, error: loadError, saveProfile } = useUserProfile()
   const { accessToken, user, reloadProfile } = useAuthContext()
+  const { deliveryFee } = useServiceStatus()
 
   const [activeTab, setActiveTab] = useState<AccountTab>('personal')
   const [name, setName] = useState('')
@@ -309,11 +311,12 @@ export default function AccountPage() {
               )}
 
               {activeTab === 'subscriptions' && (
-                <SubscriptionsTab 
+                <SubscriptionsTab
                   subscriptions={subscriptions as any}
                   loading={subsLoading}
                   actionId={subActionId}
                   onAction={handleSubAction}
+                  deliveryFee={deliveryFee}
                 />
               )}
 

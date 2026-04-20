@@ -21,6 +21,8 @@ interface KDSOrder {
   created_at: string
   address?: { name?: string } | null
   staff?: StaffInfo | null
+  is_subscription?: boolean
+  delivery_slot?: string
 }
 
 interface OrderCardProps {
@@ -132,6 +134,11 @@ export default function OrderCard({ order, staffList, onStatusChange, onAssign, 
         <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-stone-800">
           <div className="flex items-center gap-2.5">
             <span className="text-[11px] font-black text-stone-300 tracking-widest">{shortId}</span>
+            {order.is_subscription && (
+              <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                🔄 Sub {order.delivery_slot ? `· ${order.delivery_slot}` : ''}
+              </span>
+            )}
             <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
               order.order_status === 'new' ? 'bg-amber-500/20 text-amber-400' :
               order.order_status === 'preparing' ? 'bg-blue-500/20 text-blue-400' :

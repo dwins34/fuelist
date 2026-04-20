@@ -53,18 +53,29 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json()
     const {
-      menu_item_ids,   // array  (new multi-item flow)
-      menu_item_id,    // string (legacy single-item fallback)
+      items,           // [{ id, quantity }] — new quantity-aware flow
+      menu_item_ids,   // string[] — legacy fallback
+      menu_item_id,    // string  — legacy single-item fallback
       delivery_slot,
       frequency,
       duration_days,
       address,
     } = body
 
-    // Normalise: accept both array and single id
-    const itemIds: string[] = Array.isArray(menu_item_ids)
-      ? menu_item_ids
-      : menu_item_id ? [menu_item_id] : []
+    // Build a quantity map — prefer new `items` array, fall back to legacy
+    const quantityMap: Record<string, number> = {}
+    if (Array.isArray(items) && items.length > 0) {
+      for (const { id, quantity } of items) {
+        if (id) quantityMap[id] = Math.max(1, Math.min(10, Number(quantity) || 1))
+      }
+    } else {
+      const legacyIds: string[] = Array.isArray(menu_item_ids)
+        ? menu_item_ids
+        : menu_item_id ? [menu_item_id] : []
+      for (const id of legacyIds) { quantityMap[id] = 1 }
+    }
+
+    const itemIds = Object.keys(quantityMap)
 
     if (itemIds.length === 0 || !delivery_slot || !frequency || !duration_days) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -82,16 +93,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid duration_days (7, 14 or 30)' }, { status: 400 })
 
     // Fetch all requested items in one query
-    const { data: items, error: itemsErr } = await supabase
+    const { data: menuItems, error: itemsErr } = await supabase
       .from('menu_items')
       .select('id, price, is_available')
       .in('id', itemIds)
 
-    if (itemsErr || !items || items.length === 0) {
+    if (itemsErr || !menuItems || menuItems.length === 0) {
       return NextResponse.json({ error: 'No valid menu items found' }, { status: 404 })
     }
 
-    const unavailable = items.filter((i) => !i.is_available)
+    const unavailable = menuItems.filter((i) => !i.is_available)
     if (unavailable.length > 0) {
       return NextResponse.json({ error: 'One or more selected items are currently unavailable' }, { status: 400 })
     }
@@ -138,17 +149,32 @@ export async function POST(req: NextRequest) {
       }, { status: 409 })
     }
 
+    // Fetch delivery fee from config
+    const { data: feeConfig } = await supabaseAdmin
+      .from('app_config')
+      .select('value')
+      .eq('key', 'delivery_fee')
+      .maybeSingle()
+    const deliveryFee: number =
+      typeof feeConfig?.value?.fee === 'number' ? Math.max(0, feeConfig.value.fee) : 0
+
     // Calculate discount
     const discountRate = DURATION_DISCOUNT[durationDaysNum] || 0
 
-    // Calculate total price across all items
-    let totalOrderAmount = 0
-    const rows = items
+    // Delivery charge for all deliveries (same for every item row, charged once total)
+    const totalDeliveryCharge = deliveryFee * totalDeliveries
+
+    // Calculate total price across all items (food only, discounted)
+    let foodTotal = 0
+    const rows = menuItems
       .filter((i) => newItemIds.includes(i.id))
       .map((item) => {
-        const basePrice = (item.price as number) * totalDeliveries
-        const discountedPrice = Math.floor(basePrice * (1 - discountRate))
-        totalOrderAmount += discountedPrice
+        const qty             = quantityMap[item.id] ?? 1
+        const pricePerDelivery = (item.price as number) * qty        // quantity-aware unit price
+        const basePrice        = pricePerDelivery * totalDeliveries
+        const discountAmt      = Math.floor(basePrice * discountRate) // identical to modal formula
+        const discountedPrice  = basePrice - discountAmt
+        foodTotal += discountedPrice
 
         return {
           user_id: user.id,
@@ -160,11 +186,14 @@ export async function POST(req: NextRequest) {
           end_date: endStr,
           status: 'pending_payment',
           payment_status: 'pending_payment',
-          price_per_delivery: item.price as number,
+          price_per_delivery: pricePerDelivery,   // price × qty per delivery
           total_price: discountedPrice,
           address: address ?? null,
         }
       })
+
+    // Grand total = discounted food + delivery charges
+    const totalOrderAmount = foodTotal + totalDeliveryCharge
 
     // Create Razorpay order
     let razorpayOrder

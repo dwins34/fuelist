@@ -25,7 +25,7 @@ function countFutureDeliveries(startDate: Date, endDate: Date, frequency: string
   const final = new Date(endDate)
   final.setHours(0, 0, 0, 0)
 
-  while (current <= final) {
+  while (current < final) {                    // exclusive upper bound — matches POST API
     if (isDeliveryDay(current, frequency)) {
       count++
     }
