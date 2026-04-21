@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { useAuthContext } from '@/context/AuthContext'
 import JsonLd from '@/components/seo/JsonLd'
-import { getFAQSchema } from '@/lib/seo'
+import { getFAQSchema, getLocalBusinessSchema, getWebsiteSchema, getMenuItemListSchema } from '@/lib/seo'
 
 const FEATURES: { icon: IconName; title: string; description: string }[] = [
   {
@@ -347,6 +347,9 @@ export default function HomeClient() {
   return (
     <div className="flex flex-col gap-16 pb-24">
       {/* Schema injection for Google SERP dominance */}
+      <JsonLd data={getLocalBusinessSchema()} />
+      <JsonLd data={getWebsiteSchema()} />
+      <JsonLd data={getMenuItemListSchema()} />
       <JsonLd data={getFAQSchema()} />
 
       {/* ── Hero Section ────────────────────────────────────────────────────────── */}
@@ -381,10 +384,7 @@ export default function HomeClient() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
             >
-              <Badge variant="premium" className="mb-8 px-6 py-2 text-xs backdrop-blur-md bg-amber-500/10 border-amber-500/20 text-amber-900 font-black">
-                <Icon name="success" size={12} strokeWidth={4} className="mr-2 text-amber-500" />
-                Nutritiously Handcrafted in Delhi
-              </Badge>
+
               <h1 className="text-5xl sm:text-[7rem] font-black tracking-tighter text-stone-900 leading-[0.85] mb-8">
                 Fresh <span className="text-amber-500">Fruit</span><br />
                 <span className="text-stone-800/90 underline decoration-amber-500/30 decoration-8 underline-offset-8">Delivery Daily.</span>
