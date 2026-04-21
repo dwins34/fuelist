@@ -56,12 +56,21 @@ export default function AddressManager({ onSelect, selectedId, hideHeader }: Add
       setFormError('House / Flat number is required')
       return
     }
-    if (!streetAddress.trim() || !city.trim()) {
-      setFormError('Please search for your location to fill in Street Address and City')
+    if (!streetAddress.trim()) {
+      setFormError('Street address is required')
+      return
+    }
+    if (!city.trim()) {
+      setFormError('City is required')
+      return
+    }
+    if (!pincode.trim()) {
+      setFormError('Pincode is required')
       return
     }
 
     setSaving(true)
+    setFormError('')
     const payload: CreateAddressInput = {
       label,
       house_number: houseNumber,
@@ -74,11 +83,11 @@ export default function AddressManager({ onSelect, selectedId, hideHeader }: Add
       lng
     }
 
-    // Safety net: never leave the button stuck in loading state
+    // Safety net: 30s — gives Supabase time on slow connections
     const saveTimeout = setTimeout(() => {
       setSaving(false)
-      setFormError('Request timed out. Please check your connection and try again.')
-    }, 10000)
+      setFormError('Saving is taking longer than usual. Please check your internet connection and try again.')
+    }, 30000)
 
     const res = await addAddress(payload)
     clearTimeout(saveTimeout)
@@ -274,7 +283,7 @@ export default function AddressManager({ onSelect, selectedId, hideHeader }: Add
                 type="text"
                 value={streetAddress}
                 onChange={(e) => setStreetAddress(e.target.value)}
-                placeholder="Auto-filled from search"
+                placeholder="Auto-filled or type manually"
                 icon={<Icon name="compass" size={15} />}
               />
 
