@@ -161,6 +161,23 @@ export const SEO_CONFIG = {
   },
 
   // ── SEO landing zones (standalone pages) ─────────────────────────────────
+  // Aliases kept for existing landing-page files
+  freshFruitBowls: {
+    title: 'Fresh Fruit Bowls | Handcrafted & Delivered Daily',
+    description:
+      'Premium fresh fruit bowls made with seasonal whole fruits — hygienically packed and delivered to your home or office. Order now.',
+    h1: 'Premium Fresh Fruit Bowls Delivered',
+    keywords:
+      'fresh fruit bowl delivery, fruit bowl near me, seasonal fruit bowl, handcrafted fruit bowl, healthy fruit delivery',
+  },
+  fruitDeliveryDelhi: {
+    title: 'Fruit Delivery | Fresh Fruits at Your Doorstep',
+    description:
+      'Fast, reliable fresh fruit delivery — handcrafted bowls made from seasonal fruits and delivered the same day. Subscribe for daily deliveries.',
+    h1: 'Fresh Fruit Delivery at Your Doorstep',
+    keywords:
+      'fruit delivery, fresh fruit delivered, same day fruit delivery, online fruit order, fruit subscription',
+  },
   fruitBowls: {
     title: 'Fresh Fruit Bowls | Handcrafted & Delivered Daily',
     description:
