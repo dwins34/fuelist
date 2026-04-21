@@ -51,7 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // This avoids relying on cookie state and works reliably on localhost and prod.
   const loadProfile = useCallback(async (uid: string, token: string) => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
     if (!url || !key) return
 
     try {
