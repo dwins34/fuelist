@@ -12,20 +12,20 @@ export async function POST(req: NextRequest) {
 
     if (!user) return NextResponse.json({ success: true, phone, persisted: false })
 
-    // Use admin client — bypasses RLS so the update always lands
-    const { error: dbErr, data: updated } = await supabaseAdmin
+    // 1. Try updating phone on the existing row (safe — touches only phone)
+    const { data: updated, error: updateErr } = await supabaseAdmin
       .from('users')
       .update({ phone })
       .eq('id', user.id)
       .select('id')
 
-    if (dbErr) {
-      console.error('verify-otp db error:', dbErr)
+    if (updateErr) {
+      console.error('verify-otp update error:', updateErr)
       return NextResponse.json({ error: 'Failed to save phone number.' }, { status: 500 })
     }
 
+    // 2. Row didn't exist yet — insert with safe defaults
     if (!updated || updated.length === 0) {
-      // Profile row missing — auto-create it (trigger may not have fired)
       const { error: insertErr } = await supabaseAdmin
         .from('users')
         .insert({
@@ -36,10 +36,11 @@ export async function POST(req: NextRequest) {
           phone,
           reward_points: 0,
         })
-        .select('id')
-      if (insertErr) {
-        console.error('verify-otp: failed to auto-create profile', insertErr)
-        return NextResponse.json({ error: 'User profile not found.' }, { status: 404 })
+
+      // 23505 = unique_violation: row was created by a concurrent request — not an error
+      if (insertErr && insertErr.code !== '23505') {
+        console.error('verify-otp insert error:', insertErr)
+        return NextResponse.json({ error: 'Failed to save phone number.' }, { status: 500 })
       }
     }
 
