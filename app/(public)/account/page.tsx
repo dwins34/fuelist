@@ -157,7 +157,7 @@ export default function AccountPage() {
   useEffect(() => {
     if (!profile?.id || !accessToken) return
     const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    const sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
     if (!sbUrl || !sbKey) return
     fetch(`${sbUrl}/rest/v1/users?id=eq.${profile.id}&select=has_set_password&limit=1`, {
       headers: { apikey: sbKey, Authorization: `Bearer ${accessToken}` },
@@ -203,7 +203,7 @@ export default function AccountPage() {
     try {
       if (!accessToken) { showToast('Not authenticated.', 'error'); setPwSaving(false); return }
       const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-      const sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      const sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
       if (!sbUrl || !sbKey) { showToast('Supabase not configured.', 'error'); return }
 
       const authRes = await fetch(`${sbUrl}/auth/v1/user`, {

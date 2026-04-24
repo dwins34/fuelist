@@ -160,7 +160,7 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
 
   useEffect(() => {
     const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    const sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
     if (!sbUrl || !sbKey) { setItemsLoading(false); setItemsLoadError(true); return }
     fetch(`${sbUrl}/rest/v1/menu_items?is_available=eq.true&order=category.asc,name.asc`, {
       headers: { apikey: sbKey, 'Content-Type': 'application/json' },
@@ -471,7 +471,7 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
                   <div className="py-10 text-center space-y-3">
                     <p className="text-sm font-black text-stone-500">Failed to load menu. Check your connection.</p>
                     <button
-                      onClick={() => { setItemsLoadError(false); setItemsLoading(true); const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL; const sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY; if (!sbUrl || !sbKey) return; fetch(`${sbUrl}/rest/v1/menu_items?is_available=eq.true&order=category.asc,name.asc`, { headers: { apikey: sbKey } }).then(r => r.json()).then((rows: MenuItem[]) => setAllItems(Array.isArray(rows) ? rows : [])).catch(() => setItemsLoadError(true)).finally(() => setItemsLoading(false)) }}
+                      onClick={() => { setItemsLoadError(false); setItemsLoading(true); const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL; const sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY; if (!sbUrl || !sbKey) return; fetch(`${sbUrl}/rest/v1/menu_items?is_available=eq.true&order=category.asc,name.asc`, { headers: { apikey: sbKey } }).then(r => r.json()).then((rows: MenuItem[]) => setAllItems(Array.isArray(rows) ? rows : [])).catch(() => setItemsLoadError(true)).finally(() => setItemsLoading(false)) }}
                       className="text-xs font-black uppercase tracking-widest text-amber-600 hover:text-amber-700"
                     >Retry</button>
                   </div>

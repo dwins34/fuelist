@@ -51,7 +51,7 @@ function SuccessContent() {
   useEffect(() => {
     if (!orderId || !accessToken) return
     const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    const sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
     if (!sbUrl || !sbKey) return
     fetch(
       `${sbUrl}/rest/v1/orders?id=eq.${orderId}&select=id,items,total_amount,delivery_fee,discount_amount,reward_points_used,estimated_prep_time,address&limit=1`,

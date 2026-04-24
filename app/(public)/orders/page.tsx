@@ -256,7 +256,7 @@ export default function OrdersPage() {
   useEffect(() => {
     if (!profile || !accessToken) return
     const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    const sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
     if (!sbUrl || !sbKey) return
 
     fetch(
