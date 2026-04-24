@@ -652,8 +652,8 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
                             <Icon name="user" size={14} className="text-amber-600" />
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="text-sm font-black text-stone-900 truncate">{profile?.name || 'Authorized User'}</p>
-                            <p className="text-[11px] font-bold text-stone-500">{profile?.phone}</p>
+                            <p className="text-sm font-black text-stone-900 truncate">{profile?.name || address.name || 'Authorized User'}</p>
+                            <p className="text-[11px] font-bold text-stone-500">{profile?.phone || address.phone}</p>
                           </div>
                         </div>
                       </div>
@@ -688,12 +688,11 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
                     <PhoneOtpVerify
                       compact
                       onVerified={async (phone) => {
-                        // Reload profile so profile.phone is fresh in context
-                        await reloadProfile()
+                        reloadProfile() // fire and forget — updates context in background
                         setAddress((prev) => ({
                           ...prev,
-                          name:  prev.name  || profile?.name  || '',
-                          phone: prev.phone || phone,
+                          name:  prev.name || profile?.name || '',
+                          phone, // always use the freshly verified phone, never stale
                         }))
                         setStep('address')
                       }}
