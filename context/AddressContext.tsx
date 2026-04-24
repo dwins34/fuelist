@@ -106,8 +106,27 @@ export function AddressProvider({ children }: { children: React.ReactNode }) {
 
 
       if (sbError) {
-        if (sbError.code === '23503') { 
-          return { data: null, error: 'Your profile is being initialized. Please wait a moment and try again.' }
+        if (sbError.code === '23503') {
+          // public.users row is missing — trigger may have failed during signup.
+          // Auto-create it now (RLS allows users to insert their own row) then retry.
+          await supabase.from('users').insert({
+            id:    profile.id,
+            email: profile.email ?? '',
+            name:  profile.name  ?? '',
+            role:  'user',
+          }).select('id')
+          // Retry the address insert once
+          const { data: retryData, error: retryErr } = await supabase
+            .from('user_addresses')
+            .insert([payload])
+            .select()
+          if (retryErr) throw retryErr
+          const retryAddress = retryData?.[0]
+          if (!retryAddress) throw new Error('Address saved but not returned.')
+          setAddresses(prev =>
+            [retryAddress, ...prev].sort((a, b) => Number(b.is_default) - Number(a.is_default))
+          )
+          return { data: retryAddress, error: null }
         }
         throw sbError
       }
