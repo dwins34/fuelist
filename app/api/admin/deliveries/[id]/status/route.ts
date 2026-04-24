@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { supabaseAdmin } from '@/lib/supabase/admin'
 import { OrderStatus, Role } from '@/types'
 
 const ALLOWED_TRANSITIONS: Record<Role, Partial<Record<OrderStatus, OrderStatus>>> = {
@@ -54,9 +55,10 @@ export async function PATCH(
 
   if (updateErr) throw updateErr
 
-  // If it's a one-off order, sync back to the main orders table
+  // If it's a one-off order, sync back to the main orders table using admin client
+  // to bypass RLS (kitchen/delivery roles can't update orders directly)
   if (log.order_id) {
-    await supabase
+    await supabaseAdmin
       .from('orders')
       .update({ order_status: newStatus })
       .eq('id', log.order_id)
