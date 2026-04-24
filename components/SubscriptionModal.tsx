@@ -12,7 +12,7 @@ import { useScrollLock } from '@/hooks/useScrollLock'
 import PhoneOtpVerify from '@/components/ui/PhoneOtpVerify'
 import { useRouter } from 'next/navigation'
 import AddressManager from '@/components/account/AddressManager'
-import { UserAddress } from '@/hooks/useAddresses'
+import { useAddresses, UserAddress } from '@/hooks/useAddresses'
 import { Icon, IconName } from '@/lib/icons'
 import { Badge } from '@/components/ui/badge'
 import Button from '@/components/ui/Button'
@@ -121,6 +121,7 @@ function isProfileComplete(profile: { name: string; phone: string } | null): boo
 
 export default function SubscriptionModal({ initialItem, onClose, onSuccess, restoredConfig }: SubscriptionModalProps) {
   const { profile, reloadProfile } = useAuthContext()
+  const { fetchAddresses } = useAddresses()
   const { isEnabled, serviceAreaLabel, deliveryFee } = useServiceStatus()
   const { check: checkDelivery } = useDeliveryCheck()
   const router = useRouter()
@@ -175,6 +176,14 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
       if (!isProfileComplete(profile)) setStep('address')
     }
   }, [restoredConfig, profile, step])
+
+  // Force-refresh addresses whenever the address step becomes active so that
+  // addresses saved during a previous order flow are immediately visible.
+  useEffect(() => {
+    if (step === 'address') {
+      fetchAddresses(true)
+    }
+  }, [step, fetchAddresses])
 
   // Derived
   const selectedItems  = allItems.filter(i => (quantities[i.id] ?? 0) > 0)

@@ -14,7 +14,7 @@ import { Icon } from '@/lib/icons'
 import CouponInput from '@/components/CouponInput'
 import RewardPointsToggle from '@/components/RewardPointsToggle'
 import AddressManager from '@/components/account/AddressManager'
-import { UserAddress } from '@/hooks/useAddresses'
+import { useAddresses, UserAddress } from '@/hooks/useAddresses'
 import { ApplyCouponResult } from '@/types'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
@@ -166,6 +166,7 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
   const { profile, accessToken, reloadProfile } = useAuthContext()
   const { isEnabled, deliveryFee, serviceAreaLabel } = useServiceStatus()
   const { check: checkDelivery } = useDeliveryCheck()
+  const { fetchAddresses } = useAddresses()
 
   useScrollLock(open)
 
@@ -185,6 +186,14 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
       }
     }
   }, [open])
+
+  // Force-refresh saved addresses when the address step becomes active so that
+  // addresses saved during a previous order's payment flow are immediately visible.
+  useEffect(() => {
+    if (step === 'address') {
+      fetchAddresses(true)
+    }
+  }, [step, fetchAddresses])
 
   useEffect(() => {
     if (!open) {

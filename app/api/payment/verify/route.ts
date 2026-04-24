@@ -195,7 +195,45 @@ export async function POST(req: NextRequest) {
     }, { onConflict: 'order_id', ignoreDuplicates: true })
       .then(({ error }) => { if (error) console.error('delivery_log upsert error:', error.message) })
 
-    // ── 11. Post-order side effects (non-blocking) ────────────────────────────
+    // ── 11. Save delivery address to user_addresses (non-blocking) ──────────────
+    // So the address is available for future subscription flows.
+    if (user && address?.address_line1) {
+      void (async () => {
+        try {
+          const { count } = await supabaseAdmin
+            .from('user_addresses')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', user.id)
+            .eq('house_number', address.address_line1)
+            .eq('pincode', address.pincode ?? '')
+
+          if ((count ?? 0) === 0) {
+            const { count: totalCount } = await supabaseAdmin
+              .from('user_addresses')
+              .select('id', { count: 'exact', head: true })
+              .eq('user_id', user.id)
+
+            await supabaseAdmin.from('user_addresses').insert({
+              user_id:        user.id,
+              label:          'Home',
+              house_number:   address.address_line1,
+              street_address: address.address_line2 ?? '',
+              city:           address.city ?? '',
+              state:          address.state ?? '',
+              pincode:        address.pincode ?? '',
+              landmark:       address.landmark ?? '',
+              lat:            address.lat ?? null,
+              lng:            address.lng ?? null,
+              is_default:     (totalCount ?? 0) === 0,
+            })
+          }
+        } catch (err) {
+          console.error('user_addresses upsert error:', err)
+        }
+      })()
+    }
+
+    // ── 12. Post-order side effects (non-blocking) ────────────────────────────
     if (user) {
       if (resolvedCouponId) {
         const couponId = resolvedCouponId
