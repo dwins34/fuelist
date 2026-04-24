@@ -43,6 +43,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Keep a ref to the latest accessToken so reloadProfile doesn't need it as a dep
   const accessTokenRef = useRef<string | null>(null)
+  // Track deferred setTimeout IDs so we can cancel them on unmount
+  const pendingTimers = useRef<ReturnType<typeof setTimeout>[]>([])
 
   // One stable client for the entire app
   const supabase = useMemo(() => createClient(), [])
@@ -123,22 +125,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const displayName = meta?.full_name ?? meta?.name ?? u.email?.split('@')[0] ?? 'User'
           setProfile((prev) => prev ?? EMPTY_PROFILE(u.id, u.email ?? '', displayName))
           setLoading(false)
-          // Defer DB fetch outside the callback
-          setTimeout(() => { loadProfile(u.id, token) }, 0)
+          // Defer DB fetch outside the callback (Supabase deadlock prevention)
+          const t1 = setTimeout(() => { loadProfile(u.id, token) }, 0)
+          pendingTimers.current.push(t1)
 
         } else if (event === 'TOKEN_REFRESHED') {
-          // Token silently refreshed — update token only, no UI change needed
-          // Docs recommend storing the new token and avoiding getSession() calls
-          setTimeout(() => { loadProfile(u.id, token) }, 0)
+          const t2 = setTimeout(() => { loadProfile(u.id, token) }, 0)
+          pendingTimers.current.push(t2)
 
         } else if (event === 'USER_UPDATED') {
-          // supabase.auth.updateUser() completed — refresh profile from DB
-          setTimeout(() => { loadProfile(u.id, token) }, 0)
+          const t3 = setTimeout(() => { loadProfile(u.id, token) }, 0)
+          pendingTimers.current.push(t3)
         }
       }
     )
 
-    return () => subscription.unsubscribe()
+    return () => {
+      subscription.unsubscribe()
+      pendingTimers.current.forEach(clearTimeout)
+      pendingTimers.current = []
+    }
   }, [supabase, loadProfile])
 
   return (

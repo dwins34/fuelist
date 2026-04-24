@@ -182,8 +182,8 @@ export async function POST(req: NextRequest) {
       orderId = inserted.id
     }
 
-    // ── 10. Add to delivery_log ────────────────────────────────────────────────
-    void supabaseAdmin.from('delivery_log').upsert({
+    // ── 10. Add to delivery_log (awaited — kitchen must see every order) ─────────
+    const { error: logErr } = await supabaseAdmin.from('delivery_log').upsert({
       order_id:      orderId,
       user_id:       user?.id ?? null,
       delivery_date: getTodayStrIST(),
@@ -193,7 +193,7 @@ export async function POST(req: NextRequest) {
       total_amount:  baseAmount,
       address:       address ?? null,
     }, { onConflict: 'order_id', ignoreDuplicates: true })
-      .then(({ error }) => { if (error) console.error('delivery_log upsert error:', error.message) })
+    if (logErr) console.error('delivery_log upsert error:', logErr.message)
 
     // ── 11. Save delivery address to user_addresses (non-blocking) ──────────────
     // So the address is available for future subscription flows.

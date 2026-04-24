@@ -76,9 +76,13 @@ export async function POST(req: NextRequest) {
       const todayStr = getTodayStrIST()
       const dayOfWeek = new Date().getDay() // 0=Sun, 1=Mon... 6=Sat
 
-      // Fetch items for the logs
-      const itemIds = data.map(s => s.menu_item_id)
-      const { data: items } = await supabase.from('menu_items').select('id, name, image_url, price').in('id', itemIds)
+      // Fetch items for the logs (use admin client — anon key is enough but admin is safer server-side)
+      const itemIds = [...new Set(data.map(s => s.menu_item_id))]
+      const { data: items, error: itemsErr } = await supabaseAdmin
+        .from('menu_items')
+        .select('id, name, image_url, price')
+        .in('id', itemIds)
+      if (itemsErr) console.error('Failed to fetch menu items for delivery log:', itemsErr.message)
       const itemMap = Object.fromEntries(items?.map(i => [i.id, i]) || [])
 
       const logs = data.filter(sub => {
@@ -99,7 +103,8 @@ export async function POST(req: NextRequest) {
       }))
 
       if (logs.length > 0) {
-        await supabase.from('delivery_log').insert(logs)
+        const { error: logErr } = await supabaseAdmin.from('delivery_log').insert(logs)
+        if (logErr) console.error('Failed to insert subscription delivery_log:', logErr.message)
       }
     } catch (err) {
       console.error('Failed to auto-generate first delivery log:', err)

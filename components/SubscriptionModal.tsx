@@ -134,9 +134,10 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
   const onFreqChange     = (f: Frequency)    => { setFreq(f); setError(null) }
   const onDurationChange = (d: number)       => { setDuration(d); setError(null) }
 
-  const [allItems,     setAllItems]     = useState<MenuItem[]>([])
-  const [itemsLoading, setItemsLoading] = useState(true)
-  const [search,       setSearch]       = useState('')
+  const [allItems,      setAllItems]      = useState<MenuItem[]>([])
+  const [itemsLoading,  setItemsLoading]  = useState(true)
+  const [itemsLoadError, setItemsLoadError] = useState(false)
+  const [search,        setSearch]        = useState('')
 
   // quantities: { [itemId]: count } — 0 or absent means not selected
   const [quantities, setQuantities] = useState<Record<string, number>>(() => {
@@ -160,13 +161,13 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
   useEffect(() => {
     const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    if (!sbUrl || !sbKey) return
+    if (!sbUrl || !sbKey) { setItemsLoading(false); setItemsLoadError(true); return }
     fetch(`${sbUrl}/rest/v1/menu_items?is_available=eq.true&order=category.asc,name.asc`, {
       headers: { apikey: sbKey, 'Content-Type': 'application/json' },
     })
-      .then(r => r.json())
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
       .then((rows: MenuItem[]) => setAllItems(Array.isArray(rows) ? rows : []))
-      .catch(() => {})
+      .catch(() => setItemsLoadError(true))
       .finally(() => setItemsLoading(false))
   }, [])
 
@@ -465,6 +466,14 @@ export default function SubscriptionModal({ initialItem, onClose, onSuccess, res
                 {itemsLoading ? (
                   <div className="grid grid-cols-2 gap-3">
                     {[...Array(6)].map(i => <div key={i} className="h-52 bg-stone-50 rounded-2xl animate-pulse" />)}
+                  </div>
+                ) : itemsLoadError ? (
+                  <div className="py-10 text-center space-y-3">
+                    <p className="text-sm font-black text-stone-500">Failed to load menu. Check your connection.</p>
+                    <button
+                      onClick={() => { setItemsLoadError(false); setItemsLoading(true); const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL; const sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY; if (!sbUrl || !sbKey) return; fetch(`${sbUrl}/rest/v1/menu_items?is_available=eq.true&order=category.asc,name.asc`, { headers: { apikey: sbKey } }).then(r => r.json()).then((rows: MenuItem[]) => setAllItems(Array.isArray(rows) ? rows : [])).catch(() => setItemsLoadError(true)).finally(() => setItemsLoading(false)) }}
+                      className="text-xs font-black uppercase tracking-widest text-amber-600 hover:text-amber-700"
+                    >Retry</button>
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-3">

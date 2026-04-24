@@ -55,10 +55,11 @@ export function AddressProvider({ children }: { children: React.ReactNode }) {
     setLoading(true)
     loadingRef.current = true
     setError(null)
-    
+
+    // Abort signal lets us cancel the in-flight fetch cleanly
+    const controller = new AbortController()
     const timer = setTimeout(() => {
-      setLoading(false)
-      loadingRef.current = false
+      controller.abort()
     }, 8000)
 
     try {
@@ -68,13 +69,16 @@ export function AddressProvider({ children }: { children: React.ReactNode }) {
         .eq('user_id', profile.id)
         .order('is_default', { ascending: false })
         .order('created_at', { ascending: false })
+        .abortSignal(controller.signal)
 
       if (sbError) throw sbError
       setAddresses(data || [])
       hasInitialFetched.current = true
     } catch (err: any) {
-      console.error('AddressContext: Error fetching addresses:', err)
-      setError(err.message || 'Error fetching addresses')
+      if (err?.name !== 'AbortError') {
+        console.error('AddressContext: Error fetching addresses:', err)
+        setError(err.message || 'Error fetching addresses')
+      }
     } finally {
       clearTimeout(timer)
       setLoading(false)
@@ -151,16 +155,25 @@ export function AddressProvider({ children }: { children: React.ReactNode }) {
         .eq('id', addressId)
 
       if (sbError) throw sbError
-      
-      setAddresses(prev => {
-        const next = prev.filter(a => a.id !== addressId)
-        const oldDeleted = prev.find(a => a.id === addressId)
-        if (oldDeleted?.is_default && next.length > 0) {
-          setDefaultAddress(next[0].id)
-          next[0].is_default = true
-        }
-        return next
-      })
+
+      // Determine if we need to promote a new default before touching state
+      const current = addresses
+      const deleted = current.find(a => a.id === addressId)
+      const next = current.filter(a => a.id !== addressId)
+
+      if (deleted?.is_default && next.length > 0) {
+        // Promote the next address as default in DB first
+        await supabase.rpc('set_default_address', { target_address_id: next[0].id })
+        // Update state: remove deleted, mark new default
+        setAddresses(
+          next
+            .map(a => ({ ...a, is_default: a.id === next[0].id }))
+            .sort((a, b) => Number(b.is_default) - Number(a.is_default))
+        )
+      } else {
+        setAddresses(next)
+      }
+
       return { error: null }
     } catch (err: any) {
       console.error('AddressContext: Error deleting address:', err)
