@@ -180,12 +180,21 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
       // Attempt to restore saved state
       const saved = loadCartDrawerState()
       if (saved) {
-        setStep(saved.step as any)
         setAddress(saved.address)
         clearCartDrawerState()
+
+        // If the saved step would skip past the phone-verification gate,
+        // check whether the user still needs to verify their number first.
+        // This covers the case where a guest signs up via Google (which
+        // doesn't provide a phone number) and the cart state is restored.
+        if (saved.step === 'address' && profile && !profile.phone) {
+          setStep('verify-nudge')
+        } else {
+          setStep(saved.step as any)
+        }
       }
     }
-  }, [open])
+  }, [open, profile])
 
   // Force-refresh saved addresses when the address step becomes active so that
   // addresses saved during a previous order's payment flow are immediately visible.
