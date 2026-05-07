@@ -175,6 +175,20 @@ export default function CartDrawer({ open, onClose }: CartDrawerProps) {
   const subtotal = Math.max(0, total - discountAmount - pointsValue)
   const finalTotal = subtotal + deliveryFee
 
+  // Auto-remove coupon when cart total drops below the coupon's minimum order amount
+  useEffect(() => {
+    if (!appliedCoupon?.valid || !appliedCoupon.coupon) return
+    const minAmount = appliedCoupon.coupon.min_order_amount ?? 0
+    if (minAmount > 0 && total < minAmount) {
+      setAppliedCoupon(null)
+      setPointsToUse(0)
+      showToast(
+        `Coupon ${appliedCoupon.coupon.code} removed — min. order ₹${minAmount}`,
+        'info',
+      )
+    }
+  }, [total, appliedCoupon, showToast])
+
   useEffect(() => {
     if (open) {
       // Attempt to restore saved state
